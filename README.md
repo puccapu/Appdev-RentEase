@@ -141,7 +141,7 @@ Each contributor works on a **dedicated branch**. To keep `main` stable, please 
 
 ## Team
 
-- **Facebook User** [ Project Manager ] 
+- **Lance Vincent** [ Project Manager ] 
 
 - **Kintanar Matteo** [ Senior Developer ] 
 - **Christian J. Salang** [ Junior Developer / Database Manager ] 
