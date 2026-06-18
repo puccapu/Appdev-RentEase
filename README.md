@@ -1,11 +1,8 @@
-# RentEase
-RentEase is an open-source Apartment Rental Management System built by USC's finest, most overworked, software developers.
+# RentEase — Apartment Rental Management System
 
-# TrackIT — IT Asset Management System
+> **RentEase** is an open-source Apartment Rental Management System built by USC's finest, most overworked, software developers.
 
-> A lightweight IT inventory management system for tracking company devices and assets.
-
-Developed by **Mga Sit-in Sa Web Dev** · Brought to you by **Sinoy Technologies**
+Developed by **IM2 Developers - Group VI**
 
 ---
 
@@ -17,7 +14,7 @@ Developed by **Mga Sit-in Sa Web Dev** · Brought to you by **Sinoy Technologies
 
 ## Overview
 
-**TrackIT** is a web-based IT asset management system designed to help companies keep track of all their IT devices and inventory. It provides a simple, accessible interface for logging, viewing, and managing hardware assets across your organization.
+RentEase is a web-based platform designed to simplify and digitize the management of residential apartment properties. It allows property managers to organize apartment units by type (such as Studio, 1-Bedroom, or Penthouse) and set their rental rates. The system stores tenant information, manages lease contracts, and tracks contract details including rental terms, monthly rent, and lease duration. It also records payment histories, making it easier to monitor paid and unpaid rental periods. With a centralized database and user-friendly interface, RentEase supports efficient day-to-day property management operations.
 
 ---
 
@@ -25,28 +22,24 @@ Developed by **Mga Sit-in Sa Web Dev** · Brought to you by **Sinoy Technologies
 
 | Layer    | Technology          |
 |----------|---------------------|
-| Database |  |
-| Backend  |                  |
+| Database |                     |
+| Backend  |                     |
 | Frontend | HTML, CSS, JavaScript |
-| Server   |   |
+| Server   |                       |
 
 ---
 
 ## Prerequisites
 
-Before getting started, make sure you have the following installed:
+For contributers of this project, make sure you have done the following:
 
-- 
-- 
-- 
+1. Install Visual Studio Code
 
----
-
-## Installation
+2. Linking Github with Visual Studio Code 
 
 ---
 
-## Contributing
+##  TAKE NOTE: For Contributors
 
 This project is maintained by **IM2 Developers - Group VI**. Contributions are limited to authorized team members only.
  
