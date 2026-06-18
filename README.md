@@ -83,19 +83,22 @@ Each contributor works on a **dedicated branch**. To keep `main` stable, please 
 
 ### Workflow
 
-1. **Switch to your assigned branch**
-   ```bash
+1. **Clone the repository**
+   In VS Code, open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`), select **Git: Clone**, then paste the repository URL and choose a local folder to save it in.
+
+2. **Switch to your assigned branch**
+```bash
    git checkout <your-branch>
-   ```
-2. **Make your changes and commit**
-   ```bash
+```
+3. **Make your changes and commit**
+```bash
    git commit -m "Describe your change"
-   ```
-3. **Push your branch**
-   ```bash
+```
+4. **Push your branch**
+```bash
    git push origin <your-branch>
-   ```
-4. **Open a Pull Request** to `main` for review
+```
+5. **Open a Pull Request** to `main` for review
 
 ---
 
