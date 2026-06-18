@@ -11,9 +11,9 @@
 [![Frontend HTML CSS JS](https://img.shields.io/badge/Frontend-HTML%20%7C%20CSS%20%7C%20JS-E34F26?style=flat-square&logo=html5&logoColor=white)](#tech-stack)
 [![Server DCISM](https://img.shields.io/badge/Server-DCISM-blue?style=flat-square)](#)
 
-Built by **USC's finest, most overworked, software developers**
-
 <br>
+
+Built by **USC's finest, most overworked, software developers**
 
 Developed by **IM2 Developers — Group VI**
 
