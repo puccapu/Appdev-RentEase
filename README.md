@@ -11,13 +11,7 @@ Developed by **Mga Sit-in Sa Web Dev** · Brought to you by **Sinoy Technologies
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [Tech Stack](#tech-stack)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [How It Works](#how-it-works)
-- [Project Structure](#project-structure)
-- [Contributing](#contributing)
+- 
 
 ---
 
