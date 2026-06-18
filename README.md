@@ -12,6 +12,9 @@
 [![Server DCISM](https://img.shields.io/badge/Server-DCISM-blue?style=flat-square)](#)
 
 Built by **USC's finest, most overworked, software developers**
+
+<br>
+
 Developed by **IM2 Developers — Group VI**
 
 </div>
