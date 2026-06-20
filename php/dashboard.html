@@ -17,6 +17,7 @@
             --text-secondary: #94a3b8;
             --text-muted: #64748b;
             --card-radius: 24px;
+            --modal-overlay: rgba(0, 0, 0, 0.7);
         }
 
         /* ---------- Reset & Base ---------- */
@@ -50,6 +51,30 @@
             transition: all 0.2s ease;
         }
 
+        /* API Mode Badge (API enabled) */
+        .api-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            padding: 4px 14px;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+        }
+        .api-badge i {
+            font-size: 0.6rem;
+        }
+        .api-badge.off {
+            background: rgba(100, 116, 139, 0.12);
+            color: #94a3b8;
+            border-color: rgba(255, 255, 255, 0.05);
+        }
+
         /* ---------- Navigation ---------- */
         .navbar {
             display: flex;
@@ -60,6 +85,7 @@
             padding-bottom: 24px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             margin-bottom: 32px;
+            position: relative;
         }
 
         .logo {
@@ -113,6 +139,7 @@
             box-shadow: 0 0 20px rgba(0, 61, 71, 0.3);
         }
 
+        /* Profile Dropdown */
         .user-profile {
             display: flex;
             align-items: center;
@@ -122,6 +149,9 @@
             padding: 6px 16px 6px 12px;
             border-radius: 40px;
             border: 1px solid rgba(255, 255, 255, 0.06);
+            cursor: pointer;
+            position: relative;
+            z-index: 10;
         }
         .user-profile img {
             width: 36px;
@@ -135,9 +165,57 @@
             color: var(--text-primary);
             font-size: 0.9rem;
         }
-        .user-profile i {
+        .user-profile i.fa-chevron-down {
             color: var(--text-muted);
             font-size: 0.7rem;
+            transition: transform 0.2s;
+        }
+
+        .profile-dropdown {
+            display: none;
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            background: #0f1e26;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            min-width: 180px;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(12px);
+            padding: 8px 0;
+            z-index: 100;
+        }
+        .profile-dropdown.open {
+            display: block;
+        }
+        .profile-dropdown a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 20px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.15s;
+            cursor: pointer;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+        }
+        .profile-dropdown a:hover {
+            background: rgba(255, 255, 255, 0.06);
+            color: #ffffff;
+        }
+        .profile-dropdown a i {
+            width: 20px;
+            text-align: center;
+            color: var(--secondary);
+        }
+        .profile-dropdown .divider {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.06);
+            margin: 6px 12px;
         }
 
         /* ---------- Hero ---------- */
@@ -187,6 +265,10 @@
             transform: translateY(-2px);
             box-shadow: 0 8px 28px rgba(0, 61, 71, 0.6);
         }
+        .btn-primary.sm {
+            padding: 6px 14px;
+            font-size: 0.8rem;
+        }
         .btn-secondary {
             background: rgba(255, 255, 255, 0.06);
             backdrop-filter: blur(6px);
@@ -207,8 +289,57 @@
             transform: translateY(-2px);
             border-color: rgba(255, 255, 255, 0.15);
         }
+        .btn-secondary.reset-btn {
+            background: rgba(237, 37, 78, 0.12);
+            border-color: rgba(237, 37, 78, 0.15);
+            color: #f43f5e;
+        }
+        .btn-secondary.reset-btn:hover {
+            background: rgba(237, 37, 78, 0.22);
+            border-color: rgba(237, 37, 78, 0.3);
+        }
+        .btn-danger {
+            background: rgba(237, 37, 78, 0.2);
+            color: #f43f5e;
+            border: 1px solid rgba(237, 37, 78, 0.2);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .btn-danger:hover {
+            background: rgba(237, 37, 78, 0.35);
+            border-color: rgba(237, 37, 78, 0.4);
+        }
+        .btn-edit {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.15);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .btn-edit:hover {
+            background: rgba(59, 130, 246, 0.3);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
 
-        /* ---------- Page Sections (simulated views) ---------- */
+        .action-group {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        /* ---------- Page Sections ---------- */
         .page-section {
             display: none;
             animation: fadeIn 0.3s ease;
@@ -218,11 +349,17 @@
         }
 
         @keyframes fadeIn {
-            0% { opacity: 0; transform: translateY(6px); }
-            100% { opacity: 1; transform: translateY(0); }
+            0% {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
-        /* ---------- Dashboard specific (stats, activity) ---------- */
+        /* ---------- Dashboard specific ---------- */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -291,7 +428,9 @@
             margin-top: 8px;
         }
         @media (max-width: 800px) {
-            .bottom-section { grid-template-columns: 1fr; }
+            .bottom-section {
+                grid-template-columns: 1fr;
+            }
         }
 
         .glass-panel {
@@ -322,7 +461,9 @@
             padding: 12px 0;
             border-bottom: 1px solid rgba(255, 255, 255, 0.04);
         }
-        .activity-item:last-child { border-bottom: none; }
+        .activity-item:last-child {
+            border-bottom: none;
+        }
         .activity-icon {
             width: 40px;
             height: 40px;
@@ -354,7 +495,6 @@
             font-weight: 600;
         }
 
-        /* Quick Actions */
         .quick-actions {
             display: flex;
             flex-direction: column;
@@ -388,7 +528,7 @@
             filter: drop-shadow(0 0 4px rgba(237, 37, 78, 0.2));
         }
 
-        /* ---------- Table styles for simulated views ---------- */
+        /* ---------- Table styles ---------- */
         .table-responsive {
             overflow-x: auto;
             margin-top: 4px;
@@ -410,6 +550,7 @@
             padding: 12px 10px;
             color: var(--text-primary);
             border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            vertical-align: middle;
         }
         table.sim-table tr:last-child td {
             border-bottom: none;
@@ -421,13 +562,46 @@
             font-size: 0.7rem;
             font-weight: 600;
         }
-        .badge.available { background: rgba(16, 185, 129, 0.15); color: #10b981; }
-        .badge.occupied { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
-        .badge.paid { background: rgba(16, 185, 129, 0.15); color: #10b981; }
-        .badge.overdue { background: rgba(244, 63, 94, 0.15); color: #f43f5e; }
-        .badge.pending { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
-        .badge.active-lease { background: rgba(16, 185, 129, 0.15); color: #10b981; }
-        .badge.expired { background: rgba(244, 63, 94, 0.15); color: #f43f5e; }
+        .badge.available {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+        }
+        .badge.occupied {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+        }
+        .badge.paid {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+        }
+        .badge.overdue {
+            background: rgba(244, 63, 94, 0.15);
+            color: #f43f5e;
+        }
+        .badge.pending {
+            background: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+        }
+        .badge.active-lease {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+        }
+        .badge.expired {
+            background: rgba(244, 63, 94, 0.15);
+            color: #f43f5e;
+        }
+        .badge.admin {
+            background: rgba(237, 37, 78, 0.15);
+            color: #f43f5e;
+        }
+        .badge.manager {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+        }
+        .badge.staff {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+        }
 
         .section-header {
             display: flex;
@@ -486,374 +660,2204 @@
             letter-spacing: 0.3px;
         }
 
-        @media (max-width: 600px) {
-            .app-container { padding: 16px 18px; }
-            .hero h1 { font-size: 1.6rem; }
-            .stat-card .stat-value { font-size: 1.6rem; }
-            .nav-links a { font-size: 0.85rem; padding: 6px 12px; }
-            table.sim-table { font-size: 0.8rem; }
-            table.sim-table th, table.sim-table td { padding: 8px 6px; }
+        /* ---------- MODALS ---------- */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--modal-overlay);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal {
+            background: #0f1e26;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 32px 36px;
+            max-width: 520px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7);
+            animation: modalIn 0.25s ease;
+        }
+        @keyframes modalIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.95) translateY(10px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+        .modal .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        .modal .modal-header h2 {
+            color: var(--text-primary);
+            font-size: 1.4rem;
+            font-weight: 600;
+        }
+        .modal .modal-header h2 i {
+            color: var(--secondary);
+            margin-right: 10px;
+        }
+        .modal .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.4rem;
+            cursor: pointer;
+            transition: color 0.2s;
+            padding: 4px 8px;
+        }
+        .modal .modal-close:hover {
+            color: #ffffff;
+        }
+
+        .modal .form-group {
+            margin-bottom: 18px;
+        }
+        .modal .form-group label {
+            display: block;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+        .modal .form-group input,
+        .modal .form-group select {
+            width: 100%;
+            padding: 10px 14px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+        .modal .form-group input:focus,
+        .modal .form-group select:focus {
+            border-color: var(--primary-light);
+            box-shadow: 0 0 0 3px rgba(0, 61, 71, 0.25);
+        }
+        .modal .form-group input::placeholder {
+            color: var(--text-muted);
+        }
+        .modal .form-group select option {
+            background: #0f1e26;
+            color: var(--text-primary);
+        }
+
+        .modal .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+            justify-content: flex-end;
+        }
+        .modal .form-actions .btn-cancel {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-secondary);
+            padding: 10px 24px;
+            border-radius: 40px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .modal .form-actions .btn-cancel:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: var(--text-primary);
+        }
+        .modal .form-actions .btn-submit {
+            background: var(--primary-light);
+            color: #ffffff;
+            border: none;
+            padding: 10px 28px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 16px rgba(0, 61, 71, 0.3);
+        }
+        .modal .form-actions .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 61, 71, 0.5);
+        }
+        .modal .form-actions .btn-submit.danger {
+            background: #b91c1c;
+            box-shadow: 0 4px 16px rgba(185, 28, 28, 0.3);
+        }
+        .modal .form-actions .btn-submit.danger:hover {
+            box-shadow: 0 8px 24px rgba(185, 28, 28, 0.5);
+        }
+
+        .modal .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        /* ---------- Toast notification ---------- */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(12, 25, 33, 0.95);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 16px 24px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 2000;
+            transform: translateY(80px);
+            opacity: 0;
+            transition: all 0.4s ease;
+            pointer-events: none;
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .toast i {
+            font-size: 1.3rem;
+            color: #10b981;
+        }
+        .toast.error i {
+            color: #f43f5e;
+        }
+        .toast.warning i {
+            color: #f59e0b;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 30px 20px;
+            color: var(--text-secondary);
+        }
+        .empty-state i {
+            font-size: 2.5rem;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+        .empty-state p {
+            font-size: 0.95rem;
+        }
+
+        /* Employee widget on dashboard */
+        .employee-widget {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .employee-widget .emp-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            font-size: 0.9rem;
+        }
+        .employee-widget .emp-item:last-child {
+            border-bottom: none;
+        }
+        .employee-widget .emp-name {
+            color: var(--text-primary);
+        }
+        .employee-widget .emp-role {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        .employee-widget .view-all {
+            margin-top: 8px;
+            text-align: right;
+        }
+        .employee-widget .view-all a {
+            color: var(--secondary);
+            text-decoration: none;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+        .employee-widget .view-all a:hover {
+            text-decoration: underline;
+        }
+
+        /* ---------- Responsive Fixes ---------- */
+        @media (max-width: 768px) {
+            .navbar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+            }
+            .nav-links {
+                order: 2;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+            .user-profile {
+                order: 1;
+                align-self: flex-end;
+            }
+            .logo {
+                order: 0;
+                align-self: center;
+            }
+            .hero {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 20px;
+            }
+            .hero-actions {
+                justify-content: flex-start;
+                flex-wrap: wrap;
+            }
+            .hero-actions .btn-primary,
+            .hero-actions .btn-secondary {
+                flex: 1 1 auto;
+            }
+            .app-container {
+                padding: 16px 18px;
+            }
+            .hero h1 {
+                font-size: 1.6rem;
+            }
+            .stat-card .stat-value {
+                font-size: 1.6rem;
+            }
+            .nav-links a {
+                font-size: 0.85rem;
+                padding: 6px 12px;
+            }
+            table.sim-table {
+                font-size: 0.8rem;
+            }
+            table.sim-table th,
+            table.sim-table td {
+                padding: 8px 6px;
+            }
+            .modal .form-row {
+                grid-template-columns: 1fr;
+            }
+            .modal {
+                padding: 24px 20px;
+            }
+        }
+        @media (max-width: 500px) {
+            .hero-actions .btn-primary,
+            .hero-actions .btn-secondary {
+                width: 100%;
+                justify-content: center;
+            }
         }
     </style>
 </head>
 <body>
 
-<!-- ========== SESSION CHECK ========== -->
-<script>
-    (function() {
-        const sessionData = sessionStorage.getItem('rentease_session');
-        if (!sessionData) {
-            window.location.href = 'login.html';
-            return;
-        }
-        try {
-            const session = JSON.parse(sessionData);
-            if (Date.now() - session.loginTime > 3600000) {
-                sessionStorage.removeItem('rentease_session');
+    <!-- ========== SESSION CHECK ========== -->
+    <script>
+        (function() {
+            const sessionData = sessionStorage.getItem('rentease_session');
+            if (!sessionData) {
                 window.location.href = 'login.html';
                 return;
             }
-            window.__loggedUser = session.user || 'Admin';
-        } catch (e) {
-            window.location.href = 'login.html';
-        }
-    })();
-</script>
-
-<div class="app-container">
-
-    <!-- ========== NAVIGATION ========== -->
-    <nav class="navbar">
-        <div class="logo">
-            <img src="https://raw.githubusercontent.com/CHROMAPSTR/GRAPHIC-DESIGNS/refs/heads/main/Copy%20of%20rreeeeeeeee%20(16).png" alt="RentEase" />
-            <span>RentEase</span>
-        </div>
-        <div class="nav-links" id="navLinks">
-            <a class="active" data-section="dashboard"><i class="fas fa-th-large"></i> Dashboard</a>
-            <a data-section="units"><i class="fas fa-door-open"></i> Units</a>
-            <a data-section="tenants"><i class="fas fa-users"></i> Tenants</a>
-            <a data-section="leases"><i class="fas fa-file-signature"></i> Leases</a>
-            <a data-section="payments"><i class="fas fa-coins"></i> Payments</a>
-            <a data-section="reports"><i class="fas fa-chart-pie"></i> Reports</a>
-        </div>
-        <div class="user-profile">
-            <img src="https://ui-avatars.com/api/?name=Admin&background=003d47&color=fff&size=36" alt="User" />
-            <span id="profileUsername">Admin</span>
-            <i class="fas fa-chevron-down"></i>
-        </div>
-    </nav>
-
-    <!-- ========== HERO ========== -->
-    <div class="hero">
-        <h1 id="pageTitle">
-            Welcome back, <span id="greetingName">Admin</span>
-            <small id="pageSubtitle">Here's what's happening with your rentals today.</small>
-        </h1>
-        <div class="hero-actions">
-            <button class="btn-primary"><i class="fas fa-plus-circle"></i> <span id="actionBtnText">New Lease</span></button>
-            <button class="btn-secondary"><i class="fas fa-file-export"></i> Export Report</button>
-        </div>
-    </div>
-
-    <!-- ========== PAGE SECTIONS ========== -->
-
-    <!-- ===== DASHBOARD ===== -->
-    <div id="section-dashboard" class="page-section active">
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-icon"><i class="fas fa-door-open"></i></div>
-                <div class="stat-value">42</div>
-                <div class="stat-label">Total Units</div>
-                <span class="stat-change"><i class="fas fa-arrow-up"></i> +2 this month</span>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
-                <div class="stat-value">34</div>
-                <div class="stat-label">Occupied</div>
-                <span class="stat-change warning"><i class="fas fa-arrow-right"></i> 81%</span>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon"><i class="fas fa-user-friends"></i></div>
-                <div class="stat-value">28</div>
-                <div class="stat-label">Active Tenants</div>
-                <span class="stat-change"><i class="fas fa-arrow-up"></i> +3 new</span>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon"><i class="fas fa-credit-card"></i></div>
-                <div class="stat-value">₱186,400</div>
-                <div class="stat-label">This Month's Collection</div>
-                <span class="stat-change danger"><i class="fas fa-arrow-down"></i> 12% overdue</span>
-            </div>
-        </div>
-
-        <div class="bottom-section">
-            <div class="glass-panel">
-                <h3><i class="fas fa-clock"></i> Recent Activity</h3>
-                <div class="activity-item">
-                    <div class="activity-icon"><i class="fas fa-file-signature"></i></div>
-                    <div class="activity-content">
-                        <div class="title">Lease signed – Unit #304</div>
-                        <div class="desc">Maria Santos · 1‑Bedroom · ₱12,500/mo</div>
-                    </div>
-                    <div class="activity-time">2h ago</div>
-                </div>
-                <div class="activity-item">
-                    <div class="activity-icon"><i class="fas fa-coins"></i></div>
-                    <div class="activity-content">
-                        <div class="title">Payment recorded – Unit #102</div>
-                        <div class="desc">John Rivera · ₱8,200 · May rent</div>
-                    </div>
-                    <div class="activity-time">5h ago</div>
-                </div>
-                <div class="activity-item">
-                    <div class="activity-icon"><i class="fas fa-user-plus"></i></div>
-                    <div class="activity-content">
-                        <div class="title">New tenant move‑in</div>
-                        <div class="desc">Anna Cruz – Studio unit #205</div>
-                    </div>
-                    <div class="activity-time">1d ago</div>
-                </div>
-                <div class="activity-item">
-                    <div class="activity-icon"><i class="fas fa-exclamation-triangle"></i></div>
-                    <div class="activity-content">
-                        <div class="title">Overdue payment reminder</div>
-                        <div class="desc">Unit #407 – 15 days past due</div>
-                    </div>
-                    <div class="activity-time urgent">urgent</div>
-                </div>
-            </div>
-            <div class="glass-panel">
-                <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
-                <div class="quick-actions">
-                    <a href="#" class="btn-glass"><i class="fas fa-user-plus"></i> Register New Tenant</a>
-                    <a href="#" class="btn-glass"><i class="fas fa-plus-circle"></i> Add Apartment Unit</a>
-                    <a href="#" class="btn-glass"><i class="fas fa-hand-holding-usd"></i> Record Payment</a>
-                    <a href="#" class="btn-glass"><i class="fas fa-file-alt"></i> Generate Occupancy Report</a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== UNITS ===== -->
-    <div id="section-units" class="page-section">
-        <div class="section-header">
-            <h2><i class="fas fa-door-open"></i> Apartment Units <span class="sub">· 42 total</span></h2>
-            <button class="btn-primary" style="padding:8px 20px; font-size:0.85rem;"><i class="fas fa-plus-circle"></i> Add Unit</button>
-        </div>
-        <div class="glass-panel" style="padding:16px 18px;">
-            <div class="table-responsive">
-                <table class="sim-table">
-                    <thead>
-                        <tr><th>Unit #</th><th>Type</th><th>Rent (₱)</th><th>Status</th><th>Action</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr><td>101</td><td>Studio</td><td>7,500</td><td><span class="badge occupied">Occupied</span></td><td><i class="fas fa-eye" style="color:var(--text-secondary);"></i></td></tr>
-                        <tr><td>102</td><td>Studio</td><td>7,500</td><td><span class="badge occupied">Occupied</span></td><td><i class="fas fa-eye" style="color:var(--text-secondary);"></i></td></tr>
-                        <tr><td>103</td><td>1-Bedroom</td><td>10,200</td><td><span class="badge available">Available</span></td><td><i class="fas fa-eye" style="color:var(--text-secondary);"></i></td></tr>
-                        <tr><td>104</td><td>1-Bedroom</td><td>10,200</td><td><span class="badge occupied">Occupied</span></td><td><i class="fas fa-eye" style="color:var(--text-secondary);"></i></td></tr>
-                        <tr><td>205</td><td>Studio</td><td>8,000</td><td><span class="badge occupied">Occupied</span></td><td><i class="fas fa-eye" style="color:var(--text-secondary);"></i></td></tr>
-                        <tr><td>206</td><td>2-Bedroom</td><td>14,500</td><td><span class="badge available">Available</span></td><td><i class="fas fa-eye" style="color:var(--text-secondary);"></i></td></tr>
-                        <tr><td>304</td><td>1-Bedroom</td><td>12,500</td><td><span class="badge occupied">Occupied</span></td><td><i class="fas fa-eye" style="color:var(--text-secondary);"></i></td></tr>
-                        <tr><td>407</td><td>Penthouse</td><td>22,000</td><td><span class="badge occupied">Occupied</span></td><td><i class="fas fa-eye" style="color:var(--text-secondary);"></i></td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== TENANTS ===== -->
-    <div id="section-tenants" class="page-section">
-        <div class="section-header">
-            <h2><i class="fas fa-users"></i> Tenants <span class="sub">· 28 active</span></h2>
-            <button class="btn-primary" style="padding:8px 20px; font-size:0.85rem;"><i class="fas fa-user-plus"></i> Register</button>
-        </div>
-        <div class="glass-panel" style="padding:16px 18px;">
-            <div class="table-responsive">
-                <table class="sim-table">
-                    <thead>
-                        <tr><th>Name</th><th>Email</th><th>Phone</th><th>Unit</th><th>Lease Status</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr><td>Maria Santos</td><td>maria@email.com</td><td>+63 912 3456</td><td>304</td><td><span class="badge active-lease">Active</span></td></tr>
-                        <tr><td>John Rivera</td><td>john.r@email.com</td><td>+63 923 4567</td><td>102</td><td><span class="badge active-lease">Active</span></td></tr>
-                        <tr><td>Anna Cruz</td><td>anna.c@email.com</td><td>+63 934 5678</td><td>205</td><td><span class="badge active-lease">Active</span></td></tr>
-                        <tr><td>Carlos Lee</td><td>c.lee@email.com</td><td>+63 945 6789</td><td>407</td><td><span class="badge expired">Expired</span></td></tr>
-                        <tr><td>Diana Reyes</td><td>dreyes@email.com</td><td>+63 956 7890</td><td>101</td><td><span class="badge active-lease">Active</span></td></tr>
-                        <tr><td>Eduardo Tan</td><td>ed.tan@email.com</td><td>+63 967 8901</td><td>—</td><td><span class="badge pending">Pending</span></td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== LEASES ===== -->
-    <div id="section-leases" class="page-section">
-        <div class="section-header">
-            <h2><i class="fas fa-file-signature"></i> Lease Contracts <span class="sub">· 24 active</span></h2>
-            <button class="btn-primary" style="padding:8px 20px; font-size:0.85rem;"><i class="fas fa-plus-circle"></i> New Lease</button>
-        </div>
-        <div class="glass-panel" style="padding:16px 18px;">
-            <div class="table-responsive">
-                <table class="sim-table">
-                    <thead>
-                        <tr><th>Lease ID</th><th>Tenant</th><th>Unit</th><th>Start</th><th>End</th><th>Monthly Rent</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr><td>L-001</td><td>Maria Santos</td><td>304</td><td>2026-01-15</td><td>2027-01-14</td><td>₱12,500</td></tr>
-                        <tr><td>L-002</td><td>John Rivera</td><td>102</td><td>2025-11-01</td><td>2026-10-31</td><td>₱7,500</td></tr>
-                        <tr><td>L-003</td><td>Anna Cruz</td><td>205</td><td>2026-03-01</td><td>2027-02-28</td><td>₱8,000</td></tr>
-                        <tr><td>L-004</td><td>Carlos Lee</td><td>407</td><td>2025-05-01</td><td>2026-04-30</td><td>₱22,000</td></tr>
-                        <tr><td>L-005</td><td>Diana Reyes</td><td>101</td><td>2026-02-10</td><td>2027-02-09</td><td>₱7,500</td></tr>
-                        <tr><td>L-006</td><td>Eduardo Tan</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== PAYMENTS ===== -->
-    <div id="section-payments" class="page-section">
-        <div class="section-header">
-            <h2><i class="fas fa-coins"></i> Payment Records <span class="sub">· 18 this month</span></h2>
-            <button class="btn-primary" style="padding:8px 20px; font-size:0.85rem;"><i class="fas fa-hand-holding-usd"></i> Record Payment</button>
-        </div>
-        <div class="glass-panel" style="padding:16px 18px;">
-            <div class="table-responsive">
-                <table class="sim-table">
-                    <thead>
-                        <tr><th>Payment ID</th><th>Date</th><th>Tenant</th><th>Unit</th><th>Amount</th><th>Status</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr><td>P-021</td><td>2026-05-15</td><td>Maria Santos</td><td>304</td><td>₱12,500</td><td><span class="badge paid">Paid</span></td></tr>
-                        <tr><td>P-022</td><td>2026-05-14</td><td>John Rivera</td><td>102</td><td>₱7,500</td><td><span class="badge paid">Paid</span></td></tr>
-                        <tr><td>P-023</td><td>2026-05-12</td><td>Anna Cruz</td><td>205</td><td>₱8,000</td><td><span class="badge paid">Paid</span></td></tr>
-                        <tr><td>P-024</td><td>2026-05-01</td><td>Carlos Lee</td><td>407</td><td>₱22,000</td><td><span class="badge overdue">Overdue</span></td></tr>
-                        <tr><td>P-025</td><td>2026-05-10</td><td>Diana Reyes</td><td>101</td><td>₱7,500</td><td><span class="badge pending">Pending</span></td></tr>
-                        <tr><td>P-026</td><td>2026-05-16</td><td>Eduardo Tan</td><td>—</td><td>—</td><td><span class="badge pending">Pending</span></td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== REPORTS ===== -->
-    <div id="section-reports" class="page-section">
-        <div class="section-header">
-            <h2><i class="fas fa-chart-pie"></i> Reports & Analytics</h2>
-            <button class="btn-secondary" style="padding:8px 20px; font-size:0.85rem;"><i class="fas fa-download"></i> Download PDF</button>
-        </div>
-
-        <div class="report-grid">
-            <div class="report-card">
-                <div class="num">₱1,284,500</div>
-                <div class="label">Year-to-Date Revenue</div>
-            </div>
-            <div class="report-card">
-                <div class="num">81%</div>
-                <div class="label">Occupancy Rate</div>
-            </div>
-            <div class="report-card">
-                <div class="num">₱48,200</div>
-                <div class="label">Total Overdue</div>
-            </div>
-            <div class="report-card">
-                <div class="num">12</div>
-                <div class="label">Leases Ending This Month</div>
-            </div>
-        </div>
-
-        <div class="glass-panel" style="padding:16px 18px;">
-            <h3 style="margin-bottom:12px;"><i class="fas fa-list-ul"></i> Recent Transactions</h3>
-            <div class="table-responsive">
-                <table class="sim-table">
-                    <thead>
-                        <tr><th>Date</th><th>Tenant</th><th>Unit</th><th>Amount</th><th>Type</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr><td>2026-05-15</td><td>Maria Santos</td><td>304</td><td>₱12,500</td><td>Rent</td></tr>
-                        <tr><td>2026-05-14</td><td>John Rivera</td><td>102</td><td>₱7,500</td><td>Rent</td></tr>
-                        <tr><td>2026-05-12</td><td>Anna Cruz</td><td>205</td><td>₱8,000</td><td>Rent</td></tr>
-                        <tr><td>2026-05-10</td><td>Diana Reyes</td><td>101</td><td>₱7,500</td><td>Rent</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <div class="footer-note">RentEase v1.0 · Apartment Rental Management System</div>
-</div>
-
-<!-- ========== JAVASCRIPT ========== -->
-<script>
-    (function() {
-        const username = window.__loggedUser || 'Admin';
-        document.getElementById('profileUsername').textContent = username;
-        document.getElementById('greetingName').textContent = username;
-
-        const avatarImg = document.querySelector('.user-profile img');
-        if (avatarImg) {
-            avatarImg.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(username) + '&background=003d47&color=fff&size=36';
-        }
-
-        const navLinks = document.querySelectorAll('#navLinks a');
-        const sections = {
-            dashboard: document.getElementById('section-dashboard'),
-            units: document.getElementById('section-units'),
-            tenants: document.getElementById('section-tenants'),
-            leases: document.getElementById('section-leases'),
-            payments: document.getElementById('section-payments'),
-            reports: document.getElementById('section-reports')
-        };
-
-        const pageTitle = document.getElementById('pageTitle');
-        const pageSubtitle = document.getElementById('pageSubtitle');
-        const actionBtnText = document.getElementById('actionBtnText');
-
-        const meta = {
-            dashboard: { title: 'Welcome back, ' + username, sub: 'Here\'s what\'s happening with your rentals today.', action: 'New Lease' },
-            units: { title: 'Unit Management', sub: 'View and manage all apartment units.', action: 'Add Unit' },
-            tenants: { title: 'Tenant Management', sub: 'View and manage all registered tenants.', action: 'Register Tenant' },
-            leases: { title: 'Lease Contracts', sub: 'View and manage all lease agreements.', action: 'New Lease' },
-            payments: { title: 'Payment Records', sub: 'View and manage all rental payments.', action: 'Record Payment' },
-            reports: { title: 'Reports & Analytics', sub: 'Overview of property performance.', action: 'Export PDF' }
-        };
-
-        function switchSection(sectionId) {
-            Object.values(sections).forEach(el => el.classList.remove('active'));
-            if (sections[sectionId]) sections[sectionId].classList.add('active');
-
-            navLinks.forEach(link => {
-                link.classList.toggle('active', link.dataset.section === sectionId);
-            });
-
-            const data = meta[sectionId] || meta.dashboard;
-            pageTitle.innerHTML = `${data.title} <small>${data.sub}</small>`;
-            actionBtnText.textContent = data.action;
-        }
-
-        navLinks.forEach(link => {
-            link.addEventListener('click', function(e) {
-                e.preventDefault();
-                const section = this.dataset.section;
-                if (section) switchSection(section);
-            });
-        });
-
-        switchSection('dashboard');
-
-        // Logout on profile click
-        const profile = document.querySelector('.user-profile');
-        if (profile) {
-            profile.style.cursor = 'pointer';
-            profile.addEventListener('click', function() {
-                if (confirm('Log out?')) {
+            try {
+                const session = JSON.parse(sessionData);
+                if (Date.now() - session.loginTime > 3600000) {
                     sessionStorage.removeItem('rentease_session');
                     window.location.href = 'login.html';
+                    return;
+                }
+                window.__loggedUser = session.user || 'Admin';
+            } catch (e) {
+                window.location.href = 'login.html';
+            }
+        })();
+    </script>
+
+    <div class="app-container">
+
+        <!-- ========== NAVIGATION ========== -->
+        <nav class="navbar">
+            <div class="logo">
+                <img src="https://raw.githubusercontent.com/CHROMAPSTR/GRAPHIC-DESIGNS/refs/heads/main/Copy%20of%20rreeeeeeeee%20(16).png" alt="RentEase" />
+                <span>RentEase</span>
+                <span class="api-badge" id="apiBadge"><i class="fas fa-cloud"></i> API</span>
+            </div>
+            <div class="nav-links" id="navLinks">
+                <a class="active" data-section="dashboard"><i class="fas fa-th-large"></i> Dashboard</a>
+                <a data-section="units"><i class="fas fa-door-open"></i> Units</a>
+                <a data-section="tenants"><i class="fas fa-users"></i> Tenants</a>
+                <a data-section="leases"><i class="fas fa-file-signature"></i> Leases</a>
+                <a data-section="payments"><i class="fas fa-coins"></i> Payments</a>
+                <a data-section="employees"><i class="fas fa-user-tie"></i> Employees</a>
+                <a data-section="reports"><i class="fas fa-chart-pie"></i> Reports</a>
+            </div>
+            <div class="user-profile" id="profileBtn">
+                <img src="https://ui-avatars.com/api/?name=Admin&background=003d47&color=fff&size=36" alt="User" />
+                <span id="profileUsername">Admin</span>
+                <i class="fas fa-chevron-down"></i>
+                <div class="profile-dropdown" id="profileDropdown">
+                    <a data-action="employees"><i class="fas fa-user-tie"></i> Employees</a>
+                    <div class="divider"></div>
+                    <a data-action="logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- ========== HERO ========== -->
+        <div class="hero">
+            <h1 id="pageTitle">
+                Welcome back, <span id="greetingName">Admin</span>
+                <small id="pageSubtitle">Here's what's happening with your rentals today.</small>
+            </h1>
+            <div class="hero-actions">
+                <button class="btn-primary" id="heroActionBtn"><i class="fas fa-plus-circle"></i> <span id="actionBtnText">New Lease</span></button>
+                <button class="btn-secondary" id="exportBtn"><i class="fas fa-file-export"></i> Export Report</button>
+                <button class="btn-secondary reset-btn" id="resetTenantsBtn"><i class="fas fa-undo-alt"></i> Reset Tenants</button>
+            </div>
+        </div>
+
+        <!-- ========== PAGE SECTIONS ========== -->
+
+        <!-- ===== DASHBOARD ===== -->
+        <div id="section-dashboard" class="page-section active">
+            <div class="stats-grid" id="statsGrid">
+                <!-- populated by JS -->
+            </div>
+
+            <div class="bottom-section">
+                <div class="glass-panel" id="recentActivity">
+                    <h3><i class="fas fa-clock"></i> Recent Activity</h3>
+                    <div id="activityList">
+                        <!-- populated by JS -->
+                    </div>
+                </div>
+                <div class="glass-panel">
+                    <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
+                    <div class="quick-actions">
+                        <a href="#" class="btn-glass" data-quick="tenant"><i class="fas fa-user-plus"></i> Register New Tenant</a>
+                        <a href="#" class="btn-glass" data-quick="unit"><i class="fas fa-plus-circle"></i> Add Apartment Unit</a>
+                        <a href="#" class="btn-glass" data-quick="payment"><i class="fas fa-hand-holding-usd"></i> Record Payment</a>
+                        <a href="#" class="btn-glass" data-quick="employee"><i class="fas fa-user-tie"></i> Add Employee</a>
+                        <a href="#" class="btn-glass" data-quick="report"><i class="fas fa-file-alt"></i> Generate Occupancy Report</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Employee Widget on Dashboard -->
+            <div class="glass-panel" style="margin-top:24px;">
+                <h3><i class="fas fa-user-tie"></i> Our Team</h3>
+                <div id="employeeWidget" class="employee-widget">
+                    <!-- populated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== UNITS ===== -->
+        <div id="section-units" class="page-section">
+            <div class="section-header">
+                <h2><i class="fas fa-door-open"></i> Apartment Units <span class="sub" id="unitCount">· 0 total</span></h2>
+                <button class="btn-primary sm" id="addUnitBtn"><i class="fas fa-plus-circle"></i> Add Unit</button>
+            </div>
+            <div class="glass-panel" style="padding:16px 18px;">
+                <div class="table-responsive">
+                    <table class="sim-table">
+                        <thead>
+                            <tr><th>Unit #</th><th>Type</th><th>Rent (₱)</th><th>Status</th><th>Tenant</th><th style="text-align:center;">Actions</th></tr>
+                        </thead>
+                        <tbody id="unitsTableBody">
+                            <!-- populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== TENANTS ===== -->
+        <div id="section-tenants" class="page-section">
+            <div class="section-header">
+                <h2><i class="fas fa-users"></i> Tenants <span class="sub" id="tenantCount">· 0 active</span></h2>
+                <button class="btn-primary sm" id="registerTenantBtn"><i class="fas fa-user-plus"></i> Register</button>
+            </div>
+            <div class="glass-panel" style="padding:16px 18px;">
+                <div class="table-responsive">
+                    <table class="sim-table">
+                        <thead>
+                            <tr><th>Name</th><th>Email</th><th>Phone</th><th>Unit</th><th>Lease Status</th><th style="text-align:center;">Actions</th></tr>
+                        </thead>
+                        <tbody id="tenantsTableBody">
+                            <!-- populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== LEASES ===== -->
+        <div id="section-leases" class="page-section">
+            <div class="section-header">
+                <h2><i class="fas fa-file-signature"></i> Lease Contracts <span class="sub" id="leaseCount">· 0 active</span></h2>
+                <button class="btn-primary sm" id="newLeaseBtn"><i class="fas fa-plus-circle"></i> New Lease</button>
+            </div>
+            <div class="glass-panel" style="padding:16px 18px;">
+                <div class="table-responsive">
+                    <table class="sim-table">
+                        <thead>
+                            <tr><th>Lease ID</th><th>Tenant</th><th>Unit</th><th>Start</th><th>End</th><th>Monthly Rent</th><th style="text-align:center;">Actions</th></tr>
+                        </thead>
+                        <tbody id="leasesTableBody">
+                            <!-- populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== PAYMENTS ===== -->
+        <div id="section-payments" class="page-section">
+            <div class="section-header">
+                <h2><i class="fas fa-coins"></i> Payment Records <span class="sub" id="paymentCount">· 0 records</span></h2>
+                <button class="btn-primary sm" id="recordPaymentBtn"><i class="fas fa-hand-holding-usd"></i> Record Payment</button>
+            </div>
+            <div class="glass-panel" style="padding:16px 18px;">
+                <div class="table-responsive">
+                    <table class="sim-table">
+                        <thead>
+                            <tr><th>Payment ID</th><th>Date</th><th>Tenant</th><th>Unit</th><th>Amount</th><th>Status</th><th style="text-align:center;">Actions</th></tr>
+                        </thead>
+                        <tbody id="paymentsTableBody">
+                            <!-- populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== EMPLOYEES ===== -->
+        <div id="section-employees" class="page-section">
+            <div class="section-header">
+                <h2><i class="fas fa-user-tie"></i> Employees <span class="sub" id="employeeCount">· 0 total</span></h2>
+                <button class="btn-primary sm" id="addEmployeeBtn"><i class="fas fa-user-plus"></i> Add Employee</button>
+            </div>
+            <div class="glass-panel" style="padding:16px 18px;">
+                <div class="table-responsive">
+                    <table class="sim-table">
+                        <thead>
+                            <tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th style="text-align:center;">Actions</th></tr>
+                        </thead>
+                        <tbody id="employeesTableBody">
+                            <!-- populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== REPORTS ===== -->
+        <div id="section-reports" class="page-section">
+            <div class="section-header">
+                <h2><i class="fas fa-chart-pie"></i> Reports & Analytics</h2>
+                <button class="btn-secondary sm" id="downloadPdfBtn"><i class="fas fa-download"></i> Download PDF</button>
+            </div>
+
+            <div class="report-grid" id="reportGrid">
+                <!-- populated by JS -->
+            </div>
+
+            <div class="glass-panel" style="padding:16px 18px;">
+                <h3 style="margin-bottom:12px;"><i class="fas fa-list-ul"></i> Recent Transactions</h3>
+                <div class="table-responsive">
+                    <table class="sim-table">
+                        <thead>
+                            <tr><th>Date</th><th>Tenant</th><th>Unit</th><th>Amount</th><th>Type</th></tr>
+                        </thead>
+                        <tbody id="recentTransactionsBody">
+                            <!-- populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-note">RentEase v1.0 · Apartment Rental Management System</div>
+    </div>
+
+    <!-- ========== MODALS ========== -->
+
+    <!-- Modal: Add / Edit Unit -->
+    <div class="modal-overlay" id="unitModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-door-open"></i> <span id="unitModalTitle">Add Unit</span></h2>
+                <button class="modal-close" data-close="unitModal">&times;</button>
+            </div>
+            <form id="unitForm" autocomplete="off">
+                <input type="hidden" id="unitFormId" value="" />
+                <div class="form-group">
+                    <label for="unitNumber">Unit Number / Name</label>
+                    <input type="text" id="unitNumber" placeholder="e.g. 101, 2A, Studio A" required />
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="unitType">Type</label>
+                        <select id="unitType">
+                            <option value="Studio">Studio</option>
+                            <option value="1-Bedroom">1-Bedroom</option>
+                            <option value="2-Bedroom">2-Bedroom</option>
+                            <option value="3-Bedroom">3-Bedroom</option>
+                            <option value="Penthouse">Penthouse</option>
+                            <option value="Loft">Loft</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="unitRent">Monthly Rent (₱)</label>
+                        <input type="number" id="unitRent" placeholder="7500" required min="0" step="100" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="unitStatus">Status</label>
+                    <select id="unitStatus">
+                        <option value="Available">Available</option>
+                        <option value="Occupied">Occupied</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" data-close="unitModal">Cancel</button>
+                    <button type="submit" class="btn-submit" id="unitSubmitBtn"><i class="fas fa-save"></i> Save Unit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: New / Edit Lease -->
+    <div class="modal-overlay" id="leaseModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-file-signature"></i> <span id="leaseModalTitle">New Lease</span></h2>
+                <button class="modal-close" data-close="leaseModal">&times;</button>
+            </div>
+            <form id="leaseForm" autocomplete="off">
+                <input type="hidden" id="leaseFormId" value="" />
+                <div class="form-group">
+                    <label for="leaseTenant">Tenant Name</label>
+                    <input type="text" id="leaseTenant" placeholder="Full name" required />
+                </div>
+                <div class="form-group">
+                    <label for="leaseUnit">Unit</label>
+                    <select id="leaseUnit" required>
+                        <option value="">— Select a unit —</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="leaseStart">Start Date</label>
+                        <input type="date" id="leaseStart" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="leaseEnd">End Date</label>
+                        <input type="date" id="leaseEnd" required />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="leaseRent">Monthly Rent (₱)</label>
+                    <input type="number" id="leaseRent" placeholder="10000" required min="0" step="100" />
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" data-close="leaseModal">Cancel</button>
+                    <button type="submit" class="btn-submit" id="leaseSubmitBtn"><i class="fas fa-save"></i> Save Lease</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Add / Edit Tenant -->
+    <div class="modal-overlay" id="tenantModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-user-edit"></i> <span id="tenantModalTitle">Add Tenant</span></h2>
+                <button class="modal-close" data-close="tenantModal">&times;</button>
+            </div>
+            <form id="tenantForm" autocomplete="off">
+                <input type="hidden" id="tenantFormId" value="" />
+                <div class="form-group">
+                    <label for="tenantName">Full Name</label>
+                    <input type="text" id="tenantName" placeholder="Full name" required />
+                </div>
+                <div class="form-group">
+                    <label for="tenantEmail">Email Address</label>
+                    <input type="email" id="tenantEmail" placeholder="tenant@email.com" />
+                </div>
+                <div class="form-group">
+                    <label for="tenantPhone">Phone Number</label>
+                    <input type="text" id="tenantPhone" placeholder="+63 912 345 6789" />
+                </div>
+                <div class="form-group">
+                    <label for="tenantUnit">Assigned Unit (optional)</label>
+                    <select id="tenantUnit">
+                        <option value="">— None —</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="tenantLeaseStatus">Lease Status</label>
+                    <select id="tenantLeaseStatus">
+                        <option value="Active">Active</option>
+                        <option value="Expired">Expired</option>
+                        <option value="Pending">Pending</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" data-close="tenantModal">Cancel</button>
+                    <button type="submit" class="btn-submit" id="tenantSubmitBtn"><i class="fas fa-save"></i> Save Tenant</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Add / Edit Payment -->
+    <div class="modal-overlay" id="paymentModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-coins"></i> <span id="paymentModalTitle">Record Payment</span></h2>
+                <button class="modal-close" data-close="paymentModal">&times;</button>
+            </div>
+            <form id="paymentForm" autocomplete="off">
+                <input type="hidden" id="paymentFormId" value="" />
+                <div class="form-group">
+                    <label for="paymentTenant">Tenant Name</label>
+                    <input type="text" id="paymentTenant" placeholder="Tenant name" required />
+                </div>
+                <div class="form-group">
+                    <label for="paymentUnit">Unit</label>
+                    <input type="text" id="paymentUnit" placeholder="e.g. 101" required />
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="paymentDate">Date</label>
+                        <input type="date" id="paymentDate" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="paymentAmount">Amount (₱)</label>
+                        <input type="number" id="paymentAmount" placeholder="7500" required min="0" step="100" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="paymentStatus">Status</label>
+                    <select id="paymentStatus">
+                        <option value="Paid">Paid</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Overdue">Overdue</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" data-close="paymentModal">Cancel</button>
+                    <button type="submit" class="btn-submit" id="paymentSubmitBtn"><i class="fas fa-save"></i> Save Payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Add / Edit Employee -->
+    <div class="modal-overlay" id="employeeModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-user-tie"></i> <span id="employeeModalTitle">Add Employee</span></h2>
+                <button class="modal-close" data-close="employeeModal">&times;</button>
+            </div>
+            <form id="employeeForm" autocomplete="off">
+                <input type="hidden" id="employeeFormId" value="" />
+                <div class="form-group">
+                    <label for="employeeName">Full Name</label>
+                    <input type="text" id="employeeName" placeholder="Full name" required />
+                </div>
+                <div class="form-group">
+                    <label for="employeeEmail">Email Address</label>
+                    <input type="email" id="employeeEmail" placeholder="employee@email.com" />
+                </div>
+                <div class="form-group">
+                    <label for="employeePhone">Phone Number</label>
+                    <input type="text" id="employeePhone" placeholder="+63 912 345 6789" />
+                </div>
+                <div class="form-group">
+                    <label for="employeeRole">Role</label>
+                    <select id="employeeRole">
+                        <option value="Admin">Admin</option>
+                        <option value="Manager">Manager</option>
+                        <option value="Staff">Staff</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" data-close="employeeModal">Cancel</button>
+                    <button type="submit" class="btn-submit" id="employeeSubmitBtn"><i class="fas fa-save"></i> Save Employee</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Confirm Delete -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal" style="max-width:400px;">
+            <div class="modal-header">
+                <h2><i class="fas fa-exclamation-triangle" style="color:#f43f5e;"></i> Confirm Delete</h2>
+                <button class="modal-close" data-close="confirmModal">&times;</button>
+            </div>
+            <p style="color:var(--text-secondary); margin-bottom:20px; font-size:0.95rem;" id="confirmMessage">Are you sure you want to delete this item? This action cannot be undone.</p>
+            <div class="form-actions" style="justify-content:flex-end;">
+                <button type="button" class="btn-cancel" data-close="confirmModal">Cancel</button>
+                <button type="button" class="btn-submit danger" id="confirmDeleteBtn"><i class="fas fa-trash"></i> Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== TOAST ========== -->
+    <div class="toast" id="toast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastMessage">Success!</span>
+    </div>
+
+    <!-- ========== JAVASCRIPT ========== -->
+    <script>
+        (function() {
+            'use strict';
+
+            // ============================================================
+            //  🚀  REST API ENABLED
+            // ============================================================
+            const USE_API = true; // <-- ENABLED
+
+            // --- API Configuration ---
+            const API_CONFIG = {
+                baseUrl: 'https://api.rentease.com/api', // <-- Replace with your actual API base URL
+                headers: {
+                    'Content-Type': 'application/json',
+                    // 'Authorization': 'Bearer ' + (localStorage.getItem('api_token') || ''),
+                },
+                endpoints: {
+                    units: '/units',
+                    leases: '/leases',
+                    tenants: '/tenants',
+                    payments: '/payments',
+                    employees: '/employees',
+                }
+            };
+
+            // --- Helper: get auth token from storage ---
+            function getAuthToken() {
+                return localStorage.getItem('api_token') || '';
+            }
+
+            // --- Helper: build full URL ---
+            function apiUrl(endpoint, id) {
+                const base = API_CONFIG.baseUrl.replace(/\/+$/, '');
+                const path = endpoint.replace(/^\/+/, '');
+                return id ? `${base}/${path}/${id}` : `${base}/${path}`;
+            }
+
+            // --- Helper: API fetch with error handling ---
+            async function apiFetch(url, options = {}) {
+                const headers = {
+                    ...API_CONFIG.headers,
+                    ...(options.headers || {}),
+                };
+                const token = getAuthToken();
+                if (token) {
+                    headers['Authorization'] = 'Bearer ' + token;
+                }
+                const response = await fetch(url, {
+                    ...options,
+                    headers,
+                });
+                if (!response.ok) {
+                    let errorMsg = `API Error ${response.status}`;
+                    try {
+                        const errData = await response.json();
+                        errorMsg = errData.message || errData.error || errorMsg;
+                    } catch (_) { /* ignore */ }
+                    throw new Error(errorMsg);
+                }
+                if (response.status === 204) return null;
+                return await response.json();
+            }
+
+            // ============================================================
+            //  DATA SERVICE — REST API + localStorage fallback
+            // ============================================================
+            const DataService = {
+
+                // ---- Units ----
+                async getUnits() {
+                    if (!USE_API) return this._getLocal('rentease_units') || [];
+                    try {
+                        return await apiFetch(apiUrl(API_CONFIG.endpoints.units));
+                    } catch (e) {
+                        console.warn('API getUnits failed, falling back to localStorage', e);
+                        return this._getLocal('rentease_units') || [];
+                    }
+                },
+                async createUnit(data) {
+                    if (!USE_API) return this._createLocal('rentease_units', data);
+                    return await apiFetch(apiUrl(API_CONFIG.endpoints.units), {
+                        method: 'POST',
+                        body: JSON.stringify(data),
+                    });
+                },
+                async updateUnit(id, data) {
+                    if (!USE_API) return this._updateLocal('rentease_units', id, data);
+                    return await apiFetch(apiUrl(API_CONFIG.endpoints.units, id), {
+                        method: 'PUT',
+                        body: JSON.stringify(data),
+                    });
+                },
+                async deleteUnit(id) {
+                    if (!USE_API) return this._deleteLocal('rentease_units', id);
+                    await apiFetch(apiUrl(API_CONFIG.endpoints.units, id), { method: 'DELETE' });
+                },
+
+                // ---- Leases ----
+                async getLeases() {
+                    if (!USE_API) return this._getLocal('rentease_leases') || [];
+                    try {
+                        return await apiFetch(apiUrl(API_CONFIG.endpoints.leases));
+                    } catch (e) {
+                        console.warn('API getLeases failed, falling back to localStorage', e);
+                        return this._getLocal('rentease_leases') || [];
+                    }
+                },
+                async createLease(data) {
+                    if (!USE_API) return this._createLocal('rentease_leases', data);
+                    return await apiFetch(apiUrl(API_CONFIG.endpoints.leases), {
+                        method: 'POST',
+                        body: JSON.stringify(data),
+                    });
+                },
+                async updateLease(id, data) {
+                    if (!USE_API) return this._updateLocal('rentease_leases', id, data);
+                    return await apiFetch(apiUrl(API_CONFIG.endpoints.leases, id), {
+                        method: 'PUT',
+                        body: JSON.stringify(data),
+                    });
+                },
+                async deleteLease(id) {
+                    if (!USE_API) return this._deleteLocal('rentease_leases', id);
+                    await apiFetch(apiUrl(API_CONFIG.endpoints.leases, id), { method: 'DELETE' });
+                },
+
+                // ---- Tenants ----
+                async getTenants() {
+                    if (!USE_API) return this._getLocal('rentease_tenants') || [];
+                    try {
+                        return await apiFetch(apiUrl(API_CONFIG.endpoints.tenants));
+                    } catch (e) {
+                        console.warn('API getTenants failed, falling back to localStorage', e);
+                        return this._getLocal('rentease_tenants') || [];
+                    }
+                },
+                async createTenant(data) {
+                    if (!USE_API) return this._createLocal('rentease_tenants', data);
+                    return await apiFetch(apiUrl(API_CONFIG.endpoints.tenants), {
+                        method: 'POST',
+                        body: JSON.stringify(data),
+                    });
+                },
+                async updateTenant(id, data) {
+                    if (!USE_API) return this._updateLocal('rentease_tenants', id, data);
+                    return await apiFetch(apiUrl(API_CONFIG.endpoints.tenants, id), {
+                        method: 'PUT',
+                        body: JSON.stringify(data),
+                    });
+                },
+                async deleteTenant(id) {
+                    if (!USE_API) return this._deleteLocal('rentease_tenants', id);
+                    await apiFetch(apiUrl(API_CONFIG.endpoints.tenants, id), { method: 'DELETE' });
+                },
+
+                // ---- Payments ----
+                async getPayments() {
+                    if (!USE_API) return this._getLocal('rentease_payments') || [];
+                    try {
+                        return await apiFetch(apiUrl(API_CONFIG.endpoints.payments));
+                    } catch (e) {
+                        console.warn('API getPayments failed, falling back to localStorage', e);
+                        return this._getLocal('rentease_payments') || [];
+                    }
+                },
+                async createPayment(data) {
+                    if (!USE_API) return this._createLocal('rentease_payments', data);
+                    return await apiFetch(apiUrl(API_CONFIG.endpoints.payments), {
+                        method: 'POST',
+                        body: JSON.stringify(data),
+                    });
+                },
+                async updatePayment(id, data) {
+                    if (!USE_API) return this._updateLocal('rentease_payments', id, data);
+                    return await apiFetch(apiUrl(API_CONFIG.endpoints.payments, id), {
+                        method: 'PUT',
+                        body: JSON.stringify(data),
+                    });
+                },
+                async deletePayment(id) {
+                    if (!USE_API) return this._deleteLocal('rentease_payments', id);
+                    await apiFetch(apiUrl(API_CONFIG.endpoints.payments, id), { method: 'DELETE' });
+                },
+
+                // ---- Employees ----
+                async getEmployees() {
+                    if (!USE_API) return this._getLocal('rentease_employees') || [];
+                    try {
+                        return await apiFetch(apiUrl(API_CONFIG.endpoints.employees));
+                    } catch (e) {
+                        console.warn('API getEmployees failed, falling back to localStorage', e);
+                        return this._getLocal('rentease_employees') || [];
+                    }
+                },
+                async createEmployee(data) {
+                    if (!USE_API) return this._createLocal('rentease_employees', data);
+                    return await apiFetch(apiUrl(API_CONFIG.endpoints.employees), {
+                        method: 'POST',
+                        body: JSON.stringify(data),
+                    });
+                },
+                async updateEmployee(id, data) {
+                    if (!USE_API) return this._updateLocal('rentease_employees', id, data);
+                    return await apiFetch(apiUrl(API_CONFIG.endpoints.employees, id), {
+                        method: 'PUT',
+                        body: JSON.stringify(data),
+                    });
+                },
+                async deleteEmployee(id) {
+                    if (!USE_API) return this._deleteLocal('rentease_employees', id);
+                    await apiFetch(apiUrl(API_CONFIG.endpoints.employees, id), { method: 'DELETE' });
+                },
+
+                // ---- Local storage helpers (fallback) ----
+                _getLocal(key) {
+                    try {
+                        return JSON.parse(localStorage.getItem(key)) || [];
+                    } catch { return []; }
+                },
+                _setLocal(key, data) {
+                    localStorage.setItem(key, JSON.stringify(data));
+                },
+                _createLocal(key, data) {
+                    const items = this._getLocal(key);
+                    const newItem = { ...data, id: data.id || Date.now().toString(36) + Math.random().toString(36)
+                            .slice(2, 6) };
+                    items.push(newItem);
+                    this._setLocal(key, items);
+                    return newItem;
+                },
+                _updateLocal(key, id, data) {
+                    const items = this._getLocal(key);
+                    const idx = items.findIndex(item => item.id === id);
+                    if (idx === -1) throw new Error('Item not found');
+                    items[idx] = { ...items[idx], ...data };
+                    this._setLocal(key, items);
+                    return items[idx];
+                },
+                _deleteLocal(key, id) {
+                    const items = this._getLocal(key);
+                    const filtered = items.filter(item => item.id !== id);
+                    this._setLocal(key, filtered);
+                },
+            };
+
+            // ============================================================
+            //  APP STATE (cached from API/localStorage)
+            // ============================================================
+            let units = [];
+            let leases = [];
+            let tenants = [];
+            let payments = [];
+            let employees = [];
+
+            // ============================================================
+            //  HELPERS
+            // ============================================================
+            function generateId() {
+                return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+            }
+
+            function formatCurrency(amount) {
+                return '₱' + Number(amount).toLocaleString('en-PH', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+            }
+
+            function formatDate(dateStr) {
+                if (!dateStr) return '—';
+                const d = new Date(dateStr + 'T00:00:00');
+                return d.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
+            }
+
+            function getStatusBadge(status) {
+                const map = {
+                    'Available': 'available',
+                    'Occupied': 'occupied',
+                    'Paid': 'paid',
+                    'Overdue': 'overdue',
+                    'Pending': 'pending',
+                    'Active': 'active-lease',
+                    'Expired': 'expired',
+                    'Admin': 'admin',
+                    'Manager': 'manager',
+                    'Staff': 'staff'
+                };
+                const cls = map[status] || 'pending';
+                return `<span class="badge ${cls}">${status}</span>`;
+            }
+
+            function getTenantForUnit(unitId) {
+                const lease = leases.find(l => l.unitId === unitId);
+                return lease ? lease.tenant : null;
+            }
+
+            // ============================================================
+            //  TOAST
+            // ============================================================
+            let toastTimeout = null;
+
+            function showToast(message, type = 'success') {
+                const toast = document.getElementById('toast');
+                const icon = toast.querySelector('i');
+                const msg = document.getElementById('toastMessage');
+                msg.textContent = message;
+                toast.className = 'toast';
+                if (type === 'error') {
+                    toast.classList.add('error');
+                    icon.className = 'fas fa-exclamation-circle';
+                } else if (type === 'warning') {
+                    toast.classList.add('warning');
+                    icon.className = 'fas fa-exclamation-triangle';
+                } else {
+                    icon.className = 'fas fa-check-circle';
+                }
+                clearTimeout(toastTimeout);
+                void toast.offsetWidth;
+                toast.classList.add('show');
+                toastTimeout = setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3500);
+            }
+
+            // ============================================================
+            //  MODAL HELPERS
+            // ============================================================
+            function openModal(id) {
+                document.getElementById(id).classList.add('open');
+            }
+
+            function closeModal(id) {
+                document.getElementById(id).classList.remove('open');
+            }
+
+            document.querySelectorAll('.modal-overlay').forEach(el => {
+                el.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        this.classList.remove('open');
+                    }
+                });
+            });
+            document.querySelectorAll('[data-close]').forEach(el => {
+                el.addEventListener('click', function() {
+                    closeModal(this.dataset.close);
+                });
+            });
+
+            // ============================================================
+            //  RENDER FUNCTIONS
+            // ============================================================
+
+            function renderUnits() {
+                const tbody = document.getElementById('unitsTableBody');
+                const count = document.getElementById('unitCount');
+                if (!units || units.length === 0) {
+                    tbody.innerHTML =
+                        `<tr><td colspan="6"><div class="empty-state"><i class="fas fa-door-open"></i><p>No units yet. Click "Add Unit" to get started.</p></div></td></tr>`;
+                    count.textContent = '· 0 total';
+                    return;
+                }
+                count.textContent = `· ${units.length} total`;
+                tbody.innerHTML = units.map(u => {
+                    const tenantName = getTenantForUnit(u.id);
+                    return `<tr>
+                        <td><strong>${u.number}</strong></td>
+                        <td>${u.type}</td>
+                        <td>${formatCurrency(u.rent)}</td>
+                        <td>${getStatusBadge(u.status)}</td>
+                        <td>${tenantName || '—'}</td>
+                        <td style="text-align:center;">
+                            <div class="action-group" style="justify-content:center;">
+                                <button class="btn-edit" data-edit-unit="${u.id}"><i class="fas fa-pen"></i></button>
+                                <button class="btn-danger" data-delete-unit="${u.id}"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>`;
+                }).join('');
+
+                tbody.querySelectorAll('[data-edit-unit]').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        openEditUnitModal(this.dataset.editUnit);
+                    });
+                });
+                tbody.querySelectorAll('[data-delete-unit]').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        confirmDelete('unit', this.dataset.deleteUnit);
+                    });
+                });
+            }
+
+            function renderLeases() {
+                const tbody = document.getElementById('leasesTableBody');
+                const count = document.getElementById('leaseCount');
+                if (!leases || leases.length === 0) {
+                    tbody.innerHTML =
+                        `<tr><td colspan="7"><div class="empty-state"><i class="fas fa-file-signature"></i><p>No leases yet. Click "New Lease" to get started.</p></div></td></tr>`;
+                    count.textContent = '· 0 active';
+                    return;
+                }
+                const active = leases.filter(l => new Date(l.end + 'T00:00:00') >= new Date()).length;
+                count.textContent = `· ${active} active`;
+                tbody.innerHTML = leases.map(l => {
+                    const unit = units.find(u => u.id === l.unitId);
+                    const unitNum = unit ? unit.number : '—';
+                    return `<tr>
+                        <td><strong>${l.id}</strong></td>
+                        <td>${l.tenant}</td>
+                        <td>${unitNum}</td>
+                        <td>${formatDate(l.start)}</td>
+                        <td>${formatDate(l.end)}</td>
+                        <td>${formatCurrency(l.rent)}</td>
+                        <td style="text-align:center;">
+                            <div class="action-group" style="justify-content:center;">
+                                <button class="btn-edit" data-edit-lease="${l.id}"><i class="fas fa-pen"></i></button>
+                                <button class="btn-danger" data-delete-lease="${l.id}"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>`;
+                }).join('');
+
+                tbody.querySelectorAll('[data-edit-lease]').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        openEditLeaseModal(this.dataset.editLease);
+                    });
+                });
+                tbody.querySelectorAll('[data-delete-lease]').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        confirmDelete('lease', this.dataset.deleteLease);
+                    });
+                });
+            }
+
+            function renderTenants() {
+                const tbody = document.getElementById('tenantsTableBody');
+                const count = document.getElementById('tenantCount');
+                if (!tenants || tenants.length === 0) {
+                    tbody.innerHTML =
+                        `<tr><td colspan="6"><div class="empty-state"><i class="fas fa-users"></i><p>No tenants registered yet.</p></div></td></tr>`;
+                    count.textContent = '· 0 active';
+                    return;
+                }
+                const active = tenants.filter(t => t.leaseStatus === 'Active').length;
+                count.textContent = `· ${active} active`;
+                tbody.innerHTML = tenants.map(t => {
+                    const unit = units.find(u => u.id === t.unitId);
+                    const unitNum = unit ? unit.number : '—';
+                    return `<tr>
+                        <td><strong>${t.name}</strong></td>
+                        <td>${t.email || '—'}</td>
+                        <td>${t.phone || '—'}</td>
+                        <td>${unitNum}</td>
+                        <td>${getStatusBadge(t.leaseStatus)}</td>
+                        <td style="text-align:center;">
+                            <div class="action-group" style="justify-content:center;">
+                                <button class="btn-edit" data-edit-tenant="${t.id}"><i class="fas fa-pen"></i></button>
+                                <button class="btn-danger" data-delete-tenant="${t.id}"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>`;
+                }).join('');
+
+                tbody.querySelectorAll('[data-edit-tenant]').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        openEditTenantModal(this.dataset.editTenant);
+                    });
+                });
+                tbody.querySelectorAll('[data-delete-tenant]').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        confirmDelete('tenant', this.dataset.deleteTenant);
+                    });
+                });
+            }
+
+            function renderPayments() {
+                const tbody = document.getElementById('paymentsTableBody');
+                const count = document.getElementById('paymentCount');
+                if (!payments || payments.length === 0) {
+                    tbody.innerHTML =
+                        `<tr><td colspan="7"><div class="empty-state"><i class="fas fa-coins"></i><p>No payment records yet.</p></div></td></tr>`;
+                    count.textContent = '· 0 records';
+                    return;
+                }
+                count.textContent = `· ${payments.length} records`;
+                tbody.innerHTML = payments.map(p => `
+                    <tr>
+                        <td><strong>${p.id}</strong></td>
+                        <td>${formatDate(p.date)}</td>
+                        <td>${p.tenant}</td>
+                        <td>${p.unit}</td>
+                        <td>${formatCurrency(p.amount)}</td>
+                        <td>${getStatusBadge(p.status)}</td>
+                        <td style="text-align:center;">
+                            <div class="action-group" style="justify-content:center;">
+                                <button class="btn-edit" data-edit-payment="${p.id}"><i class="fas fa-pen"></i></button>
+                                <button class="btn-danger" data-delete-payment="${p.id}"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+
+                tbody.querySelectorAll('[data-edit-payment]').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        openEditPaymentModal(this.dataset.editPayment);
+                    });
+                });
+                tbody.querySelectorAll('[data-delete-payment]').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        confirmDelete('payment', this.dataset.deletePayment);
+                    });
+                });
+            }
+
+            function renderEmployees() {
+                const tbody = document.getElementById('employeesTableBody');
+                const count = document.getElementById('employeeCount');
+                if (!employees || employees.length === 0) {
+                    tbody.innerHTML =
+                        `<tr><td colspan="5"><div class="empty-state"><i class="fas fa-user-tie"></i><p>No employees added yet.</p></div></td></tr>`;
+                    count.textContent = '· 0 total';
+                    return;
+                }
+                count.textContent = `· ${employees.length} total`;
+                tbody.innerHTML = employees.map(e => `
+                    <tr>
+                        <td><strong>${e.name}</strong></td>
+                        <td>${e.email || '—'}</td>
+                        <td>${e.phone || '—'}</td>
+                        <td>${getStatusBadge(e.role)}</td>
+                        <td style="text-align:center;">
+                            <div class="action-group" style="justify-content:center;">
+                                <button class="btn-edit" data-edit-employee="${e.id}"><i class="fas fa-pen"></i></button>
+                                <button class="btn-danger" data-delete-employee="${e.id}"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+
+                tbody.querySelectorAll('[data-edit-employee]').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        openEditEmployeeModal(this.dataset.editEmployee);
+                    });
+                });
+                tbody.querySelectorAll('[data-delete-employee]').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        confirmDelete('employee', this.dataset.deleteEmployee);
+                    });
+                });
+            }
+
+            function renderEmployeeWidget() {
+                const container = document.getElementById('employeeWidget');
+                if (!employees || employees.length === 0) {
+                    container.innerHTML =
+                        `<div class="empty-state" style="padding:10px 0;"><p style="font-size:0.85rem;">No employees yet. <a href="#" id="addEmployeeQuick" style="color:var(--secondary);">Add one now.</a></p></div>`;
+                    const link = container.querySelector('#addEmployeeQuick');
+                    if (link) {
+                        link.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            openAddEmployeeModal();
+                        });
+                    }
+                    return;
+                }
+                const list = employees.slice(0, 5).map(e => `
+                    <div class="emp-item">
+                        <span class="emp-name">${e.name}</span>
+                        <span class="emp-role">${e.role}</span>
+                    </div>
+                `).join('');
+                const more = employees.length > 5 ?
+                    `<div class="view-all"><a data-nav="employees">View all (${employees.length}) →</a></div>` : '';
+                container.innerHTML = list + more;
+                const viewAll = container.querySelector('[data-nav="employees"]');
+                if (viewAll) {
+                    viewAll.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        switchSection('employees');
+                    });
+                }
+            }
+
+            function renderDashboard() {
+                const totalUnits = units ? units.length : 0;
+                const occupied = units ? units.filter(u => u.status === 'Occupied').length : 0;
+                const activeTenants = tenants ? tenants.filter(t => t.leaseStatus === 'Active').length : 0;
+                const totalRent = leases ? leases.reduce((sum, l) => sum + Number(l.rent), 0) : 0;
+                const totalEmployees = employees ? employees.length : 0;
+
+                document.getElementById('statsGrid').innerHTML = `
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-door-open"></i></div>
+                        <div class="stat-value">${totalUnits}</div>
+                        <div class="stat-label">Total Units</div>
+                        <span class="stat-change"><i class="fas fa-arrow-up"></i> ${units ? units.filter(u => u.status === 'Available').length : 0} available</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                        <div class="stat-value">${occupied}</div>
+                        <div class="stat-label">Occupied</div>
+                        <span class="stat-change warning"><i class="fas fa-arrow-right"></i> ${totalUnits ? Math.round(occupied/totalUnits*100) : 0}%</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-user-friends"></i></div>
+                        <div class="stat-value">${activeTenants}</div>
+                        <div class="stat-label">Active Tenants</div>
+                        <span class="stat-change"><i class="fas fa-arrow-up"></i> ${tenants ? tenants.filter(t => t.leaseStatus === 'Pending').length : 0} pending</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-user-tie"></i></div>
+                        <div class="stat-value">${totalEmployees}</div>
+                        <div class="stat-label">Employees</div>
+                        <span class="stat-change"><i class="fas fa-arrow-up"></i> team</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-credit-card"></i></div>
+                        <div class="stat-value">${formatCurrency(totalRent)}</div>
+                        <div class="stat-label">Monthly Rent Roll</div>
+                        <span class="stat-change danger"><i class="fas fa-arrow-down"></i> ${payments ? payments.filter(p => p.status === 'Overdue').length : 0} overdue</span>
+                    </div>
+                `;
+
+                const activities = [];
+                if (leases) {
+                    leases.slice(-3).forEach(l => {
+                        const unit = units ? units.find(u => u.id === l.unitId) : null;
+                        activities.push({
+                            icon: 'fa-file-signature',
+                            title: `Lease signed – ${l.tenant}`,
+                            desc: `Unit ${unit ? unit.number : '—'} · ${formatCurrency(l.rent)}/mo`,
+                            time: 'recent',
+                            urgent: false
+                        });
+                    });
+                }
+                if (payments) {
+                    payments.slice(-3).forEach(p => {
+                        activities.push({
+                            icon: 'fa-coins',
+                            title: `Payment recorded – ${p.unit}`,
+                            desc: `${p.tenant} · ${formatCurrency(p.amount)} · ${p.status}`,
+                            time: 'recent',
+                            urgent: p.status === 'Overdue'
+                        });
+                    });
+                }
+                activities.reverse();
+                const list = document.getElementById('activityList');
+                if (activities.length === 0) {
+                    list.innerHTML = `<div class="empty-state" style="padding:10px 0;"><p style="font-size:0.85rem;">No recent activity.</p></div>`;
+                } else {
+                    list.innerHTML = activities.slice(0, 5).map(a => `
+                        <div class="activity-item">
+                            <div class="activity-icon"><i class="fas ${a.icon}"></i></div>
+                            <div class="activity-content">
+                                <div class="title">${a.title}</div>
+                                <div class="desc">${a.desc}</div>
+                            </div>
+                            <div class="activity-time ${a.urgent ? 'urgent' : ''}">${a.urgent ? 'urgent' : 'now'}</div>
+                        </div>
+                    `).join('');
+                }
+
+                const totalRevenue = payments ? payments.reduce((s, p) => s + Number(p.amount), 0) : 0;
+                const overdueTotal = payments ? payments.filter(p => p.status === 'Overdue').reduce((s, p) => s + Number(p
+                    .amount), 0) : 0;
+                const expiringLeases = leases ? leases.filter(l => {
+                    const end = new Date(l.end + 'T00:00:00');
+                    const now = new Date();
+                    const diff = (end - now) / (1000 * 60 * 60 * 24);
+                    return diff > 0 && diff <= 30;
+                }).length : 0;
+
+                document.getElementById('reportGrid').innerHTML = `
+                    <div class="report-card">
+                        <div class="num">${formatCurrency(totalRevenue)}</div>
+                        <div class="label">Total Revenue</div>
+                    </div>
+                    <div class="report-card">
+                        <div class="num">${totalUnits ? Math.round(occupied/totalUnits*100) : 0}%</div>
+                        <div class="label">Occupancy Rate</div>
+                    </div>
+                    <div class="report-card">
+                        <div class="num">${formatCurrency(overdueTotal)}</div>
+                        <div class="label">Total Overdue</div>
+                    </div>
+                    <div class="report-card">
+                        <div class="num">${expiringLeases}</div>
+                        <div class="label">Leases Ending Soon</div>
+                    </div>
+                `;
+
+                const txBody = document.getElementById('recentTransactionsBody');
+                if (!payments || payments.length === 0) {
+                    txBody.innerHTML =
+                        `<tr><td colspan="5"><div class="empty-state" style="padding:10px 0;"><p style="font-size:0.85rem;">No transactions yet.</p></div></td></tr>`;
+                } else {
+                    txBody.innerHTML = payments.slice().reverse().slice(0, 6).map(p => `
+                        <tr>
+                            <td>${formatDate(p.date)}</td>
+                            <td>${p.tenant}</td>
+                            <td>${p.unit}</td>
+                            <td>${formatCurrency(p.amount)}</td>
+                            <td>Rent</td>
+                        </tr>
+                    `).join('');
+                }
+
+                renderEmployeeWidget();
+            }
+
+            // ============================================================
+            //  CRUD OPERATIONS (async)
+            // ============================================================
+
+            async function saveUnit(data) {
+                if (data.id) {
+                    return await DataService.updateUnit(data.id, data);
+                } else {
+                    return await DataService.createUnit(data);
+                }
+            }
+
+            async function saveLease(data) {
+                if (data.id) {
+                    return await DataService.updateLease(data.id, data);
+                } else {
+                    return await DataService.createLease(data);
+                }
+            }
+
+            async function saveTenant(data) {
+                if (data.id) {
+                    return await DataService.updateTenant(data.id, data);
+                } else {
+                    return await DataService.createTenant(data);
+                }
+            }
+
+            async function savePayment(data) {
+                if (data.id) {
+                    return await DataService.updatePayment(data.id, data);
+                } else {
+                    return await DataService.createPayment(data);
+                }
+            }
+
+            async function saveEmployee(data) {
+                if (data.id) {
+                    return await DataService.updateEmployee(data.id, data);
+                } else {
+                    return await DataService.createEmployee(data);
+                }
+            }
+
+            // ============================================================
+            //  RESET TENANTS — calls the API
+            // ============================================================
+            async function resetTenants() {
+                if (!confirm('⚠️ This will reset the tenant list to the original seed data.\nAll current tenant records will be replaced. Continue?')) {
+                    return;
+                }
+
+                showToast('Resetting tenants via API...', 'warning');
+
+                try {
+                    // 1. Fetch existing tenants
+                    const existing = await DataService.getTenants();
+                    // 2. Delete each one
+                    for (const t of existing) {
+                        await DataService.deleteTenant(t.id);
+                    }
+
+                    // 3. Create seed tenants
+                    const seedTenants = [
+                        { name: 'Maria Santos', email: 'maria@email.com', phone: '+63 912 3456', unitId: 'u7',
+                            leaseStatus: 'Active' },
+                        { name: 'John Rivera', email: 'john.r@email.com', phone: '+63 923 4567', unitId: 'u2',
+                            leaseStatus: 'Active' },
+                        { name: 'Anna Cruz', email: 'anna.c@email.com', phone: '+63 934 5678', unitId: 'u5',
+                            leaseStatus: 'Active' },
+                        { name: 'Carlos Lee', email: 'c.lee@email.com', phone: '+63 945 6789', unitId: 'u8',
+                            leaseStatus: 'Expired' },
+                        { name: 'Diana Reyes', email: 'dreyes@email.com', phone: '+63 956 7890', unitId: 'u1',
+                            leaseStatus: 'Active' },
+                        { name: 'Eduardo Tan', email: 'ed.tan@email.com', phone: '+63 967 8901', unitId: null,
+                            leaseStatus: 'Pending' },
+                    ];
+
+                    for (const data of seedTenants) {
+                        await DataService.createTenant(data);
+                    }
+
+                    // 4. Reload data and refresh UI
+                    await loadAllData();
+                    renderAll();
+                    showToast('Tenants reset successfully via API!', 'success');
+                } catch (err) {
+                    showToast('Reset failed: ' + err.message, 'error');
+                    console.error(err);
+                }
+            }
+
+            // ============================================================
+            //  MODAL OPEN FUNCTIONS
+            // ============================================================
+
+            function openAddUnitModal() {
+                document.getElementById('unitModalTitle').textContent = 'Add Unit';
+                document.getElementById('unitSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Save Unit';
+                document.getElementById('unitFormId').value = '';
+                document.getElementById('unitForm').reset();
+                document.getElementById('unitStatus').value = 'Available';
+                openModal('unitModal');
+            }
+
+            function openEditUnitModal(id) {
+                const unit = units.find(u => u.id === id);
+                if (!unit) { showToast('Unit not found.', 'error'); return; }
+                document.getElementById('unitModalTitle').textContent = 'Edit Unit';
+                document.getElementById('unitSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Update Unit';
+                document.getElementById('unitFormId').value = id;
+                document.getElementById('unitNumber').value = unit.number;
+                document.getElementById('unitType').value = unit.type;
+                document.getElementById('unitRent').value = unit.rent;
+                document.getElementById('unitStatus').value = unit.status;
+                openModal('unitModal');
+            }
+
+            function populateLeaseUnitSelect(selectedId) {
+                const sel = document.getElementById('leaseUnit');
+                const availableUnits = units.filter(u => u.status === 'Available' || u.id === selectedId);
+                sel.innerHTML = '<option value="">— Select a unit —</option>' +
+                    availableUnits.map(u => `<option value="${u.id}" ${u.id === selectedId ? 'selected' : ''}>${u.number} (${u.type}) — ${formatCurrency(u.rent)}</option>`)
+                    .join('');
+                if (selectedId) {
+                    const occupiedUnit = units.find(u => u.id === selectedId && u.status === 'Occupied');
+                    if (occupiedUnit && !availableUnits.some(u => u.id === selectedId)) {
+                        sel.innerHTML +=
+                            `<option value="${occupiedUnit.id}" selected>${occupiedUnit.number} (${occupiedUnit.type}) — ${formatCurrency(occupiedUnit.rent)}</option>`;
+                    }
+                }
+            }
+
+            function openAddLeaseModal() {
+                document.getElementById('leaseModalTitle').textContent = 'New Lease';
+                document.getElementById('leaseSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Save Lease';
+                document.getElementById('leaseFormId').value = '';
+                document.getElementById('leaseForm').reset();
+                populateLeaseUnitSelect(null);
+                const today = new Date();
+                const start = today.toISOString().slice(0, 10);
+                const end = new Date(today.getFullYear() + 1, today.getMonth(), today.getDate()).toISOString().slice(0, 10);
+                document.getElementById('leaseStart').value = start;
+                document.getElementById('leaseEnd').value = end;
+                document.getElementById('leaseUnit').addEventListener('change', function() {
+                    const unit = units.find(u => u.id === this.value);
+                    if (unit) {
+                        document.getElementById('leaseRent').value = unit.rent;
+                    }
+                });
+                openModal('leaseModal');
+            }
+
+            function openEditLeaseModal(id) {
+                const lease = leases.find(l => l.id === id);
+                if (!lease) { showToast('Lease not found.', 'error'); return; }
+                document.getElementById('leaseModalTitle').textContent = 'Edit Lease';
+                document.getElementById('leaseSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Update Lease';
+                document.getElementById('leaseFormId').value = id;
+                document.getElementById('leaseTenant').value = lease.tenant;
+                document.getElementById('leaseStart').value = lease.start;
+                document.getElementById('leaseEnd').value = lease.end;
+                document.getElementById('leaseRent').value = lease.rent;
+                populateLeaseUnitSelect(lease.unitId);
+                openModal('leaseModal');
+            }
+
+            function populateTenantUnitSelect(selectedId) {
+                const sel = document.getElementById('tenantUnit');
+                sel.innerHTML = '<option value="">— None —</option>' +
+                    units.map(u => `<option value="${u.id}" ${u.id === selectedId ? 'selected' : ''}>${u.number} (${u.type})</option>`)
+                    .join('');
+            }
+
+            function openAddTenantModal() {
+                document.getElementById('tenantModalTitle').textContent = 'Add Tenant';
+                document.getElementById('tenantSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Save Tenant';
+                document.getElementById('tenantFormId').value = '';
+                document.getElementById('tenantForm').reset();
+                populateTenantUnitSelect(null);
+                document.getElementById('tenantLeaseStatus').value = 'Pending';
+                openModal('tenantModal');
+            }
+
+            function openEditTenantModal(id) {
+                const tenant = tenants.find(t => t.id === id);
+                if (!tenant) { showToast('Tenant not found.', 'error'); return; }
+                document.getElementById('tenantModalTitle').textContent = `Edit ${tenant.name}`;
+                document.getElementById('tenantSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Update Tenant';
+                document.getElementById('tenantFormId').value = id;
+                document.getElementById('tenantName').value = tenant.name;
+                document.getElementById('tenantEmail').value = tenant.email || '';
+                document.getElementById('tenantPhone').value = tenant.phone || '';
+                populateTenantUnitSelect(tenant.unitId);
+                document.getElementById('tenantLeaseStatus').value = tenant.leaseStatus;
+                openModal('tenantModal');
+            }
+
+            function openAddPaymentModal() {
+                document.getElementById('paymentModalTitle').textContent = 'Record Payment';
+                document.getElementById('paymentSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Save Payment';
+                document.getElementById('paymentFormId').value = '';
+                document.getElementById('paymentForm').reset();
+                const today = new Date().toISOString().slice(0, 10);
+                document.getElementById('paymentDate').value = today;
+                openModal('paymentModal');
+            }
+
+            function openEditPaymentModal(id) {
+                const payment = payments.find(p => p.id === id);
+                if (!payment) { showToast('Payment not found.', 'error'); return; }
+                document.getElementById('paymentModalTitle').textContent = 'Edit Payment';
+                document.getElementById('paymentSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Update Payment';
+                document.getElementById('paymentFormId').value = id;
+                document.getElementById('paymentTenant').value = payment.tenant;
+                document.getElementById('paymentUnit').value = payment.unit;
+                document.getElementById('paymentDate').value = payment.date;
+                document.getElementById('paymentAmount').value = payment.amount;
+                document.getElementById('paymentStatus').value = payment.status;
+                openModal('paymentModal');
+            }
+
+            function openAddEmployeeModal() {
+                document.getElementById('employeeModalTitle').textContent = 'Add Employee';
+                document.getElementById('employeeSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Save Employee';
+                document.getElementById('employeeFormId').value = '';
+                document.getElementById('employeeForm').reset();
+                openModal('employeeModal');
+            }
+
+            function openEditEmployeeModal(id) {
+                const emp = employees.find(e => e.id === id);
+                if (!emp) { showToast('Employee not found.', 'error'); return; }
+                document.getElementById('employeeModalTitle').textContent = `Edit ${emp.name}`;
+                document.getElementById('employeeSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Update Employee';
+                document.getElementById('employeeFormId').value = id;
+                document.getElementById('employeeName').value = emp.name;
+                document.getElementById('employeeEmail').value = emp.email || '';
+                document.getElementById('employeePhone').value = emp.phone || '';
+                document.getElementById('employeeRole').value = emp.role;
+                openModal('employeeModal');
+            }
+
+            // ============================================================
+            //  FORM HANDLERS (async)
+            // ============================================================
+
+            document.getElementById('unitForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const id = document.getElementById('unitFormId').value;
+                const number = document.getElementById('unitNumber').value.trim();
+                const type = document.getElementById('unitType').value;
+                const rent = parseFloat(document.getElementById('unitRent').value);
+                const status = document.getElementById('unitStatus').value;
+
+                if (!number) { showToast('Please enter a unit number.', 'error'); return; }
+                if (!rent || rent < 0) { showToast('Please enter a valid rent amount.', 'error'); return; }
+
+                try {
+                    const data = { number, type, rent, status };
+                    if (id) data.id = id;
+                    await saveUnit(data);
+                    await loadAllData();
+                    renderAll();
+                    closeModal('unitModal');
+                    showToast(`Unit "${number}" ${id ? 'updated' : 'added'} successfully.`);
+                } catch (err) {
+                    showToast('Error: ' + err.message, 'error');
                 }
             });
-        }
-    })();
-</script>
+
+            document.getElementById('leaseForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const id = document.getElementById('leaseFormId').value;
+                const tenant = document.getElementById('leaseTenant').value.trim();
+                const unitId = document.getElementById('leaseUnit').value;
+                const start = document.getElementById('leaseStart').value;
+                const end = document.getElementById('leaseEnd').value;
+                const rent = parseFloat(document.getElementById('leaseRent').value);
+
+                if (!tenant) { showToast('Please enter tenant name.', 'error'); return; }
+                if (!unitId) { showToast('Please select a unit.', 'error'); return; }
+                if (!start || !end) { showToast('Please select start and end dates.', 'error'); return; }
+                if (new Date(end) < new Date(start)) { showToast('End date must be after start date.', 'error'); return; }
+                if (!rent || rent < 0) { showToast('Please enter a valid rent amount.', 'error'); return; }
+
+                try {
+                    const data = { tenant, unitId, start, end, rent };
+                    if (id) data.id = id;
+                    await saveLease(data);
+                    await loadAllData();
+                    renderAll();
+                    closeModal('leaseModal');
+                    showToast(`Lease for "${tenant}" ${id ? 'updated' : 'created'} successfully.`);
+                } catch (err) {
+                    showToast('Error: ' + err.message, 'error');
+                }
+            });
+
+            document.getElementById('tenantForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const id = document.getElementById('tenantFormId').value;
+                const name = document.getElementById('tenantName').value.trim();
+                const email = document.getElementById('tenantEmail').value.trim();
+                const phone = document.getElementById('tenantPhone').value.trim();
+                const unitId = document.getElementById('tenantUnit').value || null;
+                const leaseStatus = document.getElementById('tenantLeaseStatus').value;
+
+                if (!name) { showToast('Please enter a name.', 'error'); return; }
+
+                try {
+                    const data = { name, email, phone, unitId, leaseStatus };
+                    if (id) data.id = id;
+                    await saveTenant(data);
+                    await loadAllData();
+                    renderAll();
+                    closeModal('tenantModal');
+                    showToast(`Tenant "${name}" ${id ? 'updated' : 'registered'} successfully.`);
+                } catch (err) {
+                    showToast('Error: ' + err.message, 'error');
+                }
+            });
+
+            document.getElementById('paymentForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const id = document.getElementById('paymentFormId').value;
+                const tenant = document.getElementById('paymentTenant').value.trim();
+                const unit = document.getElementById('paymentUnit').value.trim();
+                const date = document.getElementById('paymentDate').value;
+                const amount = parseFloat(document.getElementById('paymentAmount').value);
+                const status = document.getElementById('paymentStatus').value;
+
+                if (!tenant) { showToast('Please enter tenant name.', 'error'); return; }
+                if (!unit) { showToast('Please enter unit number.', 'error'); return; }
+                if (!date) { showToast('Please select a date.', 'error'); return; }
+                if (!amount || amount < 0) { showToast('Please enter a valid amount.', 'error'); return; }
+
+                try {
+                    const data = { tenant, unit, date, amount, status };
+                    if (id) data.id = id;
+                    await savePayment(data);
+                    await loadAllData();
+                    renderAll();
+                    closeModal('paymentModal');
+                    showToast(`Payment for "${tenant}" ${id ? 'updated' : 'recorded'} successfully.`);
+                } catch (err) {
+                    showToast('Error: ' + err.message, 'error');
+                }
+            });
+
+            document.getElementById('employeeForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const id = document.getElementById('employeeFormId').value;
+                const name = document.getElementById('employeeName').value.trim();
+                const email = document.getElementById('employeeEmail').value.trim();
+                const phone = document.getElementById('employeePhone').value.trim();
+                const role = document.getElementById('employeeRole').value;
+
+                if (!name) { showToast('Please enter a name.', 'error'); return; }
+
+                try {
+                    const data = { name, email, phone, role };
+                    if (id) data.id = id;
+                    await saveEmployee(data);
+                    await loadAllData();
+                    renderAll();
+                    closeModal('employeeModal');
+                    showToast(`Employee "${name}" ${id ? 'updated' : 'added'} successfully.`);
+                } catch (err) {
+                    showToast('Error: ' + err.message, 'error');
+                }
+            });
+
+            // ============================================================
+            //  DELETE CONFIRM
+            // ============================================================
+            let deleteTarget = null;
+
+            function confirmDelete(type, id) {
+                deleteTarget = { type, id };
+                let name = '';
+                if (type === 'unit') {
+                    const item = units.find(u => u.id === id);
+                    name = item ? item.number : 'this unit';
+                } else if (type === 'lease') {
+                    const item = leases.find(l => l.id === id);
+                    name = item ? item.tenant : 'this lease';
+                } else if (type === 'tenant') {
+                    const item = tenants.find(t => t.id === id);
+                    name = item ? item.name : 'this tenant';
+                } else if (type === 'payment') {
+                    const item = payments.find(p => p.id === id);
+                    name = item ? item.tenant : 'this payment';
+                } else if (type === 'employee') {
+                    const item = employees.find(e => e.id === id);
+                    name = item ? item.name : 'this employee';
+                }
+                document.getElementById('confirmMessage').textContent =
+                    `Are you sure you want to delete "${name}"? This action cannot be undone.`;
+                let hasDependency = false;
+                if (type === 'unit') {
+                    hasDependency = leases.some(l => l.unitId === id);
+                    if (hasDependency) {
+                        document.getElementById('confirmMessage').textContent =
+                            `"${name}" has active leases. Please end the lease first before deleting.`;
+                    }
+                } else if (type === 'tenant') {
+                    hasDependency = leases.some(l => l.tenant === name);
+                    if (hasDependency) {
+                        document.getElementById('confirmMessage').textContent =
+                            `"${name}" has an active lease. Please end the lease first before deleting.`;
+                    }
+                }
+                document.getElementById('confirmDeleteBtn').style.display = hasDependency ? 'none' : 'inline-flex';
+                openModal('confirmModal');
+            }
+
+            document.getElementById('confirmDeleteBtn').addEventListener('click', async function() {
+                if (!deleteTarget) return;
+                const { type, id } = deleteTarget;
+                try {
+                    if (type === 'unit') {
+                        await DataService.deleteUnit(id);
+                    } else if (type === 'lease') {
+                        await DataService.deleteLease(id);
+                    } else if (type === 'tenant') {
+                        await DataService.deleteTenant(id);
+                    } else if (type === 'payment') {
+                        await DataService.deletePayment(id);
+                    } else if (type === 'employee') {
+                        await DataService.deleteEmployee(id);
+                    }
+                    await loadAllData();
+                    renderAll();
+                    closeModal('confirmModal');
+                    showToast('Deleted successfully.');
+                } catch (err) {
+                    showToast('Error: ' + err.message, 'error');
+                }
+                deleteTarget = null;
+            });
+
+            // ============================================================
+            //  LOAD DATA FROM API / LOCAL
+            // ============================================================
+            async function loadAllData() {
+                try {
+                    const [u, l, t, p, e] = await Promise.all([
+                        DataService.getUnits(),
+                        DataService.getLeases(),
+                        DataService.getTenants(),
+                        DataService.getPayments(),
+                        DataService.getEmployees(),
+                    ]);
+                    units = u || [];
+                    leases = l || [];
+                    tenants = t || [];
+                    payments = p || [];
+                    employees = e || [];
+                } catch (err) {
+                    showToast('Failed to load data: ' + err.message, 'error');
+                }
+            }
+
+            // ============================================================
+            //  RENDER ALL + NAVIGATION
+            // ============================================================
+            function renderAll() {
+                renderUnits();
+                renderLeases();
+                renderTenants();
+                renderPayments();
+                renderEmployees();
+                renderDashboard();
+                // Update badge – already "API"
+            }
+
+            // ---- Navigation ----
+            const navLinks = document.querySelectorAll('#navLinks a');
+            const sections = {
+                dashboard: document.getElementById('section-dashboard'),
+                units: document.getElementById('section-units'),
+                tenants: document.getElementById('section-tenants'),
+                leases: document.getElementById('section-leases'),
+                payments: document.getElementById('section-payments'),
+                employees: document.getElementById('section-employees'),
+                reports: document.getElementById('section-reports')
+            };
+
+            const pageTitle = document.getElementById('pageTitle');
+            const pageSubtitle = document.getElementById('pageSubtitle');
+            const actionBtnText = document.getElementById('actionBtnText');
+
+            const meta = {
+                dashboard: { title: 'Welcome back, ' + (window.__loggedUser || 'Admin'), sub: 'Here\'s what\'s happening with your rentals today.',
+                    action: 'New Lease' },
+                units: { title: 'Unit Management', sub: 'View and manage all apartment units.', action: 'Add Unit' },
+                tenants: { title: 'Tenant Management', sub: 'View and manage all registered tenants.',
+                    action: 'Register Tenant' },
+                leases: { title: 'Lease Contracts', sub: 'View and manage all lease agreements.', action: 'New Lease' },
+                payments: { title: 'Payment Records', sub: 'View and manage all rental payments.',
+                    action: 'Record Payment' },
+                employees: { title: 'Employee Management', sub: 'View and manage your team members.',
+                    action: 'Add Employee' },
+                reports: { title: 'Reports & Analytics', sub: 'Overview of property performance.', action: 'Export PDF' }
+            };
+
+            function switchSection(sectionId) {
+                Object.values(sections).forEach(el => el.classList.remove('active'));
+                if (sections[sectionId]) sections[sectionId].classList.add('active');
+
+                navLinks.forEach(link => {
+                    link.classList.toggle('active', link.dataset.section === sectionId);
+                });
+
+                const data = meta[sectionId] || meta.dashboard;
+                pageTitle.innerHTML = `${data.title} <small>${data.sub}</small>`;
+                actionBtnText.textContent = data.action;
+                const heroBtn = document.getElementById('heroActionBtn');
+                heroBtn.onclick = function() {
+                    if (sectionId === 'units') {
+                        openAddUnitModal();
+                    } else if (sectionId === 'leases' || sectionId === 'dashboard') {
+                        openAddLeaseModal();
+                    } else if (sectionId === 'tenants') {
+                        openAddTenantModal();
+                    } else if (sectionId === 'payments') {
+                        openAddPaymentModal();
+                    } else if (sectionId === 'employees') {
+                        openAddEmployeeModal();
+                    } else if (sectionId === 'reports') {
+                        showToast('Exporting report...', 'success');
+                    } else {
+                        openAddLeaseModal();
+                    }
+                };
+            }
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const section = this.dataset.section;
+                    if (section) switchSection(section);
+                });
+            });
+
+            // ---- Quick Actions ----
+            document.querySelectorAll('[data-quick]').forEach(el => {
+                el.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const action = this.dataset.quick;
+                    if (action === 'unit') openAddUnitModal();
+                    else if (action === 'tenant') openAddTenantModal();
+                    else if (action === 'payment') openAddPaymentModal();
+                    else if (action === 'employee') openAddEmployeeModal();
+                    else if (action === 'report') showToast('Generating occupancy report...', 'success');
+                });
+            });
+
+            // ---- Button Events ----
+            document.getElementById('addUnitBtn').addEventListener('click', openAddUnitModal);
+            document.getElementById('newLeaseBtn').addEventListener('click', openAddLeaseModal);
+            document.getElementById('registerTenantBtn').addEventListener('click', openAddTenantModal);
+            document.getElementById('recordPaymentBtn').addEventListener('click', openAddPaymentModal);
+            document.getElementById('addEmployeeBtn').addEventListener('click', openAddEmployeeModal);
+            document.getElementById('exportBtn').addEventListener('click', function() {
+                showToast('Exporting report...', 'success');
+            });
+            document.getElementById('downloadPdfBtn').addEventListener('click', function() {
+                showToast('Downloading PDF...', 'success');
+            });
+
+            // ---- Reset Tenants Button ----
+            document.getElementById('resetTenantsBtn').addEventListener('click', resetTenants);
+
+            // ---- Profile Dropdown ----
+            const profileBtn = document.getElementById('profileBtn');
+            const dropdown = document.getElementById('profileDropdown');
+            let dropdownOpen = false;
+            profileBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                dropdownOpen = !dropdownOpen;
+                dropdown.classList.toggle('open', dropdownOpen);
+            });
+            document.addEventListener('click', function(e) {
+                if (!profileBtn.contains(e.target)) {
+                    dropdown.classList.remove('open');
+                    dropdownOpen = false;
+                }
+            });
+            dropdown.querySelectorAll('[data-action]').forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const action = this.dataset.action;
+                    if (action === 'logout') {
+                        if (confirm('Log out?')) {
+                            sessionStorage.removeItem('rentease_session');
+                            window.location.href = 'login.html';
+                        }
+                    } else if (action === 'employees') {
+                        switchSection('employees');
+                        dropdown.classList.remove('open');
+                        dropdownOpen = false;
+                    }
+                });
+            });
+
+            // ---- API Mode Status ----
+            console.log(`🔌 RentEase API Mode: ${USE_API ? 'ENABLED ✅' : 'DISABLED (localStorage)'}`);
+            console.log(`📡 API Base URL: ${USE_API ? API_CONFIG.baseUrl : 'N/A'}`);
+
+            // ============================================================
+            //  INIT
+            // ============================================================
+            const username = window.__loggedUser || 'Admin';
+            document.getElementById('profileUsername').textContent = username;
+            document.getElementById('greetingName').textContent = username;
+            const avatarImg = document.querySelector('.user-profile img');
+            if (avatarImg) {
+                avatarImg.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(username) +
+                    '&background=003d47&color=fff&size=36';
+            }
+
+            // Seed data only if using localStorage and no data exists (fallback)
+            // In API mode we rely on the backend, but we seed local storage for fallback.
+            if (!USE_API) {
+                const hasData = localStorage.getItem('rentease_units') || localStorage.getItem('rentease_leases');
+                if (!hasData) {
+                    const seedUnits = [
+                        { id: 'u1', number: '101', type: 'Studio', rent: 7500, status: 'Occupied' },
+                        { id: 'u2', number: '102', type: 'Studio', rent: 7500, status: 'Occupied' },
+                        { id: 'u3', number: '103', type: '1-Bedroom', rent: 10200, status: 'Available' },
+                        { id: 'u4', number: '104', type: '1-Bedroom', rent: 10200, status: 'Occupied' },
+                        { id: 'u5', number: '205', type: 'Studio', rent: 8000, status: 'Occupied' },
+                        { id: 'u6', number: '206', type: '2-Bedroom', rent: 14500, status: 'Available' },
+                        { id: 'u7', number: '304', type: '1-Bedroom', rent: 12500, status: 'Occupied' },
+                        { id: 'u8', number: '407', type: 'Penthouse', rent: 22000, status: 'Occupied' },
+                    ];
+                    const seedLeases = [
+                        { id: 'l1', tenant: 'Maria Santos', unitId: 'u7', start: '2026-01-15', end: '2027-01-14',
+                            rent: 12500 },
+                        { id: 'l2', tenant: 'John Rivera', unitId: 'u2', start: '2025-11-01', end: '2026-10-31',
+                            rent: 7500 },
+                        { id: 'l3', tenant: 'Anna Cruz', unitId: 'u5', start: '2026-03-01', end: '2027-02-28',
+                            rent: 8000 },
+                        { id: 'l4', tenant: 'Carlos Lee', unitId: 'u8', start: '2025-05-01', end: '2026-04-30',
+                            rent: 22000 },
+                        { id: 'l5', tenant: 'Diana Reyes', unitId: 'u1', start: '2026-02-10', end: '2027-02-09',
+                            rent: 7500 },
+                    ];
+                    const seedTenants = [
+                        { id: 't1', name: 'Maria Santos', email: 'maria@email.com', phone: '+63 912 3456',
+                            unitId: 'u7', leaseStatus: 'Active' },
+                        { id: 't2', name: 'John Rivera', email: 'john.r@email.com', phone: '+63 923 4567',
+                            unitId: 'u2', leaseStatus: 'Active' },
+                        { id: 't3', name: 'Anna Cruz', email: 'anna.c@email.com', phone: '+63 934 5678',
+                            unitId: 'u5', leaseStatus: 'Active' },
+                        { id: 't4', name: 'Carlos Lee', email: 'c.lee@email.com', phone: '+63 945 6789',
+                            unitId: 'u8', leaseStatus: 'Expired' },
+                        { id: 't5', name: 'Diana Reyes', email: 'dreyes@email.com', phone: '+63 956 7890',
+                            unitId: 'u1', leaseStatus: 'Active' },
+                        { id: 't6', name: 'Eduardo Tan', email: 'ed.tan@email.com', phone: '+63 967 8901',
+                            unitId: null, leaseStatus: 'Pending' },
+                    ];
+                    const seedPayments = [
+                        { id: 'p1', date: '2026-05-15', tenant: 'Maria Santos', unit: '304', amount: 12500,
+                            status: 'Paid' },
+                        { id: 'p2', date: '2026-05-14', tenant: 'John Rivera', unit: '102', amount: 7500,
+                            status: 'Paid' },
+                        { id: 'p3', date: '2026-05-12', tenant: 'Anna Cruz', unit: '205', amount: 8000,
+                            status: 'Paid' },
+                        { id: 'p4', date: '2026-05-01', tenant: 'Carlos Lee', unit: '407', amount: 22000,
+                            status: 'Overdue' },
+                        { id: 'p5', date: '2026-05-10', tenant: 'Diana Reyes', unit: '101', amount: 7500,
+                            status: 'Pending' },
+                    ];
+                    const seedEmployees = [
+                        { id: 'e1', name: 'Alice Johnson', email: 'alice@rentease.com', phone: '+63 999 1111',
+                            role: 'Admin' },
+                        { id: 'e2', name: 'Bob Smith', email: 'bob@rentease.com', phone: '+63 999 2222',
+                            role: 'Manager' },
+                        { id: 'e3', name: 'Carol Tan', email: 'carol@rentease.com', phone: '+63 999 3333',
+                            role: 'Staff' },
+                    ];
+                    localStorage.setItem('rentease_units', JSON.stringify(seedUnits));
+                    localStorage.setItem('rentease_leases', JSON.stringify(seedLeases));
+                    localStorage.setItem('rentease_tenants', JSON.stringify(seedTenants));
+                    localStorage.setItem('rentease_payments', JSON.stringify(seedPayments));
+                    localStorage.setItem('rentease_employees', JSON.stringify(seedEmployees));
+                }
+            }
+
+            // Load and render
+            (async function init() {
+                await loadAllData();
+                renderAll();
+                switchSection('dashboard');
+
+                // Listen for storage changes (only relevant in localStorage mode)
+                if (!USE_API) {
+                    window.addEventListener('storage', function(e) {
+                        if (e.key && e.key.startsWith('rentease_')) {
+                            loadAllData().then(() => renderAll());
+                        }
+                    });
+                }
+            })();
+
+        })();
+    </script>
 
 </body>
 </html>
