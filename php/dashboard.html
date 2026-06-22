@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RentEase · Dark Glass</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <!-- html2pdf library for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         /* ---------- Dark Mode CSS Variables ---------- */
         :root {
@@ -18,6 +20,9 @@
             --text-muted: #64748b;
             --card-radius: 24px;
             --modal-overlay: rgba(0, 0, 0, 0.7);
+            --refresh-green: #10b981;
+            --refresh-green-bg: rgba(16, 185, 129, 0.15);
+            --refresh-green-border: rgba(16, 185, 129, 0.2);
         }
 
         /* ---------- Reset & Base ---------- */
@@ -49,30 +54,6 @@
             box-shadow: var(--glass-shadow), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
             padding: 28px 32px 40px;
             transition: all 0.2s ease;
-        }
-
-        /* API Mode Badge (API enabled) */
-        .api-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: rgba(16, 185, 129, 0.15);
-            color: #10b981;
-            border: 1px solid rgba(16, 185, 129, 0.2);
-            padding: 4px 14px;
-            border-radius: 40px;
-            font-size: 0.7rem;
-            font-weight: 600;
-            letter-spacing: 0.3px;
-            text-transform: uppercase;
-        }
-        .api-badge i {
-            font-size: 0.6rem;
-        }
-        .api-badge.off {
-            background: rgba(100, 116, 139, 0.12);
-            color: #94a3b8;
-            border-color: rgba(255, 255, 255, 0.05);
         }
 
         /* ---------- Navigation ---------- */
@@ -289,15 +270,32 @@
             transform: translateY(-2px);
             border-color: rgba(255, 255, 255, 0.15);
         }
-        .btn-secondary.reset-btn {
-            background: rgba(237, 37, 78, 0.12);
-            border-color: rgba(237, 37, 78, 0.15);
-            color: #f43f5e;
+
+        /* Refresh Tenants Button - Green */
+        .btn-refresh {
+            background: var(--refresh-green-bg);
+            border: 1px solid var(--refresh-green-border);
+            color: var(--refresh-green);
+            padding: 12px 28px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.25s ease;
         }
-        .btn-secondary.reset-btn:hover {
-            background: rgba(237, 37, 78, 0.22);
-            border-color: rgba(237, 37, 78, 0.3);
+        .btn-refresh:hover {
+            background: rgba(16, 185, 129, 0.25);
+            transform: translateY(-2px);
+            border-color: var(--refresh-green);
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.2);
         }
+        .btn-refresh i {
+            color: var(--refresh-green);
+        }
+
         .btn-danger {
             background: rgba(237, 37, 78, 0.2);
             color: #f43f5e;
@@ -935,7 +933,8 @@
                 flex-wrap: wrap;
             }
             .hero-actions .btn-primary,
-            .hero-actions .btn-secondary {
+            .hero-actions .btn-secondary,
+            .hero-actions .btn-refresh {
                 flex: 1 1 auto;
             }
             .app-container {
@@ -967,7 +966,8 @@
         }
         @media (max-width: 500px) {
             .hero-actions .btn-primary,
-            .hero-actions .btn-secondary {
+            .hero-actions .btn-secondary,
+            .hero-actions .btn-refresh {
                 width: 100%;
                 justify-content: center;
             }
@@ -1037,7 +1037,7 @@
             <div class="hero-actions">
                 <button class="btn-primary" id="heroActionBtn"><i class="fas fa-plus-circle"></i> <span id="actionBtnText">New Lease</span></button>
                 <button class="btn-secondary" id="exportBtn"><i class="fas fa-file-export"></i> Export Report</button>
-                <button class="btn-secondary reset-btn" id="resetTenantsBtn"><i class="fas fa-undo-alt"></i> Reset Tenants</button>
+                <button class="btn-refresh" id="refreshTenantsBtn"><i class="fas fa-sync-alt"></i> Refresh Tenants</button>
             </div>
         </div>
 
@@ -1081,7 +1081,6 @@
         <div id="section-units" class="page-section">
             <div class="section-header">
                 <h2><i class="fas fa-door-open"></i> Apartment Units <span class="sub" id="unitCount">· 0 total</span></h2>
-                <button class="btn-primary sm" id="addUnitBtn"><i class="fas fa-plus-circle"></i> Add Unit</button>
             </div>
             <div class="glass-panel" style="padding:16px 18px;">
                 <div class="table-responsive">
@@ -1101,7 +1100,6 @@
         <div id="section-tenants" class="page-section">
             <div class="section-header">
                 <h2><i class="fas fa-users"></i> Tenants <span class="sub" id="tenantCount">· 0 active</span></h2>
-                <button class="btn-primary sm" id="registerTenantBtn"><i class="fas fa-user-plus"></i> Register</button>
             </div>
             <div class="glass-panel" style="padding:16px 18px;">
                 <div class="table-responsive">
@@ -1121,7 +1119,6 @@
         <div id="section-leases" class="page-section">
             <div class="section-header">
                 <h2><i class="fas fa-file-signature"></i> Lease Contracts <span class="sub" id="leaseCount">· 0 active</span></h2>
-                <button class="btn-primary sm" id="newLeaseBtn"><i class="fas fa-plus-circle"></i> New Lease</button>
             </div>
             <div class="glass-panel" style="padding:16px 18px;">
                 <div class="table-responsive">
@@ -1141,7 +1138,6 @@
         <div id="section-payments" class="page-section">
             <div class="section-header">
                 <h2><i class="fas fa-coins"></i> Payment Records <span class="sub" id="paymentCount">· 0 records</span></h2>
-                <button class="btn-primary sm" id="recordPaymentBtn"><i class="fas fa-hand-holding-usd"></i> Record Payment</button>
             </div>
             <div class="glass-panel" style="padding:16px 18px;">
                 <div class="table-responsive">
@@ -1161,7 +1157,6 @@
         <div id="section-employees" class="page-section">
             <div class="section-header">
                 <h2><i class="fas fa-user-tie"></i> Employees <span class="sub" id="employeeCount">· 0 total</span></h2>
-                <button class="btn-primary sm" id="addEmployeeBtn"><i class="fas fa-user-plus"></i> Add Employee</button>
             </div>
             <div class="glass-panel" style="padding:16px 18px;">
                 <div class="table-responsive">
@@ -1184,21 +1179,24 @@
                 <button class="btn-secondary sm" id="downloadPdfBtn"><i class="fas fa-download"></i> Download PDF</button>
             </div>
 
-            <div class="report-grid" id="reportGrid">
-                <!-- populated by JS -->
-            </div>
+            <!-- Report content wrapper for PDF export -->
+            <div id="reportContent">
+                <div class="report-grid" id="reportGrid">
+                    <!-- populated by JS -->
+                </div>
 
-            <div class="glass-panel" style="padding:16px 18px;">
-                <h3 style="margin-bottom:12px;"><i class="fas fa-list-ul"></i> Recent Transactions</h3>
-                <div class="table-responsive">
-                    <table class="sim-table">
-                        <thead>
-                            <tr><th>Date</th><th>Tenant</th><th>Unit</th><th>Amount</th><th>Type</th></tr>
-                        </thead>
-                        <tbody id="recentTransactionsBody">
-                            <!-- populated by JS -->
-                        </tbody>
-                    </table>
+                <div class="glass-panel" style="padding:16px 18px;">
+                    <h3 style="margin-bottom:12px;"><i class="fas fa-list-ul"></i> Recent Transactions</h3>
+                    <div class="table-responsive">
+                        <table class="sim-table">
+                            <thead>
+                                <tr><th>Date</th><th>Tenant</th><th>Unit</th><th>Amount</th><th>Type</th></tr>
+                            </thead>
+                            <tbody id="recentTransactionsBody">
+                                <!-- populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1445,258 +1443,72 @@
             'use strict';
 
             // ============================================================
-            //  🚀  REST API ENABLED
+            //  🚀  REST API CONFIGURATION
             // ============================================================
-            const USE_API = true; // <-- ENABLED
+            const USE_API = false; // ← Set to true to enable REST API mode
+            const API_BASE_URL = 'https://your-api-domain.com/api'; // ← Update with your API base URL
 
-            // --- API Configuration ---
-            const API_CONFIG = {
-                baseUrl: 'https://api.rentease.com/api', // <-- Replace with your actual API base URL
-                headers: {
-                    'Content-Type': 'application/json',
-                    // 'Authorization': 'Bearer ' + (localStorage.getItem('api_token') || ''),
-                },
-                endpoints: {
-                    units: '/units',
-                    leases: '/leases',
-                    tenants: '/tenants',
-                    payments: '/payments',
-                    employees: '/employees',
-                }
-            };
-
-            // --- Helper: get auth token from storage ---
-            function getAuthToken() {
-                return localStorage.getItem('api_token') || '';
-            }
-
-            // --- Helper: build full URL ---
-            function apiUrl(endpoint, id) {
-                const base = API_CONFIG.baseUrl.replace(/\/+$/, '');
-                const path = endpoint.replace(/^\/+/, '');
-                return id ? `${base}/${path}/${id}` : `${base}/${path}`;
-            }
-
-            // --- Helper: API fetch with error handling ---
-            async function apiFetch(url, options = {}) {
-                const headers = {
-                    ...API_CONFIG.headers,
-                    ...(options.headers || {}),
-                };
-                const token = getAuthToken();
-                if (token) {
-                    headers['Authorization'] = 'Bearer ' + token;
-                }
-                const response = await fetch(url, {
-                    ...options,
-                    headers,
-                });
-                if (!response.ok) {
-                    let errorMsg = `API Error ${response.status}`;
-                    try {
-                        const errData = await response.json();
-                        errorMsg = errData.message || errData.error || errorMsg;
-                    } catch (_) { /* ignore */ }
-                    throw new Error(errorMsg);
-                }
-                if (response.status === 204) return null;
-                return await response.json();
-            }
-
-            // ============================================================
-            //  DATA SERVICE — REST API + localStorage fallback
-            // ============================================================
-            const DataService = {
-
-                // ---- Units ----
-                async getUnits() {
-                    if (!USE_API) return this._getLocal('rentease_units') || [];
-                    try {
-                        return await apiFetch(apiUrl(API_CONFIG.endpoints.units));
-                    } catch (e) {
-                        console.warn('API getUnits failed, falling back to localStorage', e);
-                        return this._getLocal('rentease_units') || [];
+            // --- API Service ---
+            const ApiService = {
+                async _fetch(endpoint, options = {}) {
+                    if (!USE_API) return null;
+                    const url = `${API_BASE_URL}${endpoint}`;
+                    const headers = {
+                        'Content-Type': 'application/json',
+                        ...(localStorage.getItem('api_token') ? { 'Authorization': 'Bearer ' + localStorage
+                                .getItem('api_token') } : {}),
+                        ...options.headers,
+                    };
+                    const response = await fetch(url, { ...options, headers });
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(errorData.message || `HTTP ${response.status}`);
                     }
+                    return response.json();
                 },
-                async createUnit(data) {
-                    if (!USE_API) return this._createLocal('rentease_units', data);
-                    return await apiFetch(apiUrl(API_CONFIG.endpoints.units), {
-                        method: 'POST',
-                        body: JSON.stringify(data),
-                    });
-                },
-                async updateUnit(id, data) {
-                    if (!USE_API) return this._updateLocal('rentease_units', id, data);
-                    return await apiFetch(apiUrl(API_CONFIG.endpoints.units, id), {
-                        method: 'PUT',
-                        body: JSON.stringify(data),
-                    });
-                },
-                async deleteUnit(id) {
-                    if (!USE_API) return this._deleteLocal('rentease_units', id);
-                    await apiFetch(apiUrl(API_CONFIG.endpoints.units, id), { method: 'DELETE' });
-                },
-
-                // ---- Leases ----
-                async getLeases() {
-                    if (!USE_API) return this._getLocal('rentease_leases') || [];
-                    try {
-                        return await apiFetch(apiUrl(API_CONFIG.endpoints.leases));
-                    } catch (e) {
-                        console.warn('API getLeases failed, falling back to localStorage', e);
-                        return this._getLocal('rentease_leases') || [];
-                    }
-                },
-                async createLease(data) {
-                    if (!USE_API) return this._createLocal('rentease_leases', data);
-                    return await apiFetch(apiUrl(API_CONFIG.endpoints.leases), {
-                        method: 'POST',
-                        body: JSON.stringify(data),
-                    });
-                },
-                async updateLease(id, data) {
-                    if (!USE_API) return this._updateLocal('rentease_leases', id, data);
-                    return await apiFetch(apiUrl(API_CONFIG.endpoints.leases, id), {
-                        method: 'PUT',
-                        body: JSON.stringify(data),
-                    });
-                },
-                async deleteLease(id) {
-                    if (!USE_API) return this._deleteLocal('rentease_leases', id);
-                    await apiFetch(apiUrl(API_CONFIG.endpoints.leases, id), { method: 'DELETE' });
-                },
-
-                // ---- Tenants ----
-                async getTenants() {
-                    if (!USE_API) return this._getLocal('rentease_tenants') || [];
-                    try {
-                        return await apiFetch(apiUrl(API_CONFIG.endpoints.tenants));
-                    } catch (e) {
-                        console.warn('API getTenants failed, falling back to localStorage', e);
-                        return this._getLocal('rentease_tenants') || [];
-                    }
-                },
-                async createTenant(data) {
-                    if (!USE_API) return this._createLocal('rentease_tenants', data);
-                    return await apiFetch(apiUrl(API_CONFIG.endpoints.tenants), {
-                        method: 'POST',
-                        body: JSON.stringify(data),
-                    });
-                },
-                async updateTenant(id, data) {
-                    if (!USE_API) return this._updateLocal('rentease_tenants', id, data);
-                    return await apiFetch(apiUrl(API_CONFIG.endpoints.tenants, id), {
-                        method: 'PUT',
-                        body: JSON.stringify(data),
-                    });
-                },
-                async deleteTenant(id) {
-                    if (!USE_API) return this._deleteLocal('rentease_tenants', id);
-                    await apiFetch(apiUrl(API_CONFIG.endpoints.tenants, id), { method: 'DELETE' });
-                },
-
-                // ---- Payments ----
-                async getPayments() {
-                    if (!USE_API) return this._getLocal('rentease_payments') || [];
-                    try {
-                        return await apiFetch(apiUrl(API_CONFIG.endpoints.payments));
-                    } catch (e) {
-                        console.warn('API getPayments failed, falling back to localStorage', e);
-                        return this._getLocal('rentease_payments') || [];
-                    }
-                },
-                async createPayment(data) {
-                    if (!USE_API) return this._createLocal('rentease_payments', data);
-                    return await apiFetch(apiUrl(API_CONFIG.endpoints.payments), {
-                        method: 'POST',
-                        body: JSON.stringify(data),
-                    });
-                },
-                async updatePayment(id, data) {
-                    if (!USE_API) return this._updateLocal('rentease_payments', id, data);
-                    return await apiFetch(apiUrl(API_CONFIG.endpoints.payments, id), {
-                        method: 'PUT',
-                        body: JSON.stringify(data),
-                    });
-                },
-                async deletePayment(id) {
-                    if (!USE_API) return this._deleteLocal('rentease_payments', id);
-                    await apiFetch(apiUrl(API_CONFIG.endpoints.payments, id), { method: 'DELETE' });
-                },
-
-                // ---- Employees ----
-                async getEmployees() {
-                    if (!USE_API) return this._getLocal('rentease_employees') || [];
-                    try {
-                        return await apiFetch(apiUrl(API_CONFIG.endpoints.employees));
-                    } catch (e) {
-                        console.warn('API getEmployees failed, falling back to localStorage', e);
-                        return this._getLocal('rentease_employees') || [];
-                    }
-                },
-                async createEmployee(data) {
-                    if (!USE_API) return this._createLocal('rentease_employees', data);
-                    return await apiFetch(apiUrl(API_CONFIG.endpoints.employees), {
-                        method: 'POST',
-                        body: JSON.stringify(data),
-                    });
-                },
-                async updateEmployee(id, data) {
-                    if (!USE_API) return this._updateLocal('rentease_employees', id, data);
-                    return await apiFetch(apiUrl(API_CONFIG.endpoints.employees, id), {
-                        method: 'PUT',
-                        body: JSON.stringify(data),
-                    });
-                },
-                async deleteEmployee(id) {
-                    if (!USE_API) return this._deleteLocal('rentease_employees', id);
-                    await apiFetch(apiUrl(API_CONFIG.endpoints.employees, id), { method: 'DELETE' });
-                },
-
-                // ---- Local storage helpers (fallback) ----
-                _getLocal(key) {
-                    try {
-                        return JSON.parse(localStorage.getItem(key)) || [];
-                    } catch { return []; }
-                },
-                _setLocal(key, data) {
-                    localStorage.setItem(key, JSON.stringify(data));
-                },
-                _createLocal(key, data) {
-                    const items = this._getLocal(key);
-                    const newItem = { ...data, id: data.id || Date.now().toString(36) + Math.random().toString(36)
-                            .slice(2, 6) };
-                    items.push(newItem);
-                    this._setLocal(key, items);
-                    return newItem;
-                },
-                _updateLocal(key, id, data) {
-                    const items = this._getLocal(key);
-                    const idx = items.findIndex(item => item.id === id);
-                    if (idx === -1) throw new Error('Item not found');
-                    items[idx] = { ...items[idx], ...data };
-                    this._setLocal(key, items);
-                    return items[idx];
-                },
-                _deleteLocal(key, id) {
-                    const items = this._getLocal(key);
-                    const filtered = items.filter(item => item.id !== id);
-                    this._setLocal(key, filtered);
-                },
+                // Units
+                getUnits: () => ApiService._fetch('/units'),
+                createUnit: (data) => ApiService._fetch('/units', { method: 'POST', body: JSON.stringify(data) }),
+                updateUnit: (id, data) => ApiService._fetch(`/units/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+                deleteUnit: (id) => ApiService._fetch(`/units/${id}`, { method: 'DELETE' }),
+                // Leases
+                getLeases: () => ApiService._fetch('/leases'),
+                createLease: (data) => ApiService._fetch('/leases', { method: 'POST', body: JSON.stringify(data) }),
+                updateLease: (id, data) => ApiService._fetch(`/leases/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+                deleteLease: (id) => ApiService._fetch(`/leases/${id}`, { method: 'DELETE' }),
+                // Tenants
+                getTenants: () => ApiService._fetch('/tenants'),
+                createTenant: (data) => ApiService._fetch('/tenants', { method: 'POST', body: JSON.stringify(data) }),
+                updateTenant: (id, data) => ApiService._fetch(`/tenants/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+                deleteTenant: (id) => ApiService._fetch(`/tenants/${id}`, { method: 'DELETE' }),
+                // Payments
+                getPayments: () => ApiService._fetch('/payments'),
+                createPayment: (data) => ApiService._fetch('/payments', { method: 'POST', body: JSON.stringify(data) }),
+                updatePayment: (id, data) => ApiService._fetch(`/payments/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+                deletePayment: (id) => ApiService._fetch(`/payments/${id}`, { method: 'DELETE' }),
+                // Employees
+                getEmployees: () => ApiService._fetch('/employees'),
+                createEmployee: (data) => ApiService._fetch('/employees', { method: 'POST', body: JSON.stringify(data) }),
+                updateEmployee: (id, data) => ApiService._fetch(`/employees/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+                deleteEmployee: (id) => ApiService._fetch(`/employees/${id}`, { method: 'DELETE' }),
             };
 
             // ============================================================
-            //  APP STATE (cached from API/localStorage)
+            //  DATA LAYER (localStorage fallback)
             // ============================================================
+            const STORAGE_KEY_UNITS = 'rentease_units';
+            const STORAGE_KEY_LEASES = 'rentease_leases';
+            const STORAGE_KEY_TENANTS = 'rentease_tenants';
+            const STORAGE_KEY_PAYMENTS = 'rentease_payments';
+            const STORAGE_KEY_EMPLOYEES = 'rentease_employees';
+
             let units = [];
             let leases = [];
             let tenants = [];
             let payments = [];
             let employees = [];
 
-            // ============================================================
-            //  HELPERS
-            // ============================================================
+            // ---------- HELPERS ----------
             function generateId() {
                 return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
             }
@@ -1728,10 +1540,294 @@
                 return `<span class="badge ${cls}">${status}</span>`;
             }
 
-            function getTenantForUnit(unitId) {
-                const lease = leases.find(l => l.unitId === unitId);
-                return lease ? lease.tenant : null;
+            // ---------- STORAGE ----------
+            function loadFromStorage() {
+                try {
+                    units = JSON.parse(localStorage.getItem(STORAGE_KEY_UNITS)) || [];
+                    leases = JSON.parse(localStorage.getItem(STORAGE_KEY_LEASES)) || [];
+                    tenants = JSON.parse(localStorage.getItem(STORAGE_KEY_TENANTS)) || [];
+                    payments = JSON.parse(localStorage.getItem(STORAGE_KEY_PAYMENTS)) || [];
+                    employees = JSON.parse(localStorage.getItem(STORAGE_KEY_EMPLOYEES)) || [];
+                } catch (e) {
+                    units = [];
+                    leases = [];
+                    tenants = [];
+                    payments = [];
+                    employees = [];
+                }
+                if (units.length === 0 && leases.length === 0) {
+                    seedData();
+                }
             }
+
+            function saveToStorage() {
+                localStorage.setItem(STORAGE_KEY_UNITS, JSON.stringify(units));
+                localStorage.setItem(STORAGE_KEY_LEASES, JSON.stringify(leases));
+                localStorage.setItem(STORAGE_KEY_TENANTS, JSON.stringify(tenants));
+                localStorage.setItem(STORAGE_KEY_PAYMENTS, JSON.stringify(payments));
+                localStorage.setItem(STORAGE_KEY_EMPLOYEES, JSON.stringify(employees));
+            }
+
+            // ---------- SEED DATA ----------
+            function seedData() {
+                units = [
+                    { id: 'u1', number: '101', type: 'Studio', rent: 7500, status: 'Occupied' },
+                    { id: 'u2', number: '102', type: 'Studio', rent: 7500, status: 'Occupied' },
+                    { id: 'u3', number: '103', type: '1-Bedroom', rent: 10200, status: 'Available' },
+                    { id: 'u4', number: '104', type: '1-Bedroom', rent: 10200, status: 'Occupied' },
+                    { id: 'u5', number: '205', type: 'Studio', rent: 8000, status: 'Occupied' },
+                    { id: 'u6', number: '206', type: '2-Bedroom', rent: 14500, status: 'Available' },
+                    { id: 'u7', number: '304', type: '1-Bedroom', rent: 12500, status: 'Occupied' },
+                    { id: 'u8', number: '407', type: 'Penthouse', rent: 22000, status: 'Occupied' },
+                ];
+
+                leases = [
+                    { id: 'l1', tenant: 'Maria Santos', unitId: 'u7', start: '2026-01-15', end: '2027-01-14',
+                    rent: 12500 },
+                    { id: 'l2', tenant: 'John Rivera', unitId: 'u2', start: '2025-11-01', end: '2026-10-31',
+                    rent: 7500 },
+                    { id: 'l3', tenant: 'Anna Cruz', unitId: 'u5', start: '2026-03-01', end: '2027-02-28', rent: 8000 },
+                    { id: 'l4', tenant: 'Carlos Lee', unitId: 'u8', start: '2025-05-01', end: '2026-04-30', rent: 22000 },
+                    { id: 'l5', tenant: 'Diana Reyes', unitId: 'u1', start: '2026-02-10', end: '2027-02-09', rent: 7500 },
+                ];
+
+                tenants = [
+                    { id: 't1', name: 'Maria Santos', email: 'maria@email.com', phone: '+63 912 3456', unitId: 'u7',
+                        leaseStatus: 'Active' },
+                    { id: 't2', name: 'John Rivera', email: 'john.r@email.com', phone: '+63 923 4567', unitId: 'u2',
+                        leaseStatus: 'Active' },
+                    { id: 't3', name: 'Anna Cruz', email: 'anna.c@email.com', phone: '+63 934 5678', unitId: 'u5',
+                        leaseStatus: 'Active' },
+                    { id: 't4', name: 'Carlos Lee', email: 'c.lee@email.com', phone: '+63 945 6789', unitId: 'u8',
+                        leaseStatus: 'Expired' },
+                    { id: 't5', name: 'Diana Reyes', email: 'dreyes@email.com', phone: '+63 956 7890', unitId: 'u1',
+                        leaseStatus: 'Active' },
+                    { id: 't6', name: 'Eduardo Tan', email: 'ed.tan@email.com', phone: '+63 967 8901', unitId: null,
+                        leaseStatus: 'Pending' },
+                ];
+
+                payments = [
+                    { id: 'p1', date: '2026-05-15', tenant: 'Maria Santos', unit: '304', amount: 12500,
+                    status: 'Paid' },
+                    { id: 'p2', date: '2026-05-14', tenant: 'John Rivera', unit: '102', amount: 7500, status: 'Paid' },
+                    { id: 'p3', date: '2026-05-12', tenant: 'Anna Cruz', unit: '205', amount: 8000, status: 'Paid' },
+                    { id: 'p4', date: '2026-05-01', tenant: 'Carlos Lee', unit: '407', amount: 22000,
+                    status: 'Overdue' },
+                    { id: 'p5', date: '2026-05-10', tenant: 'Diana Reyes', unit: '101', amount: 7500,
+                    status: 'Pending' },
+                ];
+
+                employees = [
+                    { id: 'e1', name: 'Alice Johnson', email: 'alice@rentease.com', phone: '+63 999 1111', role: 'Admin' },
+                    { id: 'e2', name: 'Bob Smith', email: 'bob@rentease.com', phone: '+63 999 2222', role: 'Manager' },
+                    { id: 'e3', name: 'Carol Tan', email: 'carol@rentease.com', phone: '+63 999 3333', role: 'Staff' },
+                ];
+
+                saveToStorage();
+            }
+
+            // ============================================================
+            //  DATA MANAGER (routes to API or localStorage)
+            // ============================================================
+            const DataManager = {
+                async loadAll() {
+                    if (USE_API) {
+                        try {
+                            const [u, l, t, p, e] = await Promise.all([
+                                ApiService.getUnits(),
+                                ApiService.getLeases(),
+                                ApiService.getTenants(),
+                                ApiService.getPayments(),
+                                ApiService.getEmployees()
+                            ]);
+                            units = u || [];
+                            leases = l || [];
+                            tenants = t || [];
+                            payments = p || [];
+                            employees = e || [];
+                            if (!u || !l || !t || !p || !e) {
+                                console.warn('API returned null, falling back to localStorage');
+                                loadFromStorage();
+                            }
+                            return;
+                        } catch (err) {
+                            console.error('API load failed, using localStorage:', err);
+                        }
+                    }
+                    loadFromStorage();
+                },
+
+                async saveUnit(data) {
+                    if (data.id) {
+                        if (USE_API) {
+                            const result = await ApiService.updateUnit(data.id, data);
+                            if (result) {
+                                const idx = units.findIndex(u => u.id === data.id);
+                                if (idx !== -1) units[idx] = result;
+                                return result;
+                            }
+                        }
+                        const idx = units.findIndex(u => u.id === data.id);
+                        if (idx !== -1) units[idx] = { ...units[idx], ...data };
+                    } else {
+                        const newItem = { ...data, id: generateId() };
+                        if (USE_API) {
+                            const result = await ApiService.createUnit(data);
+                            if (result) {
+                                units.push(result);
+                                saveToStorage();
+                                return result;
+                            }
+                        }
+                        units.push(newItem);
+                    }
+                    saveToStorage();
+                    return data;
+                },
+
+                async deleteUnit(id) {
+                    if (USE_API) await ApiService.deleteUnit(id);
+                    units = units.filter(u => u.id !== id);
+                    tenants = tenants.filter(t => t.unitId !== id);
+                    saveToStorage();
+                },
+
+                async saveLease(data) {
+                    if (data.id) {
+                        if (USE_API) {
+                            const result = await ApiService.updateLease(data.id, data);
+                            if (result) {
+                                const idx = leases.findIndex(l => l.id === data.id);
+                                if (idx !== -1) leases[idx] = result;
+                                return result;
+                            }
+                        }
+                        const idx = leases.findIndex(l => l.id === data.id);
+                        if (idx !== -1) leases[idx] = { ...leases[idx], ...data };
+                    } else {
+                        const newItem = { ...data, id: 'L-' + String(leases.length + 1).padStart(3, '0') };
+                        if (USE_API) {
+                            const result = await ApiService.createLease(data);
+                            if (result) {
+                                leases.push(result);
+                                saveToStorage();
+                                return result;
+                            }
+                        }
+                        leases.push(newItem);
+                    }
+                    saveToStorage();
+                    return data;
+                },
+
+                async deleteLease(id) {
+                    if (USE_API) await ApiService.deleteLease(id);
+                    leases = leases.filter(l => l.id !== id);
+                    saveToStorage();
+                },
+
+                async saveTenant(data) {
+                    if (data.id) {
+                        if (USE_API) {
+                            const result = await ApiService.updateTenant(data.id, data);
+                            if (result) {
+                                const idx = tenants.findIndex(t => t.id === data.id);
+                                if (idx !== -1) tenants[idx] = result;
+                                return result;
+                            }
+                        }
+                        const idx = tenants.findIndex(t => t.id === data.id);
+                        if (idx !== -1) tenants[idx] = { ...tenants[idx], ...data };
+                    } else {
+                        const newItem = { ...data, id: 't' + generateId() };
+                        if (USE_API) {
+                            const result = await ApiService.createTenant(data);
+                            if (result) {
+                                tenants.push(result);
+                                saveToStorage();
+                                return result;
+                            }
+                        }
+                        tenants.push(newItem);
+                    }
+                    saveToStorage();
+                    return data;
+                },
+
+                async deleteTenant(id) {
+                    if (USE_API) await ApiService.deleteTenant(id);
+                    tenants = tenants.filter(t => t.id !== id);
+                    saveToStorage();
+                },
+
+                async savePayment(data) {
+                    if (data.id) {
+                        if (USE_API) {
+                            const result = await ApiService.updatePayment(data.id, data);
+                            if (result) {
+                                const idx = payments.findIndex(p => p.id === data.id);
+                                if (idx !== -1) payments[idx] = result;
+                                return result;
+                            }
+                        }
+                        const idx = payments.findIndex(p => p.id === data.id);
+                        if (idx !== -1) payments[idx] = { ...payments[idx], ...data };
+                    } else {
+                        const newItem = { ...data, id: 'P-' + String(payments.length + 1).padStart(3, '0') };
+                        if (USE_API) {
+                            const result = await ApiService.createPayment(data);
+                            if (result) {
+                                payments.push(result);
+                                saveToStorage();
+                                return result;
+                            }
+                        }
+                        payments.push(newItem);
+                    }
+                    saveToStorage();
+                    return data;
+                },
+
+                async deletePayment(id) {
+                    if (USE_API) await ApiService.deletePayment(id);
+                    payments = payments.filter(p => p.id !== id);
+                    saveToStorage();
+                },
+
+                async saveEmployee(data) {
+                    if (data.id) {
+                        if (USE_API) {
+                            const result = await ApiService.updateEmployee(data.id, data);
+                            if (result) {
+                                const idx = employees.findIndex(e => e.id === data.id);
+                                if (idx !== -1) employees[idx] = result;
+                                return result;
+                            }
+                        }
+                        const idx = employees.findIndex(e => e.id === data.id);
+                        if (idx !== -1) employees[idx] = { ...employees[idx], ...data };
+                    } else {
+                        const newItem = { ...data, id: 'e' + generateId() };
+                        if (USE_API) {
+                            const result = await ApiService.createEmployee(data);
+                            if (result) {
+                                employees.push(result);
+                                saveToStorage();
+                                return result;
+                            }
+                        }
+                        employees.push(newItem);
+                    }
+                    saveToStorage();
+                    return data;
+                },
+
+                async deleteEmployee(id) {
+                    if (USE_API) await ApiService.deleteEmployee(id);
+                    employees = employees.filter(e => e.id !== id);
+                    saveToStorage();
+                }
+            };
 
             // ============================================================
             //  TOAST
@@ -1789,12 +1885,17 @@
             //  RENDER FUNCTIONS
             // ============================================================
 
+            function getTenantForUnit(unitId) {
+                const lease = leases.find(l => l.unitId === unitId);
+                return lease ? lease.tenant : null;
+            }
+
             function renderUnits() {
                 const tbody = document.getElementById('unitsTableBody');
                 const count = document.getElementById('unitCount');
                 if (!units || units.length === 0) {
                     tbody.innerHTML =
-                        `<tr><td colspan="6"><div class="empty-state"><i class="fas fa-door-open"></i><p>No units yet. Click "Add Unit" to get started.</p></div></td></tr>`;
+                        `<tr><td colspan="6"><div class="empty-state"><i class="fas fa-door-open"></i><p>No units yet. Click "Add Unit" from Quick Actions to get started.</p></div></td></tr>`;
                     count.textContent = '· 0 total';
                     return;
                 }
@@ -1833,7 +1934,7 @@
                 const count = document.getElementById('leaseCount');
                 if (!leases || leases.length === 0) {
                     tbody.innerHTML =
-                        `<tr><td colspan="7"><div class="empty-state"><i class="fas fa-file-signature"></i><p>No leases yet. Click "New Lease" to get started.</p></div></td></tr>`;
+                        `<tr><td colspan="7"><div class="empty-state"><i class="fas fa-file-signature"></i><p>No leases yet. Click "New Lease" from Quick Actions to get started.</p></div></td></tr>`;
                     count.textContent = '· 0 active';
                     return;
                 }
@@ -1875,7 +1976,7 @@
                 const count = document.getElementById('tenantCount');
                 if (!tenants || tenants.length === 0) {
                     tbody.innerHTML =
-                        `<tr><td colspan="6"><div class="empty-state"><i class="fas fa-users"></i><p>No tenants registered yet.</p></div></td></tr>`;
+                        `<tr><td colspan="6"><div class="empty-state"><i class="fas fa-users"></i><p>No tenants registered yet. Click "Register New Tenant" from Quick Actions to get started.</p></div></td></tr>`;
                     count.textContent = '· 0 active';
                     return;
                 }
@@ -1916,7 +2017,7 @@
                 const count = document.getElementById('paymentCount');
                 if (!payments || payments.length === 0) {
                     tbody.innerHTML =
-                        `<tr><td colspan="7"><div class="empty-state"><i class="fas fa-coins"></i><p>No payment records yet.</p></div></td></tr>`;
+                        `<tr><td colspan="7"><div class="empty-state"><i class="fas fa-coins"></i><p>No payment records yet. Click "Record Payment" from Quick Actions to get started.</p></div></td></tr>`;
                     count.textContent = '· 0 records';
                     return;
                 }
@@ -1955,7 +2056,7 @@
                 const count = document.getElementById('employeeCount');
                 if (!employees || employees.length === 0) {
                     tbody.innerHTML =
-                        `<tr><td colspan="5"><div class="empty-state"><i class="fas fa-user-tie"></i><p>No employees added yet.</p></div></td></tr>`;
+                        `<tr><td colspan="5"><div class="empty-state"><i class="fas fa-user-tie"></i><p>No employees added yet. Click "Add Employee" from Quick Actions to get started.</p></div></td></tr>`;
                     count.textContent = '· 0 total';
                     return;
                 }
@@ -2149,101 +2250,10 @@
             }
 
             // ============================================================
-            //  CRUD OPERATIONS (async)
+            //  CRUD OPERATIONS (using DataManager)
             // ============================================================
 
-            async function saveUnit(data) {
-                if (data.id) {
-                    return await DataService.updateUnit(data.id, data);
-                } else {
-                    return await DataService.createUnit(data);
-                }
-            }
-
-            async function saveLease(data) {
-                if (data.id) {
-                    return await DataService.updateLease(data.id, data);
-                } else {
-                    return await DataService.createLease(data);
-                }
-            }
-
-            async function saveTenant(data) {
-                if (data.id) {
-                    return await DataService.updateTenant(data.id, data);
-                } else {
-                    return await DataService.createTenant(data);
-                }
-            }
-
-            async function savePayment(data) {
-                if (data.id) {
-                    return await DataService.updatePayment(data.id, data);
-                } else {
-                    return await DataService.createPayment(data);
-                }
-            }
-
-            async function saveEmployee(data) {
-                if (data.id) {
-                    return await DataService.updateEmployee(data.id, data);
-                } else {
-                    return await DataService.createEmployee(data);
-                }
-            }
-
-            // ============================================================
-            //  RESET TENANTS — calls the API
-            // ============================================================
-            async function resetTenants() {
-                if (!confirm('⚠️ This will reset the tenant list to the original seed data.\nAll current tenant records will be replaced. Continue?')) {
-                    return;
-                }
-
-                showToast('Resetting tenants via API...', 'warning');
-
-                try {
-                    // 1. Fetch existing tenants
-                    const existing = await DataService.getTenants();
-                    // 2. Delete each one
-                    for (const t of existing) {
-                        await DataService.deleteTenant(t.id);
-                    }
-
-                    // 3. Create seed tenants
-                    const seedTenants = [
-                        { name: 'Maria Santos', email: 'maria@email.com', phone: '+63 912 3456', unitId: 'u7',
-                            leaseStatus: 'Active' },
-                        { name: 'John Rivera', email: 'john.r@email.com', phone: '+63 923 4567', unitId: 'u2',
-                            leaseStatus: 'Active' },
-                        { name: 'Anna Cruz', email: 'anna.c@email.com', phone: '+63 934 5678', unitId: 'u5',
-                            leaseStatus: 'Active' },
-                        { name: 'Carlos Lee', email: 'c.lee@email.com', phone: '+63 945 6789', unitId: 'u8',
-                            leaseStatus: 'Expired' },
-                        { name: 'Diana Reyes', email: 'dreyes@email.com', phone: '+63 956 7890', unitId: 'u1',
-                            leaseStatus: 'Active' },
-                        { name: 'Eduardo Tan', email: 'ed.tan@email.com', phone: '+63 967 8901', unitId: null,
-                            leaseStatus: 'Pending' },
-                    ];
-
-                    for (const data of seedTenants) {
-                        await DataService.createTenant(data);
-                    }
-
-                    // 4. Reload data and refresh UI
-                    await loadAllData();
-                    renderAll();
-                    showToast('Tenants reset successfully via API!', 'success');
-                } catch (err) {
-                    showToast('Reset failed: ' + err.message, 'error');
-                    console.error(err);
-                }
-            }
-
-            // ============================================================
-            //  MODAL OPEN FUNCTIONS
-            // ============================================================
-
+            // ---- Units ----
             function openAddUnitModal() {
                 document.getElementById('unitModalTitle').textContent = 'Add Unit';
                 document.getElementById('unitSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Save Unit';
@@ -2255,7 +2265,7 @@
 
             function openEditUnitModal(id) {
                 const unit = units.find(u => u.id === id);
-                if (!unit) { showToast('Unit not found.', 'error'); return; }
+                if (!unit) return;
                 document.getElementById('unitModalTitle').textContent = 'Edit Unit';
                 document.getElementById('unitSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Update Unit';
                 document.getElementById('unitFormId').value = id;
@@ -2266,6 +2276,31 @@
                 openModal('unitModal');
             }
 
+            async function handleUnitFormSubmit(e) {
+                e.preventDefault();
+                const id = document.getElementById('unitFormId').value;
+                const number = document.getElementById('unitNumber').value.trim();
+                const type = document.getElementById('unitType').value;
+                const rent = parseFloat(document.getElementById('unitRent').value);
+                const status = document.getElementById('unitStatus').value;
+
+                if (!number) { showToast('Please enter a unit number.', 'error'); return; }
+                if (!rent || rent < 0) { showToast('Please enter a valid rent amount.', 'error'); return; }
+
+                try {
+                    const data = { number, type, rent, status };
+                    if (id) data.id = id;
+                    await DataManager.saveUnit(data);
+                    await DataManager.loadAll();
+                    renderAll();
+                    closeModal('unitModal');
+                    showToast(`Unit "${number}" ${id ? 'updated' : 'added'} successfully.`);
+                } catch (err) {
+                    showToast('Error: ' + err.message, 'error');
+                }
+            }
+
+            // ---- Leases ----
             function populateLeaseUnitSelect(selectedId) {
                 const sel = document.getElementById('leaseUnit');
                 const availableUnits = units.filter(u => u.status === 'Available' || u.id === selectedId);
@@ -2303,7 +2338,7 @@
 
             function openEditLeaseModal(id) {
                 const lease = leases.find(l => l.id === id);
-                if (!lease) { showToast('Lease not found.', 'error'); return; }
+                if (!lease) return;
                 document.getElementById('leaseModalTitle').textContent = 'Edit Lease';
                 document.getElementById('leaseSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Update Lease';
                 document.getElementById('leaseFormId').value = id;
@@ -2315,6 +2350,55 @@
                 openModal('leaseModal');
             }
 
+            async function handleLeaseFormSubmit(e) {
+                e.preventDefault();
+                const id = document.getElementById('leaseFormId').value;
+                const tenant = document.getElementById('leaseTenant').value.trim();
+                const unitId = document.getElementById('leaseUnit').value;
+                const start = document.getElementById('leaseStart').value;
+                const end = document.getElementById('leaseEnd').value;
+                const rent = parseFloat(document.getElementById('leaseRent').value);
+
+                if (!tenant) { showToast('Please enter tenant name.', 'error'); return; }
+                if (!unitId) { showToast('Please select a unit.', 'error'); return; }
+                if (!start || !end) { showToast('Please select start and end dates.', 'error'); return; }
+                if (new Date(end) < new Date(start)) { showToast('End date must be after start date.', 'error'); return; }
+                if (!rent || rent < 0) { showToast('Please enter a valid rent amount.', 'error'); return; }
+
+                try {
+                    const unit = units.find(u => u.id === unitId);
+                    if (!unit) { showToast('Selected unit not found.', 'error'); return; }
+
+                    const data = { tenant, unitId, start, end, rent };
+                    if (id) data.id = id;
+
+                    // Handle unit status change
+                    if (id) {
+                        const old = leases.find(l => l.id === id);
+                        if (old && old.unitId !== unitId) {
+                            const oldUnit = units.find(u => u.id === old.unitId);
+                            if (oldUnit) oldUnit.status = 'Available';
+                            unit.status = 'Occupied';
+                        }
+                    } else {
+                        if (unit.status === 'Occupied') {
+                            showToast('This unit is already occupied.', 'warning');
+                            return;
+                        }
+                        unit.status = 'Occupied';
+                    }
+
+                    await DataManager.saveLease(data);
+                    await DataManager.loadAll();
+                    renderAll();
+                    closeModal('leaseModal');
+                    showToast(`Lease for "${tenant}" ${id ? 'updated' : 'created'} successfully.`);
+                } catch (err) {
+                    showToast('Error: ' + err.message, 'error');
+                }
+            }
+
+            // ---- Tenants ----
             function populateTenantUnitSelect(selectedId) {
                 const sel = document.getElementById('tenantUnit');
                 sel.innerHTML = '<option value="">— None —</option>' +
@@ -2346,6 +2430,40 @@
                 openModal('tenantModal');
             }
 
+            async function handleTenantFormSubmit(e) {
+                e.preventDefault();
+                const id = document.getElementById('tenantFormId').value;
+                const name = document.getElementById('tenantName').value.trim();
+                const email = document.getElementById('tenantEmail').value.trim();
+                const phone = document.getElementById('tenantPhone').value.trim();
+                const unitId = document.getElementById('tenantUnit').value || null;
+                const leaseStatus = document.getElementById('tenantLeaseStatus').value;
+
+                if (!name) { showToast('Please enter a name.', 'error'); return; }
+
+                try {
+                    const data = { name, email, phone, unitId, leaseStatus };
+                    if (id) data.id = id;
+
+                    // If name changed, update leases
+                    if (id) {
+                        const old = tenants.find(t => t.id === id);
+                        if (old && old.name !== name) {
+                            leases.forEach(l => { if (l.tenant === old.name) l.tenant = name; });
+                        }
+                    }
+
+                    await DataManager.saveTenant(data);
+                    await DataManager.loadAll();
+                    renderAll();
+                    closeModal('tenantModal');
+                    showToast(`Tenant "${name}" ${id ? 'updated' : 'registered'} successfully.`);
+                } catch (err) {
+                    showToast('Error: ' + err.message, 'error');
+                }
+            }
+
+            // ---- Payments ----
             function openAddPaymentModal() {
                 document.getElementById('paymentModalTitle').textContent = 'Record Payment';
                 document.getElementById('paymentSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Save Payment';
@@ -2370,6 +2488,34 @@
                 openModal('paymentModal');
             }
 
+            async function handlePaymentFormSubmit(e) {
+                e.preventDefault();
+                const id = document.getElementById('paymentFormId').value;
+                const tenant = document.getElementById('paymentTenant').value.trim();
+                const unit = document.getElementById('paymentUnit').value.trim();
+                const date = document.getElementById('paymentDate').value;
+                const amount = parseFloat(document.getElementById('paymentAmount').value);
+                const status = document.getElementById('paymentStatus').value;
+
+                if (!tenant) { showToast('Please enter tenant name.', 'error'); return; }
+                if (!unit) { showToast('Please enter unit number.', 'error'); return; }
+                if (!date) { showToast('Please select a date.', 'error'); return; }
+                if (!amount || amount < 0) { showToast('Please enter a valid amount.', 'error'); return; }
+
+                try {
+                    const data = { tenant, unit, date, amount, status };
+                    if (id) data.id = id;
+                    await DataManager.savePayment(data);
+                    await DataManager.loadAll();
+                    renderAll();
+                    closeModal('paymentModal');
+                    showToast(`Payment for "${tenant}" ${id ? 'updated' : 'recorded'} successfully.`);
+                } catch (err) {
+                    showToast('Error: ' + err.message, 'error');
+                }
+            }
+
+            // ---- Employees ----
             function openAddEmployeeModal() {
                 document.getElementById('employeeModalTitle').textContent = 'Add Employee';
                 document.getElementById('employeeSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Save Employee';
@@ -2391,114 +2537,7 @@
                 openModal('employeeModal');
             }
 
-            // ============================================================
-            //  FORM HANDLERS (async)
-            // ============================================================
-
-            document.getElementById('unitForm').addEventListener('submit', async function(e) {
-                e.preventDefault();
-                const id = document.getElementById('unitFormId').value;
-                const number = document.getElementById('unitNumber').value.trim();
-                const type = document.getElementById('unitType').value;
-                const rent = parseFloat(document.getElementById('unitRent').value);
-                const status = document.getElementById('unitStatus').value;
-
-                if (!number) { showToast('Please enter a unit number.', 'error'); return; }
-                if (!rent || rent < 0) { showToast('Please enter a valid rent amount.', 'error'); return; }
-
-                try {
-                    const data = { number, type, rent, status };
-                    if (id) data.id = id;
-                    await saveUnit(data);
-                    await loadAllData();
-                    renderAll();
-                    closeModal('unitModal');
-                    showToast(`Unit "${number}" ${id ? 'updated' : 'added'} successfully.`);
-                } catch (err) {
-                    showToast('Error: ' + err.message, 'error');
-                }
-            });
-
-            document.getElementById('leaseForm').addEventListener('submit', async function(e) {
-                e.preventDefault();
-                const id = document.getElementById('leaseFormId').value;
-                const tenant = document.getElementById('leaseTenant').value.trim();
-                const unitId = document.getElementById('leaseUnit').value;
-                const start = document.getElementById('leaseStart').value;
-                const end = document.getElementById('leaseEnd').value;
-                const rent = parseFloat(document.getElementById('leaseRent').value);
-
-                if (!tenant) { showToast('Please enter tenant name.', 'error'); return; }
-                if (!unitId) { showToast('Please select a unit.', 'error'); return; }
-                if (!start || !end) { showToast('Please select start and end dates.', 'error'); return; }
-                if (new Date(end) < new Date(start)) { showToast('End date must be after start date.', 'error'); return; }
-                if (!rent || rent < 0) { showToast('Please enter a valid rent amount.', 'error'); return; }
-
-                try {
-                    const data = { tenant, unitId, start, end, rent };
-                    if (id) data.id = id;
-                    await saveLease(data);
-                    await loadAllData();
-                    renderAll();
-                    closeModal('leaseModal');
-                    showToast(`Lease for "${tenant}" ${id ? 'updated' : 'created'} successfully.`);
-                } catch (err) {
-                    showToast('Error: ' + err.message, 'error');
-                }
-            });
-
-            document.getElementById('tenantForm').addEventListener('submit', async function(e) {
-                e.preventDefault();
-                const id = document.getElementById('tenantFormId').value;
-                const name = document.getElementById('tenantName').value.trim();
-                const email = document.getElementById('tenantEmail').value.trim();
-                const phone = document.getElementById('tenantPhone').value.trim();
-                const unitId = document.getElementById('tenantUnit').value || null;
-                const leaseStatus = document.getElementById('tenantLeaseStatus').value;
-
-                if (!name) { showToast('Please enter a name.', 'error'); return; }
-
-                try {
-                    const data = { name, email, phone, unitId, leaseStatus };
-                    if (id) data.id = id;
-                    await saveTenant(data);
-                    await loadAllData();
-                    renderAll();
-                    closeModal('tenantModal');
-                    showToast(`Tenant "${name}" ${id ? 'updated' : 'registered'} successfully.`);
-                } catch (err) {
-                    showToast('Error: ' + err.message, 'error');
-                }
-            });
-
-            document.getElementById('paymentForm').addEventListener('submit', async function(e) {
-                e.preventDefault();
-                const id = document.getElementById('paymentFormId').value;
-                const tenant = document.getElementById('paymentTenant').value.trim();
-                const unit = document.getElementById('paymentUnit').value.trim();
-                const date = document.getElementById('paymentDate').value;
-                const amount = parseFloat(document.getElementById('paymentAmount').value);
-                const status = document.getElementById('paymentStatus').value;
-
-                if (!tenant) { showToast('Please enter tenant name.', 'error'); return; }
-                if (!unit) { showToast('Please enter unit number.', 'error'); return; }
-                if (!date) { showToast('Please select a date.', 'error'); return; }
-                if (!amount || amount < 0) { showToast('Please enter a valid amount.', 'error'); return; }
-
-                try {
-                    const data = { tenant, unit, date, amount, status };
-                    if (id) data.id = id;
-                    await savePayment(data);
-                    await loadAllData();
-                    renderAll();
-                    closeModal('paymentModal');
-                    showToast(`Payment for "${tenant}" ${id ? 'updated' : 'recorded'} successfully.`);
-                } catch (err) {
-                    showToast('Error: ' + err.message, 'error');
-                }
-            });
-
-            document.getElementById('employeeForm').addEventListener('submit', async function(e) {
+            async function handleEmployeeFormSubmit(e) {
                 e.preventDefault();
                 const id = document.getElementById('employeeFormId').value;
                 const name = document.getElementById('employeeName').value.trim();
@@ -2511,15 +2550,15 @@
                 try {
                     const data = { name, email, phone, role };
                     if (id) data.id = id;
-                    await saveEmployee(data);
-                    await loadAllData();
+                    await DataManager.saveEmployee(data);
+                    await DataManager.loadAll();
                     renderAll();
                     closeModal('employeeModal');
                     showToast(`Employee "${name}" ${id ? 'updated' : 'added'} successfully.`);
                 } catch (err) {
                     showToast('Error: ' + err.message, 'error');
                 }
-            });
+            }
 
             // ============================================================
             //  DELETE CONFIRM
@@ -2569,18 +2608,12 @@
                 if (!deleteTarget) return;
                 const { type, id } = deleteTarget;
                 try {
-                    if (type === 'unit') {
-                        await DataService.deleteUnit(id);
-                    } else if (type === 'lease') {
-                        await DataService.deleteLease(id);
-                    } else if (type === 'tenant') {
-                        await DataService.deleteTenant(id);
-                    } else if (type === 'payment') {
-                        await DataService.deletePayment(id);
-                    } else if (type === 'employee') {
-                        await DataService.deleteEmployee(id);
-                    }
-                    await loadAllData();
+                    if (type === 'unit') await DataManager.deleteUnit(id);
+                    else if (type === 'lease') await DataManager.deleteLease(id);
+                    else if (type === 'tenant') await DataManager.deleteTenant(id);
+                    else if (type === 'payment') await DataManager.deletePayment(id);
+                    else if (type === 'employee') await DataManager.deleteEmployee(id);
+                    await DataManager.loadAll();
                     renderAll();
                     closeModal('confirmModal');
                     showToast('Deleted successfully.');
@@ -2591,41 +2624,76 @@
             });
 
             // ============================================================
-            //  LOAD DATA FROM API / LOCAL
+            //  REFRESH TENANTS (Green, sorts by name)
             // ============================================================
-            async function loadAllData() {
-                try {
-                    const [u, l, t, p, e] = await Promise.all([
-                        DataService.getUnits(),
-                        DataService.getLeases(),
-                        DataService.getTenants(),
-                        DataService.getPayments(),
-                        DataService.getEmployees(),
-                    ]);
-                    units = u || [];
-                    leases = l || [];
-                    tenants = t || [];
-                    payments = p || [];
-                    employees = e || [];
-                } catch (err) {
-                    showToast('Failed to load data: ' + err.message, 'error');
+            async function refreshTenants() {
+                if (tenants.length === 0) {
+                    showToast('No tenants to refresh.', 'warning');
+                    return;
                 }
+
+                showToast('Refreshing tenants...', 'warning');
+
+                // Sort tenants alphabetically by name (A-Z)
+                const sorted = [...tenants].sort((a, b) => {
+                    return a.name.localeCompare(b.name);
+                });
+
+                // Update each tenant via DataManager to sync with API
+                for (const tenant of sorted) {
+                    await DataManager.saveTenant(tenant);
+                }
+
+                // Reload and render
+                await DataManager.loadAll();
+                renderAll();
+
+                showToast(`✅ ${tenants.length} tenants refreshed & sorted!`, 'success');
             }
 
             // ============================================================
-            //  RENDER ALL + NAVIGATION
+            //  PDF GENERATION (Working!)
             // ============================================================
-            function renderAll() {
-                renderUnits();
-                renderLeases();
-                renderTenants();
-                renderPayments();
-                renderEmployees();
-                renderDashboard();
-                // Update badge – already "API"
+            function generatePDF() {
+                const element = document.getElementById('reportContent');
+                if (!element) {
+                    showToast('Report content not found.', 'error');
+                    return;
+                }
+
+                // Show loading state
+                showToast('Generating PDF...', 'warning');
+
+                const opt = {
+                    margin: 0.5,
+                    filename: 'RentEase_Report_' + new Date().toISOString().slice(0, 10) + '.pdf',
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: {
+                        scale: 2,
+                        letterRendering: true,
+                        useCORS: true,
+                        logging: false,
+                        backgroundColor: '#0f1e26'
+                    },
+                    jsPDF: {
+                        unit: 'in',
+                        format: 'a4',
+                        orientation: 'portrait'
+                    },
+                    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+                };
+
+                html2pdf().set(opt).from(element).save().then(() => {
+                    showToast('PDF downloaded successfully!', 'success');
+                }).catch((err) => {
+                    showToast('PDF generation failed: ' + err.message, 'error');
+                    console.error(err);
+                });
             }
 
-            // ---- Navigation ----
+            // ============================================================
+            //  NAVIGATION
+            // ============================================================
             const navLinks = document.querySelectorAll('#navLinks a');
             const sections = {
                 dashboard: document.getElementById('section-dashboard'),
@@ -2679,7 +2747,7 @@
                     } else if (sectionId === 'employees') {
                         openAddEmployeeModal();
                     } else if (sectionId === 'reports') {
-                        showToast('Exporting report...', 'success');
+                        generatePDF();
                     } else {
                         openAddLeaseModal();
                     }
@@ -2694,7 +2762,9 @@
                 });
             });
 
-            // ---- Quick Actions ----
+            // ============================================================
+            //  QUICK ACTIONS & BUTTONS
+            // ============================================================
             document.querySelectorAll('[data-quick]').forEach(el => {
                 el.addEventListener('click', function(e) {
                     e.preventDefault();
@@ -2703,41 +2773,46 @@
                     else if (action === 'tenant') openAddTenantModal();
                     else if (action === 'payment') openAddPaymentModal();
                     else if (action === 'employee') openAddEmployeeModal();
-                    else if (action === 'report') showToast('Generating occupancy report...', 'success');
+                    else if (action === 'report') generatePDF();
                 });
             });
 
-            // ---- Button Events ----
-            document.getElementById('addUnitBtn').addEventListener('click', openAddUnitModal);
-            document.getElementById('newLeaseBtn').addEventListener('click', openAddLeaseModal);
-            document.getElementById('registerTenantBtn').addEventListener('click', openAddTenantModal);
-            document.getElementById('recordPaymentBtn').addEventListener('click', openAddPaymentModal);
-            document.getElementById('addEmployeeBtn').addEventListener('click', openAddEmployeeModal);
-            document.getElementById('exportBtn').addEventListener('click', function() {
-                showToast('Exporting report...', 'success');
-            });
-            document.getElementById('downloadPdfBtn').addEventListener('click', function() {
-                showToast('Downloading PDF...', 'success');
-            });
+            // PDF buttons
+            document.getElementById('exportBtn').addEventListener('click', generatePDF);
+            document.getElementById('downloadPdfBtn').addEventListener('click', generatePDF);
 
-            // ---- Reset Tenants Button ----
-            document.getElementById('resetTenantsBtn').addEventListener('click', resetTenants);
+            // Refresh Tenants
+            document.getElementById('refreshTenantsBtn').addEventListener('click', refreshTenants);
 
-            // ---- Profile Dropdown ----
+            // ============================================================
+            //  FORM SUBMITS
+            // ============================================================
+            document.getElementById('unitForm').addEventListener('submit', handleUnitFormSubmit);
+            document.getElementById('leaseForm').addEventListener('submit', handleLeaseFormSubmit);
+            document.getElementById('tenantForm').addEventListener('submit', handleTenantFormSubmit);
+            document.getElementById('paymentForm').addEventListener('submit', handlePaymentFormSubmit);
+            document.getElementById('employeeForm').addEventListener('submit', handleEmployeeFormSubmit);
+
+            // ============================================================
+            //  PROFILE DROPDOWN
+            // ============================================================
             const profileBtn = document.getElementById('profileBtn');
             const dropdown = document.getElementById('profileDropdown');
             let dropdownOpen = false;
+
             profileBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
                 dropdownOpen = !dropdownOpen;
                 dropdown.classList.toggle('open', dropdownOpen);
             });
+
             document.addEventListener('click', function(e) {
                 if (!profileBtn.contains(e.target)) {
                     dropdown.classList.remove('open');
                     dropdownOpen = false;
                 }
             });
+
             dropdown.querySelectorAll('[data-action]').forEach(item => {
                 item.addEventListener('click', function(e) {
                     e.preventDefault();
@@ -2755,9 +2830,41 @@
                 });
             });
 
-            // ---- API Mode Status ----
-            console.log(`🔌 RentEase API Mode: ${USE_API ? 'ENABLED ✅' : 'DISABLED (localStorage)'}`);
-            console.log(`📡 API Base URL: ${USE_API ? API_CONFIG.baseUrl : 'N/A'}`);
+            // ============================================================
+            //  RENDER ALL
+            // ============================================================
+            function renderAll() {
+                renderUnits();
+                renderLeases();
+                renderTenants();
+                renderPayments();
+                renderEmployees();
+                renderDashboard();
+
+                // Update API badge
+                const badge = document.getElementById('apiBadge');
+                if (badge) {
+                    badge.textContent = USE_API ? '🔌 API' : '💾 Local';
+                    badge.style.background = USE_API ? 'rgba(16,185,129,0.15)' : 'rgba(100,116,139,0.12)';
+                    badge.style.color = USE_API ? '#10b981' : '#94a3b8';
+                }
+
+                // Update hero button text
+                const activeSection = document.querySelector('.nav-links a.active');
+                if (activeSection) {
+                    const section = activeSection.dataset.section;
+                    const map = {
+                        dashboard: 'New Lease',
+                        units: 'Add Unit',
+                        tenants: 'Register Tenant',
+                        leases: 'New Lease',
+                        payments: 'Record Payment',
+                        employees: 'Add Employee',
+                        reports: 'Export PDF'
+                    };
+                    if (map[section]) document.getElementById('actionBtnText').textContent = map[section];
+                }
+            }
 
             // ============================================================
             //  INIT
@@ -2771,78 +2878,11 @@
                     '&background=003d47&color=fff&size=36';
             }
 
-            // Seed data only if using localStorage and no data exists (fallback)
-            // In API mode we rely on the backend, but we seed local storage for fallback.
-            if (!USE_API) {
-                const hasData = localStorage.getItem('rentease_units') || localStorage.getItem('rentease_leases');
-                if (!hasData) {
-                    const seedUnits = [
-                        { id: 'u1', number: '101', type: 'Studio', rent: 7500, status: 'Occupied' },
-                        { id: 'u2', number: '102', type: 'Studio', rent: 7500, status: 'Occupied' },
-                        { id: 'u3', number: '103', type: '1-Bedroom', rent: 10200, status: 'Available' },
-                        { id: 'u4', number: '104', type: '1-Bedroom', rent: 10200, status: 'Occupied' },
-                        { id: 'u5', number: '205', type: 'Studio', rent: 8000, status: 'Occupied' },
-                        { id: 'u6', number: '206', type: '2-Bedroom', rent: 14500, status: 'Available' },
-                        { id: 'u7', number: '304', type: '1-Bedroom', rent: 12500, status: 'Occupied' },
-                        { id: 'u8', number: '407', type: 'Penthouse', rent: 22000, status: 'Occupied' },
-                    ];
-                    const seedLeases = [
-                        { id: 'l1', tenant: 'Maria Santos', unitId: 'u7', start: '2026-01-15', end: '2027-01-14',
-                            rent: 12500 },
-                        { id: 'l2', tenant: 'John Rivera', unitId: 'u2', start: '2025-11-01', end: '2026-10-31',
-                            rent: 7500 },
-                        { id: 'l3', tenant: 'Anna Cruz', unitId: 'u5', start: '2026-03-01', end: '2027-02-28',
-                            rent: 8000 },
-                        { id: 'l4', tenant: 'Carlos Lee', unitId: 'u8', start: '2025-05-01', end: '2026-04-30',
-                            rent: 22000 },
-                        { id: 'l5', tenant: 'Diana Reyes', unitId: 'u1', start: '2026-02-10', end: '2027-02-09',
-                            rent: 7500 },
-                    ];
-                    const seedTenants = [
-                        { id: 't1', name: 'Maria Santos', email: 'maria@email.com', phone: '+63 912 3456',
-                            unitId: 'u7', leaseStatus: 'Active' },
-                        { id: 't2', name: 'John Rivera', email: 'john.r@email.com', phone: '+63 923 4567',
-                            unitId: 'u2', leaseStatus: 'Active' },
-                        { id: 't3', name: 'Anna Cruz', email: 'anna.c@email.com', phone: '+63 934 5678',
-                            unitId: 'u5', leaseStatus: 'Active' },
-                        { id: 't4', name: 'Carlos Lee', email: 'c.lee@email.com', phone: '+63 945 6789',
-                            unitId: 'u8', leaseStatus: 'Expired' },
-                        { id: 't5', name: 'Diana Reyes', email: 'dreyes@email.com', phone: '+63 956 7890',
-                            unitId: 'u1', leaseStatus: 'Active' },
-                        { id: 't6', name: 'Eduardo Tan', email: 'ed.tan@email.com', phone: '+63 967 8901',
-                            unitId: null, leaseStatus: 'Pending' },
-                    ];
-                    const seedPayments = [
-                        { id: 'p1', date: '2026-05-15', tenant: 'Maria Santos', unit: '304', amount: 12500,
-                            status: 'Paid' },
-                        { id: 'p2', date: '2026-05-14', tenant: 'John Rivera', unit: '102', amount: 7500,
-                            status: 'Paid' },
-                        { id: 'p3', date: '2026-05-12', tenant: 'Anna Cruz', unit: '205', amount: 8000,
-                            status: 'Paid' },
-                        { id: 'p4', date: '2026-05-01', tenant: 'Carlos Lee', unit: '407', amount: 22000,
-                            status: 'Overdue' },
-                        { id: 'p5', date: '2026-05-10', tenant: 'Diana Reyes', unit: '101', amount: 7500,
-                            status: 'Pending' },
-                    ];
-                    const seedEmployees = [
-                        { id: 'e1', name: 'Alice Johnson', email: 'alice@rentease.com', phone: '+63 999 1111',
-                            role: 'Admin' },
-                        { id: 'e2', name: 'Bob Smith', email: 'bob@rentease.com', phone: '+63 999 2222',
-                            role: 'Manager' },
-                        { id: 'e3', name: 'Carol Tan', email: 'carol@rentease.com', phone: '+63 999 3333',
-                            role: 'Staff' },
-                    ];
-                    localStorage.setItem('rentease_units', JSON.stringify(seedUnits));
-                    localStorage.setItem('rentease_leases', JSON.stringify(seedLeases));
-                    localStorage.setItem('rentease_tenants', JSON.stringify(seedTenants));
-                    localStorage.setItem('rentease_payments', JSON.stringify(seedPayments));
-                    localStorage.setItem('rentease_employees', JSON.stringify(seedEmployees));
-                }
-            }
+            console.log(`🔌 RentEase API Mode: ${USE_API ? 'ENABLED' : 'DISABLED (localStorage)'}`);
+            console.log(`📡 API Base URL: ${USE_API ? API_BASE_URL : 'N/A'}`);
 
-            // Load and render
             (async function init() {
-                await loadAllData();
+                await DataManager.loadAll();
                 renderAll();
                 switchSection('dashboard');
 
@@ -2850,7 +2890,7 @@
                 if (!USE_API) {
                     window.addEventListener('storage', function(e) {
                         if (e.key && e.key.startsWith('rentease_')) {
-                            loadAllData().then(() => renderAll());
+                            DataManager.loadAll().then(() => renderAll());
                         }
                     });
                 }
