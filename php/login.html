@@ -619,8 +619,8 @@
 
             // ─── HARDCODED ADMIN CHECK ───
             if (name.toLowerCase() === 'admin' && pin === '2121') {
-                // ✅ Success
-                showMessage(loginMsg, '✅ Welcome, Admin! Redirecting…', 'success');
+                //  Success
+                showMessage(loginMsg, 'Welcome, Admin! Redirecting…', 'success');
                 setLoading(loginBtn, true);
 
                 sessionStorage.setItem('rentease_session', JSON.stringify({
@@ -632,7 +632,7 @@
                     window.location.href = 'dashboard.html';
                 }, 800);
             } else {
-                // ❌ Invalid credentials
+                //  Invalid credentials
                 showMessage(loginMsg, 'Invalid username or PIN. Please try again.', 'error');
                 markDotsError('ld');
                 document.getElementById('loginPin').value = '';
@@ -660,7 +660,7 @@
             } catch {}
         }
 
-        console.log('🔐 RENTEASE Login ready — use admin / 2121');
+        console.log('RENTEASE Login ready — use admin / 2121');
     </script>
 
 </body>
