@@ -88,6 +88,30 @@
             color: #fff;
         }
 
+        /* API Badge - Cloud only */
+        .api-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 2px 10px;
+            border-radius: 40px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+            background: rgba(16, 185, 129, 0.12);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.15);
+        }
+        .api-badge i {
+            font-size: 0.7rem;
+        }
+        .api-badge.off {
+            background: rgba(100, 116, 139, 0.08);
+            color: #64748b;
+            border-color: rgba(255, 255, 255, 0.05);
+        }
+
         .nav-links {
             display: flex;
             align-items: center;
@@ -271,7 +295,6 @@
             border-color: rgba(255, 255, 255, 0.15);
         }
 
-        /* Refresh Tenants Button - Green */
         .btn-refresh {
             background: var(--refresh-green-bg);
             border: 1px solid var(--refresh-green-border);
@@ -588,18 +611,6 @@
             background: rgba(244, 63, 94, 0.15);
             color: #f43f5e;
         }
-        .badge.admin {
-            background: rgba(237, 37, 78, 0.15);
-            color: #f43f5e;
-        }
-        .badge.manager {
-            background: rgba(59, 130, 246, 0.15);
-            color: #60a5fa;
-        }
-        .badge.staff {
-            background: rgba(16, 185, 129, 0.15);
-            color: #10b981;
-        }
 
         .section-header {
             display: flex;
@@ -865,44 +876,6 @@
             font-size: 0.95rem;
         }
 
-        /* Employee widget on dashboard */
-        .employee-widget {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        .employee-widget .emp-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 6px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-            font-size: 0.9rem;
-        }
-        .employee-widget .emp-item:last-child {
-            border-bottom: none;
-        }
-        .employee-widget .emp-name {
-            color: var(--text-primary);
-        }
-        .employee-widget .emp-role {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-        }
-        .employee-widget .view-all {
-            margin-top: 8px;
-            text-align: right;
-        }
-        .employee-widget .view-all a {
-            color: var(--secondary);
-            text-decoration: none;
-            font-size: 0.85rem;
-            cursor: pointer;
-        }
-        .employee-widget .view-all a:hover {
-            text-decoration: underline;
-        }
-
         /* ---------- Responsive Fixes ---------- */
         @media (max-width: 768px) {
             .navbar {
@@ -1013,7 +986,6 @@
                 <a data-section="tenants"><i class="fas fa-users"></i> Tenants</a>
                 <a data-section="leases"><i class="fas fa-file-signature"></i> Leases</a>
                 <a data-section="payments"><i class="fas fa-coins"></i> Payments</a>
-                <a data-section="employees"><i class="fas fa-user-tie"></i> Employees</a>
                 <a data-section="reports"><i class="fas fa-chart-pie"></i> Reports</a>
             </div>
             <div class="user-profile" id="profileBtn">
@@ -1021,7 +993,8 @@
                 <span id="profileUsername">Admin</span>
                 <i class="fas fa-chevron-down"></i>
                 <div class="profile-dropdown" id="profileDropdown">
-                    <a data-action="employees"><i class="fas fa-user-tie"></i> Employees</a>
+                    <a data-action="profile"><i class="fas fa-user-cog"></i> Profile</a>
+                    
                     <div class="divider"></div>
                     <a data-action="logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
                 </div>
@@ -1062,17 +1035,9 @@
                         <a href="#" class="btn-glass" data-quick="tenant"><i class="fas fa-user-plus"></i> Register New Tenant</a>
                         <a href="#" class="btn-glass" data-quick="unit"><i class="fas fa-plus-circle"></i> Add Apartment Unit</a>
                         <a href="#" class="btn-glass" data-quick="payment"><i class="fas fa-hand-holding-usd"></i> Record Payment</a>
-                        <a href="#" class="btn-glass" data-quick="employee"><i class="fas fa-user-tie"></i> Add Employee</a>
+                        <!-- Employee quick action removed -->
                         <a href="#" class="btn-glass" data-quick="report"><i class="fas fa-file-alt"></i> Generate Occupancy Report</a>
                     </div>
-                </div>
-            </div>
-
-            <!-- Employee Widget on Dashboard -->
-            <div class="glass-panel" style="margin-top:24px;">
-                <h3><i class="fas fa-user-tie"></i> Our Team</h3>
-                <div id="employeeWidget" class="employee-widget">
-                    <!-- populated by JS -->
                 </div>
             </div>
         </div>
@@ -1146,25 +1111,6 @@
                             <tr><th>Payment ID</th><th>Date</th><th>Tenant</th><th>Unit</th><th>Amount</th><th>Status</th><th style="text-align:center;">Actions</th></tr>
                         </thead>
                         <tbody id="paymentsTableBody">
-                            <!-- populated by JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- ===== EMPLOYEES ===== -->
-        <div id="section-employees" class="page-section">
-            <div class="section-header">
-                <h2><i class="fas fa-user-tie"></i> Employees <span class="sub" id="employeeCount">· 0 total</span></h2>
-            </div>
-            <div class="glass-panel" style="padding:16px 18px;">
-                <div class="table-responsive">
-                    <table class="sim-table">
-                        <thead>
-                            <tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th style="text-align:center;">Actions</th></tr>
-                        </thead>
-                        <tbody id="employeesTableBody">
                             <!-- populated by JS -->
                         </tbody>
                     </table>
@@ -1379,43 +1325,6 @@
         </div>
     </div>
 
-    <!-- Modal: Add / Edit Employee -->
-    <div class="modal-overlay" id="employeeModal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2><i class="fas fa-user-tie"></i> <span id="employeeModalTitle">Add Employee</span></h2>
-                <button class="modal-close" data-close="employeeModal">&times;</button>
-            </div>
-            <form id="employeeForm" autocomplete="off">
-                <input type="hidden" id="employeeFormId" value="" />
-                <div class="form-group">
-                    <label for="employeeName">Full Name</label>
-                    <input type="text" id="employeeName" placeholder="Full name" required />
-                </div>
-                <div class="form-group">
-                    <label for="employeeEmail">Email Address</label>
-                    <input type="email" id="employeeEmail" placeholder="employee@email.com" />
-                </div>
-                <div class="form-group">
-                    <label for="employeePhone">Phone Number</label>
-                    <input type="text" id="employeePhone" placeholder="+63 912 345 6789" />
-                </div>
-                <div class="form-group">
-                    <label for="employeeRole">Role</label>
-                    <select id="employeeRole">
-                        <option value="Admin">Admin</option>
-                        <option value="Manager">Manager</option>
-                        <option value="Staff">Staff</option>
-                    </select>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn-cancel" data-close="employeeModal">Cancel</button>
-                    <button type="submit" class="btn-submit" id="employeeSubmitBtn"><i class="fas fa-save"></i> Save Employee</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <!-- Modal: Confirm Delete -->
     <div class="modal-overlay" id="confirmModal">
         <div class="modal" style="max-width:400px;">
@@ -1445,7 +1354,7 @@
             // ============================================================
             //  🚀  REST API CONFIGURATION
             // ============================================================
-            const USE_API = false; // ← Set to true to enable REST API mode
+            const USE_API = true; // ← Set to true to enable REST API mode
             const API_BASE_URL = 'https://your-api-domain.com/api'; // ← Update with your API base URL
 
             // --- API Service ---
@@ -1486,7 +1395,7 @@
                 createPayment: (data) => ApiService._fetch('/payments', { method: 'POST', body: JSON.stringify(data) }),
                 updatePayment: (id, data) => ApiService._fetch(`/payments/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
                 deletePayment: (id) => ApiService._fetch(`/payments/${id}`, { method: 'DELETE' }),
-                // Employees
+                // Employees (still used for data, but UI is on profile page)
                 getEmployees: () => ApiService._fetch('/employees'),
                 createEmployee: (data) => ApiService._fetch('/employees', { method: 'POST', body: JSON.stringify(data) }),
                 updateEmployee: (id, data) => ApiService._fetch(`/employees/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
@@ -1532,9 +1441,6 @@
                     'Pending': 'pending',
                     'Active': 'active-lease',
                     'Expired': 'expired',
-                    'Admin': 'admin',
-                    'Manager': 'manager',
-                    'Staff': 'staff'
                 };
                 const cls = map[status] || 'pending';
                 return `<span class="badge ${cls}">${status}</span>`;
@@ -1794,6 +1700,12 @@
                     saveToStorage();
                 },
 
+                // Employees are managed on the profile page
+                // These are kept for data sync but UI is separate
+                async getEmployees() {
+                    return employees;
+                },
+
                 async saveEmployee(data) {
                     if (data.id) {
                         if (USE_API) {
@@ -2051,75 +1963,6 @@
                 });
             }
 
-            function renderEmployees() {
-                const tbody = document.getElementById('employeesTableBody');
-                const count = document.getElementById('employeeCount');
-                if (!employees || employees.length === 0) {
-                    tbody.innerHTML =
-                        `<tr><td colspan="5"><div class="empty-state"><i class="fas fa-user-tie"></i><p>No employees added yet. Click "Add Employee" from Quick Actions to get started.</p></div></td></tr>`;
-                    count.textContent = '· 0 total';
-                    return;
-                }
-                count.textContent = `· ${employees.length} total`;
-                tbody.innerHTML = employees.map(e => `
-                    <tr>
-                        <td><strong>${e.name}</strong></td>
-                        <td>${e.email || '—'}</td>
-                        <td>${e.phone || '—'}</td>
-                        <td>${getStatusBadge(e.role)}</td>
-                        <td style="text-align:center;">
-                            <div class="action-group" style="justify-content:center;">
-                                <button class="btn-edit" data-edit-employee="${e.id}"><i class="fas fa-pen"></i></button>
-                                <button class="btn-danger" data-delete-employee="${e.id}"><i class="fas fa-trash"></i></button>
-                            </div>
-                        </td>
-                    </tr>
-                `).join('');
-
-                tbody.querySelectorAll('[data-edit-employee]').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        openEditEmployeeModal(this.dataset.editEmployee);
-                    });
-                });
-                tbody.querySelectorAll('[data-delete-employee]').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        confirmDelete('employee', this.dataset.deleteEmployee);
-                    });
-                });
-            }
-
-            function renderEmployeeWidget() {
-                const container = document.getElementById('employeeWidget');
-                if (!employees || employees.length === 0) {
-                    container.innerHTML =
-                        `<div class="empty-state" style="padding:10px 0;"><p style="font-size:0.85rem;">No employees yet. <a href="#" id="addEmployeeQuick" style="color:var(--secondary);">Add one now.</a></p></div>`;
-                    const link = container.querySelector('#addEmployeeQuick');
-                    if (link) {
-                        link.addEventListener('click', function(e) {
-                            e.preventDefault();
-                            openAddEmployeeModal();
-                        });
-                    }
-                    return;
-                }
-                const list = employees.slice(0, 5).map(e => `
-                    <div class="emp-item">
-                        <span class="emp-name">${e.name}</span>
-                        <span class="emp-role">${e.role}</span>
-                    </div>
-                `).join('');
-                const more = employees.length > 5 ?
-                    `<div class="view-all"><a data-nav="employees">View all (${employees.length}) →</a></div>` : '';
-                container.innerHTML = list + more;
-                const viewAll = container.querySelector('[data-nav="employees"]');
-                if (viewAll) {
-                    viewAll.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        switchSection('employees');
-                    });
-                }
-            }
-
             function renderDashboard() {
                 const totalUnits = units ? units.length : 0;
                 const occupied = units ? units.filter(u => u.status === 'Occupied').length : 0;
@@ -2245,8 +2088,6 @@
                         </tr>
                     `).join('');
                 }
-
-                renderEmployeeWidget();
             }
 
             // ============================================================
@@ -2372,7 +2213,6 @@
                     const data = { tenant, unitId, start, end, rent };
                     if (id) data.id = id;
 
-                    // Handle unit status change
                     if (id) {
                         const old = leases.find(l => l.id === id);
                         if (old && old.unitId !== unitId) {
@@ -2445,7 +2285,6 @@
                     const data = { name, email, phone, unitId, leaseStatus };
                     if (id) data.id = id;
 
-                    // If name changed, update leases
                     if (id) {
                         const old = tenants.find(t => t.id === id);
                         if (old && old.name !== name) {
@@ -2516,49 +2355,7 @@
             }
 
             // ---- Employees ----
-            function openAddEmployeeModal() {
-                document.getElementById('employeeModalTitle').textContent = 'Add Employee';
-                document.getElementById('employeeSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Save Employee';
-                document.getElementById('employeeFormId').value = '';
-                document.getElementById('employeeForm').reset();
-                openModal('employeeModal');
-            }
-
-            function openEditEmployeeModal(id) {
-                const emp = employees.find(e => e.id === id);
-                if (!emp) { showToast('Employee not found.', 'error'); return; }
-                document.getElementById('employeeModalTitle').textContent = `Edit ${emp.name}`;
-                document.getElementById('employeeSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Update Employee';
-                document.getElementById('employeeFormId').value = id;
-                document.getElementById('employeeName').value = emp.name;
-                document.getElementById('employeeEmail').value = emp.email || '';
-                document.getElementById('employeePhone').value = emp.phone || '';
-                document.getElementById('employeeRole').value = emp.role;
-                openModal('employeeModal');
-            }
-
-            async function handleEmployeeFormSubmit(e) {
-                e.preventDefault();
-                const id = document.getElementById('employeeFormId').value;
-                const name = document.getElementById('employeeName').value.trim();
-                const email = document.getElementById('employeeEmail').value.trim();
-                const phone = document.getElementById('employeePhone').value.trim();
-                const role = document.getElementById('employeeRole').value;
-
-                if (!name) { showToast('Please enter a name.', 'error'); return; }
-
-                try {
-                    const data = { name, email, phone, role };
-                    if (id) data.id = id;
-                    await DataManager.saveEmployee(data);
-                    await DataManager.loadAll();
-                    renderAll();
-                    closeModal('employeeModal');
-                    showToast(`Employee "${name}" ${id ? 'updated' : 'added'} successfully.`);
-                } catch (err) {
-                    showToast('Error: ' + err.message, 'error');
-                }
-            }
+            // Employee functions are kept for data sync but UI is on profile page
 
             // ============================================================
             //  DELETE CONFIRM
@@ -2580,9 +2377,6 @@
                 } else if (type === 'payment') {
                     const item = payments.find(p => p.id === id);
                     name = item ? item.tenant : 'this payment';
-                } else if (type === 'employee') {
-                    const item = employees.find(e => e.id === id);
-                    name = item ? item.name : 'this employee';
                 }
                 document.getElementById('confirmMessage').textContent =
                     `Are you sure you want to delete "${name}"? This action cannot be undone.`;
@@ -2612,7 +2406,6 @@
                     else if (type === 'lease') await DataManager.deleteLease(id);
                     else if (type === 'tenant') await DataManager.deleteTenant(id);
                     else if (type === 'payment') await DataManager.deletePayment(id);
-                    else if (type === 'employee') await DataManager.deleteEmployee(id);
                     await DataManager.loadAll();
                     renderAll();
                     closeModal('confirmModal');
@@ -2634,17 +2427,14 @@
 
                 showToast('Refreshing tenants...', 'warning');
 
-                // Sort tenants alphabetically by name (A-Z)
                 const sorted = [...tenants].sort((a, b) => {
                     return a.name.localeCompare(b.name);
                 });
 
-                // Update each tenant via DataManager to sync with API
                 for (const tenant of sorted) {
                     await DataManager.saveTenant(tenant);
                 }
 
-                // Reload and render
                 await DataManager.loadAll();
                 renderAll();
 
@@ -2661,7 +2451,6 @@
                     return;
                 }
 
-                // Show loading state
                 showToast('Generating PDF...', 'warning');
 
                 const opt = {
@@ -2701,7 +2490,6 @@
                 tenants: document.getElementById('section-tenants'),
                 leases: document.getElementById('section-leases'),
                 payments: document.getElementById('section-payments'),
-                employees: document.getElementById('section-employees'),
                 reports: document.getElementById('section-reports')
             };
 
@@ -2718,8 +2506,6 @@
                 leases: { title: 'Lease Contracts', sub: 'View and manage all lease agreements.', action: 'New Lease' },
                 payments: { title: 'Payment Records', sub: 'View and manage all rental payments.',
                     action: 'Record Payment' },
-                employees: { title: 'Employee Management', sub: 'View and manage your team members.',
-                    action: 'Add Employee' },
                 reports: { title: 'Reports & Analytics', sub: 'Overview of property performance.', action: 'Export PDF' }
             };
 
@@ -2744,8 +2530,6 @@
                         openAddTenantModal();
                     } else if (sectionId === 'payments') {
                         openAddPaymentModal();
-                    } else if (sectionId === 'employees') {
-                        openAddEmployeeModal();
                     } else if (sectionId === 'reports') {
                         generatePDF();
                     } else {
@@ -2772,7 +2556,7 @@
                     if (action === 'unit') openAddUnitModal();
                     else if (action === 'tenant') openAddTenantModal();
                     else if (action === 'payment') openAddPaymentModal();
-                    else if (action === 'employee') openAddEmployeeModal();
+                    // Employee quick action removed
                     else if (action === 'report') generatePDF();
                 });
             });
@@ -2791,7 +2575,6 @@
             document.getElementById('leaseForm').addEventListener('submit', handleLeaseFormSubmit);
             document.getElementById('tenantForm').addEventListener('submit', handleTenantFormSubmit);
             document.getElementById('paymentForm').addEventListener('submit', handlePaymentFormSubmit);
-            document.getElementById('employeeForm').addEventListener('submit', handleEmployeeFormSubmit);
 
             // ============================================================
             //  PROFILE DROPDOWN
@@ -2822,10 +2605,8 @@
                             sessionStorage.removeItem('rentease_session');
                             window.location.href = 'login.html';
                         }
-                    } else if (action === 'employees') {
-                        switchSection('employees');
-                        dropdown.classList.remove('open');
-                        dropdownOpen = false;
+                    } else if (action === 'profile' || action === 'employees') {
+                        window.location.href = 'profile.html';
                     }
                 });
             });
@@ -2838,18 +2619,20 @@
                 renderLeases();
                 renderTenants();
                 renderPayments();
-                renderEmployees();
                 renderDashboard();
 
-                // Update API badge
+                // Update API badge - always show cloud icon, show "API" text when enabled
                 const badge = document.getElementById('apiBadge');
                 if (badge) {
-                    badge.textContent = USE_API ? '🔌 API' : '💾 Local';
-                    badge.style.background = USE_API ? 'rgba(16,185,129,0.15)' : 'rgba(100,116,139,0.12)';
-                    badge.style.color = USE_API ? '#10b981' : '#94a3b8';
+                    if (USE_API) {
+                        badge.innerHTML = '<i class="fas fa-cloud"></i> API';
+                        badge.className = 'api-badge';
+                    } else {
+                        badge.innerHTML = '<i class="fas fa-cloud"></i>';
+                        badge.className = 'api-badge off';
+                    }
                 }
 
-                // Update hero button text
                 const activeSection = document.querySelector('.nav-links a.active');
                 if (activeSection) {
                     const section = activeSection.dataset.section;
@@ -2859,7 +2642,6 @@
                         tenants: 'Register Tenant',
                         leases: 'New Lease',
                         payments: 'Record Payment',
-                        employees: 'Add Employee',
                         reports: 'Export PDF'
                     };
                     if (map[section]) document.getElementById('actionBtnText').textContent = map[section];
@@ -2886,7 +2668,6 @@
                 renderAll();
                 switchSection('dashboard');
 
-                // Listen for storage changes (only relevant in localStorage mode)
                 if (!USE_API) {
                     window.addEventListener('storage', function(e) {
                         if (e.key && e.key.startsWith('rentease_')) {
