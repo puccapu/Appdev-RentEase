@@ -1,0 +1,114 @@
+(function() {
+    'use strict';
+
+    const STORAGE_KEY = 'rentease_profile';
+    const defaultProfile = {
+        firstName: window.__loggedUser || 'Admin',
+        lastName: '',
+        email: '', phone: '', role: 'Admin'
+    };
+    let profile = {};
+
+    function fullName() {
+        const f = profile.firstName || '';
+        const l = profile.lastName  || '';
+        return (f + ' ' + l).trim() || 'Admin';
+    }
+
+    function load() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            profile = raw ? { ...defaultProfile, ...JSON.parse(raw) } : { ...defaultProfile };
+        } catch(e) { profile = { ...defaultProfile }; }
+    }
+
+    function save() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+    }
+
+    function renderView() {
+        const v = (val) => val && val.trim() ? val : null;
+        const name = fullName();
+
+        document.getElementById('displayName').textContent = name;
+        document.getElementById('displayRole').innerHTML =
+            `<i class="fas fa-shield-alt"></i> ${profile.role || 'Admin'}`;
+        document.getElementById('avatarImg').src =
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=003d47&color=fff&size=96&bold=true`;
+
+        const set = (id, val) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const s = v(val);
+            el.textContent = s || 'Not set';
+            el.classList.toggle('muted', !s);
+        };
+
+        set('vFirstName', profile.firstName);
+        set('vLastName',  profile.lastName);
+        set('vEmail',     profile.email);
+        set('vPhone',     profile.phone);
+
+
+    }
+
+    function populateForm() {
+        document.getElementById('eFirstName').value = profile.firstName || '';
+        document.getElementById('eLastName').value  = profile.lastName  || '';
+        document.getElementById('eEmail').value     = profile.email     || '';
+        document.getElementById('ePhone').value     = profile.phone     || '';
+    }
+
+    function enterEdit() {
+        populateForm();
+        document.getElementById('viewMode').classList.add('hidden');
+        document.getElementById('editForm').classList.add('active');
+    }
+
+    function exitEdit() {
+        document.getElementById('viewMode').classList.remove('hidden');
+        document.getElementById('editForm').classList.remove('active');
+    }
+
+    let toastTimer = null;
+    function showToast(msg, type = 'success') {
+        const el = document.getElementById('toast');
+        const icon = el.querySelector('i');
+        document.getElementById('toastMsg').textContent = msg;
+        el.className = 'toast' + (type === 'error' ? ' error' : '');
+        icon.className = type === 'error' ? 'fas fa-exclamation-circle' : 'fas fa-check-circle';
+        clearTimeout(toastTimer);
+        void el.offsetWidth;
+        el.classList.add('show');
+        toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+    }
+
+    document.getElementById('editToggleBtn').addEventListener('click', enterEdit);
+    document.getElementById('cancelEditBtn').addEventListener('click', exitEdit);
+
+    document.getElementById('profileForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        profile.firstName = document.getElementById('eFirstName').value.trim() || profile.firstName;
+        profile.lastName  = document.getElementById('eLastName').value.trim();
+        profile.email     = document.getElementById('eEmail').value.trim();
+        profile.phone     = document.getElementById('ePhone').value.trim();
+        save();
+        renderView();
+        exitEdit();
+        showToast('Profile updated successfully.');
+    });
+
+    document.getElementById('dashboardBtn').addEventListener('click', () => {
+        window.location.href = 'dashboard.html';
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+        if (confirm('Log out of RentEase?')) {
+            sessionStorage.removeItem('rentease_session');
+            window.location.href = 'index.html';
+        }
+    });
+
+    load();
+    renderView();
+})();
