@@ -85,6 +85,9 @@
             'Pending':    'pending',
             'Active':     'active-lease',
             'Expired':    'expired',
+            'Admin':      'admin',
+            'Manager':    'manager',
+            'Staff':      'staff',
         };
         const cls = map[status] || 'pending';
         return `<span class="badge ${cls}">${status}</span>`;
@@ -416,6 +419,50 @@
         tbody.querySelectorAll('[data-delete-payment]').forEach(btn => btn.addEventListener('click', function () { confirmDelete('payment', this.dataset.deletePayment); }));
     }
 
+    function renderEmployees() {
+        const tbody = document.getElementById('employeesTableBody');
+        const count = document.getElementById('employeeCount');
+    
+        if (!employees || employees.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5">
+                        <div class="empty-state">
+                            <i class="fas fa-user-tie"></i>
+                            <p>No employees yet. Click "Add Employee" to get started.</p>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            count.textContent = '· 0 employees';
+            return;
+        }
+    
+        count.textContent = `· ${employees.length} employee${employees.length !== 1 ? 's' : ''}`;
+    
+        tbody.innerHTML = employees.map(emp => `
+            <tr>
+                <td><strong>${emp.name}</strong></td>
+                <td>${emp.email || '—'}</td>
+                <td>${emp.phone || '—'}</td>
+                <td>${getStatusBadge(emp.role || 'Staff')}</td>
+                <td style="text-align: center;">
+                    <div class="action-group" style="justify-content: center;">
+                        <button class="btn-edit" data-edit-employee="${emp.id}"><i class="fas fa-pen"></i></button>
+                        <button class="btn-danger" data-delete-employee="${emp.id}"><i class="fas fa-trash"></i></button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    
+        tbody.querySelectorAll('[data-edit-employee]').forEach(btn => {
+            btn.addEventListener('click', function () { openEditEmployeeModal(this.dataset.editEmployee); });
+        });
+        tbody.querySelectorAll('[data-delete-employee]').forEach(btn => {
+            btn.addEventListener('click', function () { confirmDelete('employee', this.dataset.deleteEmployee); });
+        });
+    }
+
     function renderDashboard() {
         const totalUnits    = units?.length || 0;
         const occupied      = units?.filter(u => u.status === 'Occupied').length || 0;
@@ -697,6 +744,44 @@
     }
 
     // ============================================================
+    //  CRUD — Employees
+    // ============================================================
+    function openAddEmployeeModal() {
+        document.getElementById('employeeModalTitle').textContent = 'Add Employee';
+        document.getElementById('employeeSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Save Employee';
+        document.getElementById('employeeFormId').value = '';
+        document.getElementById('employeeForm').reset();
+        document.getElementById('employeeRole').value = 'Staff';
+        openModal('employeeModal');
+    }
+    function openEditEmployeeModal(id) {
+        const emp = employees.find(e => e.id === id);
+        if (!emp) { showToast('Employee not found.', 'error'); return; }
+        document.getElementById('employeeModalTitle').textContent = `Edit ${emp.name}`;
+        document.getElementById('employeeSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Update Employee';
+        document.getElementById('employeeFormId').value  = id;
+        document.getElementById('employeeName').value    = emp.name;
+        document.getElementById('employeeEmail').value   = emp.email  || '';
+        document.getElementById('employeePhone').value   = emp.phone  || '';
+        document.getElementById('employeeRole').value    = emp.role   || 'Staff';
+        openModal('employeeModal');
+    }
+    async function handleEmployeeFormSubmit(e) {
+        e.preventDefault();
+        const id    = document.getElementById('employeeFormId').value;
+        const name  = document.getElementById('employeeName').value.trim();
+        const email = document.getElementById('employeeEmail').value.trim();
+        const phone = document.getElementById('employeePhone').value.trim();
+        const role  = document.getElementById('employeeRole').value;
+        if (!name) { showToast('Please enter a name.', 'error'); return; }
+        try {
+            const data = { name, email, phone, role }; if (id) data.id = id;
+            await DataManager.saveEmployee(data); await DataManager.loadAll(); renderAll();
+            closeModal('employeeModal'); showToast(`Employee "${name}" ${id ? 'updated' : 'added'} successfully.`);
+        } catch (err) { showToast('Error: ' + err.message, 'error'); }
+    }
+
+    // ============================================================
     //  DELETE CONFIRM
     // ============================================================
     let deleteTarget = null;
@@ -704,10 +789,11 @@
     function confirmDelete(type, id) {
         deleteTarget = { type, id };
         let name = '';
-        if      (type === 'unit')    { const i = units.find(u => u.id === id);    name = i ? i.number  : 'this unit'; }
-        else if (type === 'lease')   { const i = leases.find(l => l.id === id);   name = i ? i.tenant  : 'this lease'; }
-        else if (type === 'tenant')  { const i = tenants.find(t => t.id === id);  name = i ? i.name    : 'this tenant'; }
-        else if (type === 'payment') { const i = payments.find(p => p.id === id); name = i ? i.tenant  : 'this payment'; }
+        if      (type === 'unit')     { const i = units.find(u => u.id === id);     name = i ? i.number  : 'this unit'; }
+        else if (type === 'lease')    { const i = leases.find(l => l.id === id);    name = i ? i.tenant  : 'this lease'; }
+        else if (type === 'tenant')   { const i = tenants.find(t => t.id === id);   name = i ? i.name    : 'this tenant'; }
+        else if (type === 'payment')  { const i = payments.find(p => p.id === id);  name = i ? i.tenant  : 'this payment'; }
+        else if (type === 'employee') { const i = employees.find(e => e.id === id); name = i ? i.name    : 'this employee'; }
 
         let msg = `Are you sure you want to delete "${name}"? This action cannot be undone.`;
         let hasDependency = false;
@@ -725,10 +811,11 @@
         if (!deleteTarget) return;
         const { type, id } = deleteTarget;
         try {
-            if      (type === 'unit')    await DataManager.deleteUnit(id);
-            else if (type === 'lease')   await DataManager.deleteLease(id);
-            else if (type === 'tenant')  await DataManager.deleteTenant(id);
-            else if (type === 'payment') await DataManager.deletePayment(id);
+            if      (type === 'unit')     await DataManager.deleteUnit(id);
+            else if (type === 'lease')    await DataManager.deleteLease(id);
+            else if (type === 'tenant')   await DataManager.deleteTenant(id);
+            else if (type === 'payment')  await DataManager.deletePayment(id);
+            else if (type === 'employee') await DataManager.deleteEmployee(id);
             await DataManager.loadAll(); renderAll();
             closeModal('confirmModal'); showToast('Deleted successfully.');
         } catch (err) { showToast('Error: ' + err.message, 'error'); }
@@ -777,6 +864,7 @@
         tenants:   document.getElementById('section-tenants'),
         leases:    document.getElementById('section-leases'),
         payments:  document.getElementById('section-payments'),
+        employees: document.getElementById('section-employees'),
         reports:   document.getElementById('section-reports'),
     };
     const meta = {
@@ -785,6 +873,7 @@
         tenants:   { title: 'Tenant Management',  sub: 'View and manage all registered tenants.',    action: 'Register Tenant' },
         leases:    { title: 'Lease Contracts',     sub: 'View and manage all lease agreements.',      action: 'New Lease'       },
         payments:  { title: 'Payment Records',     sub: 'View and manage all rental payments.',       action: 'Record Payment'  },
+        employees: { title: 'Employee Management', sub: 'Manage your team members and their roles.', action: 'Add Employee'    },
         reports:   { title: 'Reports & Analytics', sub: 'Overview of property performance.',          action: 'Export PDF'      },
     };
 
@@ -800,6 +889,7 @@
             else if (sectionId === 'leases' || sectionId === 'dashboard') openAddLeaseModal();
             else if (sectionId === 'tenants')                        openAddTenantModal();
             else if (sectionId === 'payments')                       openAddPaymentModal();
+            else if (sectionId === 'employees')                      openAddEmployeeModal();
             else if (sectionId === 'reports')                        generatePDF();
             else openAddLeaseModal();
         };
@@ -815,10 +905,11 @@
     document.querySelectorAll('[data-quick]').forEach(el => el.addEventListener('click', function (e) {
         e.preventDefault();
         const a = this.dataset.quick;
-        if      (a === 'unit')    openAddUnitModal();
-        else if (a === 'tenant')  openAddTenantModal();
-        else if (a === 'payment') openAddPaymentModal();
-        else if (a === 'report')  generatePDF();
+        if      (a === 'unit')     openAddUnitModal();
+        else if (a === 'tenant')   openAddTenantModal();
+        else if (a === 'payment')  openAddPaymentModal();
+        else if (a === 'employee') openAddEmployeeModal();
+        else if (a === 'report')   generatePDF();
     }));
 
     document.getElementById('exportBtn').addEventListener('click', generatePDF);
@@ -832,6 +923,7 @@
     document.getElementById('leaseForm').addEventListener('submit', handleLeaseFormSubmit);
     document.getElementById('tenantForm').addEventListener('submit', handleTenantFormSubmit);
     document.getElementById('paymentForm').addEventListener('submit', handlePaymentFormSubmit);
+    document.getElementById('employeeForm').addEventListener('submit', handleEmployeeFormSubmit);
 
     // ============================================================
     //  PROFILE DROPDOWN
@@ -860,7 +952,7 @@
     //  RENDER ALL
     // ============================================================
     function renderAll() {
-        renderUnits(); renderLeases(); renderTenants(); renderPayments(); renderDashboard();
+        renderUnits(); renderLeases(); renderTenants(); renderPayments(); renderEmployees(); renderDashboard(); 
         const badge = document.getElementById('apiBadge');
         if (badge) {
             badge.innerHTML = USE_API ? '<i class="fas fa-cloud"></i> API' : '<i class="fas fa-cloud"></i>';
@@ -868,7 +960,7 @@
         }
         const active = document.querySelector('.nav-links a.active');
         if (active) {
-            const map = { dashboard: 'New Lease', units: 'Add Unit', tenants: 'Register Tenant', leases: 'New Lease', payments: 'Record Payment', reports: 'Export PDF' };
+            const map = { dashboard: 'New Lease', units: 'Add Unit', tenants: 'Register Tenant', leases: 'New Lease', payments: 'Record Payment', employees: 'Add Employee', reports: 'Export PDF' };
             const t = map[active.dataset.section];
             if (t) document.getElementById('actionBtnText').textContent = t;
         }

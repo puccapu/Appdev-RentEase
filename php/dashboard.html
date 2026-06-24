@@ -42,6 +42,7 @@
                 <a data-section="tenants"><i class="fas fa-users"></i> Tenants</a>
                 <a data-section="leases"><i class="fas fa-file-signature"></i> Leases</a>
                 <a data-section="payments"><i class="fas fa-coins"></i> Payments</a>
+                <a data-section="employees"><i class="fas fa-user-tie"></i> Employees</a>
                 <a data-section="reports"><i class="fas fa-chart-pie"></i> Reports</a>
             </div>
             <div class="user-profile" id="profileBtn">
@@ -82,10 +83,25 @@
                 <div class="glass-panel">
                     <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
                     <div class="quick-actions">
-                        <a href="#" class="btn-glass" data-quick="tenant"><i class="fas fa-user-plus"></i> Register New Tenant</a>
-                        <a href="#" class="btn-glass" data-quick="unit"><i class="fas fa-plus-circle"></i> Add Apartment Unit</a>
-                        <a href="#" class="btn-glass" data-quick="payment"><i class="fas fa-hand-holding-usd"></i> Record Payment</a>
-                        <a href="#" class="btn-glass" data-quick="report"><i class="fas fa-file-alt"></i> Generate Occupancy Report</a>
+                        <a href="#" class="btn-glass" data-quick="tenant">
+                            <i class="fas fa-user-plus"></i> Register New Tenant
+                        </a>
+                    
+                        <a href="#" class="btn-glass" data-quick="unit">
+                            <i class="fas fa-plus-circle"></i> Add Apartment Unit
+                        </a>
+                    
+                        <a href="#" class="btn-glass" data-quick="employee">
+                            <i class="fas fa-user-tie"></i> Add Employee
+                        </a>
+                    
+                        <a href="#" class="btn-glass" data-quick="payment">
+                            <i class="fas fa-hand-holding-usd"></i> Record Payment
+                        </a>
+                    
+                        <a href="#" class="btn-glass" data-quick="report">
+                            <i class="fas fa-file-alt"></i> Generate Occupancy Report
+                        </a>
                     </div>
                 </div>
             </div>
@@ -154,6 +170,34 @@
                             <tr><th>Payment ID</th><th>Date</th><th>Tenant</th><th>Unit</th><th>Amount</th><th>Status</th><th style="text-align:center;">Actions</th></tr>
                         </thead>
                         <tbody id="paymentsTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- EMPLOYEES -->
+        <div id="section-employees" class="page-section">
+            <div class="section-header">
+                <h2>
+                    <i class="fas fa-user-tie"></i>
+                    Employee Management
+                    <span class="sub" id="employeeCount">· 0 employees</span>
+                </h2>
+            </div>
+
+            <div class="glass-panel" style="padding:16px 18px;">
+                <div class="table-responsive">
+                    <table class="sim-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Role</th>
+                                <th style="text-align:center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="employeesTableBody"></tbody>
                     </table>
                 </div>
             </div>
@@ -338,6 +382,43 @@
                 <div class="form-actions">
                     <button type="button" class="btn-cancel" data-close="paymentModal">Cancel</button>
                     <button type="submit" class="btn-submit" id="paymentSubmitBtn"><i class="fas fa-save"></i> Save Payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add / Edit Employee -->
+    <div class="modal-overlay" id="employeeModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-user-tie"></i> <span id="employeeModalTitle">Add Employee</span></h2>
+                <button class="modal-close" data-close="employeeModal">&times;</button>
+            </div>
+            <form id="employeeForm" autocomplete="off">
+                <input type="hidden" id="employeeFormId" value="" />
+                <div class="form-group">
+                    <label for="employeeName">Full Name</label>
+                    <input type="text" id="employeeName" placeholder="Full name" required />
+                </div>
+                <div class="form-group">
+                    <label for="employeeEmail">Email Address</label>
+                    <input type="email" id="employeeEmail" placeholder="employee@rentease.com" />
+                </div>
+                <div class="form-group">
+                    <label for="employeePhone">Phone Number</label>
+                    <input type="text" id="employeePhone" placeholder="+63 912 345 6789" />
+                </div>
+                <div class="form-group">
+                    <label for="employeeRole">Role</label>
+                    <select id="employeeRole">
+                        <option value="Admin">Admin</option>
+                        <option value="Manager">Manager</option>
+                        <option value="Staff">Staff</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" data-close="employeeModal">Cancel</button>
+                    <button type="submit" class="btn-submit" id="employeeSubmitBtn"><i class="fas fa-save"></i> Save Employee</button>
                 </div>
             </form>
         </div>
