@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RentEase · Dark Glass</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <link rel="stylesheet" href="/css/dashboard.css"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+
+    <!-- ========== SESSION CHECK ========== -->
+    <script>
+        (function () {
+            const sessionData = sessionStorage.getItem('rentease_session');
+            if (!sessionData) { window.location.href = '/index.html'; return; }
+            try {
+                const session = JSON.parse(sessionData);
+                if (Date.now() - session.loginTime > 3600000) {
+                    sessionStorage.removeItem('rentease_session');
+                    window.location.href = '/index.html';
+                    return;
+                }
+                window.__loggedUser = session.user || 'Admin';
+            } catch (e) { window.location.href = '/index.html'; }
+        })();
+    </script>
+
+    <div class="app-container">
+
+        <!-- ========== NAVIGATION ========== -->
+        <nav class="navbar">
+            <div class="logo">
+                <img src="https://raw.githubusercontent.com/CHROMAPSTR/GRAPHIC-DESIGNS/refs/heads/main/Copy%20of%20rreeeeeeeee%20(16).png" alt="RentEase" />
+                <span>RentEase</span>
+                <span class="api-badge" id="apiBadge"><i class="fas fa-cloud"></i> API</span>
+            </div>
+            <div class="nav-links" id="navLinks">
+                <a class="active" data-section="dashboard"><i class="fas fa-th-large"></i> Dashboard</a>
+                <a data-section="units"><i class="fas fa-door-open"></i> Units</a>
+                <a data-section="tenants"><i class="fas fa-users"></i> Tenants</a>
+                <a data-section="leases"><i class="fas fa-file-signature"></i> Leases</a>
+                <a data-section="payments"><i class="fas fa-coins"></i> Payments</a>
+                <a data-section="employees"><i class="fas fa-user-tie"></i> Employees</a>
+                <a data-section="reports"><i class="fas fa-chart-pie"></i> Reports</a>
+            </div>
+            <div class="user-profile" id="profileBtn">
+                <img src="https://ui-avatars.com/api/?name=Admin&background=003d47&color=fff&size=36" alt="User" />
+                <span id="profileUsername">Admin</span>
+                <i class="fas fa-chevron-down"></i>
+                <div class="profile-dropdown" id="profileDropdown">
+                    <a data-action="profile"><i class="fas fa-user-cog"></i> Profile</a>
+                    <div class="divider"></div>
+                    <a data-action="logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- ========== HERO ========== -->
+        <div class="hero">
+            <h1 id="pageTitle">
+                Welcome back, <span id="greetingName">Admin</span>
+                <small id="pageSubtitle">Here's what's happening with your rentals today.</small>
+            </h1>
+            <div class="hero-actions">
+                <button class="btn-primary" id="heroActionBtn"><i class="fas fa-plus-circle"></i> <span id="actionBtnText">New Lease</span></button>
+                <button class="btn-secondary" id="exportBtn"><i class="fas fa-file-export"></i> Export Report</button>
+                <button class="btn-refresh" id="refreshTenantsBtn"><i class="fas fa-sync-alt"></i> Refresh Tenants</button>
+            </div>
+        </div>
+
+        <!-- ========== PAGE SECTIONS ========== -->
+
+        <!-- DASHBOARD -->
+        <div id="section-dashboard" class="page-section active">
+            <div class="stats-grid" id="statsGrid"></div>
+            <div class="bottom-section">
+                <div class="glass-panel" id="recentActivity">
+                    <h3><i class="fas fa-clock"></i> Recent Activity</h3>
+                    <div id="activityList"></div>
+                </div>
+                <div class="glass-panel">
+                    <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
+                    <div class="quick-actions">
+                        <a href="#" class="btn-glass" data-quick="tenant">
+                            <i class="fas fa-user-plus"></i> Register New Tenant
+                        </a>
+                    
+                        <a href="#" class="btn-glass" data-quick="unit">
+                            <i class="fas fa-plus-circle"></i> Add Apartment Unit
+                        </a>
+                    
+                        <a href="#" class="btn-glass" data-quick="employee">
+                            <i class="fas fa-user-tie"></i> Add Employee
+                        </a>
+                    
+                        <a href="#" class="btn-glass" data-quick="payment">
+                            <i class="fas fa-hand-holding-usd"></i> Record Payment
+                        </a>
+                    
+                        <a href="#" class="btn-glass" data-quick="report">
+                            <i class="fas fa-file-alt"></i> Generate Occupancy Report
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- UNITS -->
+        <div id="section-units" class="page-section">
+            <div class="section-header">
+                <h2><i class="fas fa-door-open"></i> Apartment Units <span class="sub" id="unitCount">· 0 total</span></h2>
+            </div>
+            <div class="glass-panel" style="padding:16px 18px;">
+                <div class="table-responsive">
+                    <table class="sim-table">
+                        <thead>
+                            <tr><th>Unit #</th><th>Type</th><th>Rent (₱)</th><th>Status</th><th>Tenant</th><th style="text-align:center;">Actions</th></tr>
+                        </thead>
+                        <tbody id="unitsTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TENANTS -->
+        <div id="section-tenants" class="page-section">
+            <div class="section-header">
+                <h2><i class="fas fa-users"></i> Tenants <span class="sub" id="tenantCount">· 0 active</span></h2>
+            </div>
+            <div class="glass-panel" style="padding:16px 18px;">
+                <div class="table-responsive">
+                    <table class="sim-table">
+                        <thead>
+                            <tr><th>Name</th><th>Email</th><th>Phone</th><th>Unit</th><th>Lease Status</th><th style="text-align:center;">Actions</th></tr>
+                        </thead>
+                        <tbody id="tenantsTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- LEASES -->
+        <div id="section-leases" class="page-section">
+            <div class="section-header">
+                <h2><i class="fas fa-file-signature"></i> Lease Contracts <span class="sub" id="leaseCount">· 0 active</span></h2>
+            </div>
+            <div class="glass-panel" style="padding:16px 18px;">
+                <div class="table-responsive">
+                    <table class="sim-table">
+                        <thead>
+                            <tr><th>Lease ID</th><th>Tenant</th><th>Unit</th><th>Start</th><th>End</th><th>Monthly Rent</th><th style="text-align:center;">Actions</th></tr>
+                        </thead>
+                        <tbody id="leasesTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAYMENTS -->
+        <div id="section-payments" class="page-section">
+            <div class="section-header">
+                <h2><i class="fas fa-coins"></i> Payment Records <span class="sub" id="paymentCount">· 0 records</span></h2>
+            </div>
+            <div class="glass-panel" style="padding:16px 18px;">
+                <div class="table-responsive">
+                    <table class="sim-table">
+                        <thead>
+                            <tr><th>Payment ID</th><th>Date</th><th>Tenant</th><th>Unit</th><th>Amount</th><th>Status</th><th style="text-align:center;">Actions</th></tr>
+                        </thead>
+                        <tbody id="paymentsTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- EMPLOYEES -->
+        <div id="section-employees" class="page-section">
+            <div class="section-header">
+                <h2>
+                    <i class="fas fa-user-tie"></i>
+                    Employee Management
+                    <span class="sub" id="employeeCount">· 0 employees</span>
+                </h2>
+            </div>
+
+            <div class="glass-panel" style="padding:16px 18px;">
+                <div class="table-responsive">
+                    <table class="sim-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Role</th>
+                                <th style="text-align:center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="employeesTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- REPORTS -->
+        <div id="section-reports" class="page-section">
+            <div class="section-header">
+                <h2><i class="fas fa-chart-pie"></i> Reports &amp; Analytics</h2>
+                <button class="btn-secondary sm" id="downloadPdfBtn"><i class="fas fa-download"></i> Download PDF</button>
+            </div>
+            <div id="reportContent">
+                <div class="report-grid" id="reportGrid"></div>
+                <div class="glass-panel" style="padding:16px 18px;">
+                    <h3 style="margin-bottom:12px;"><i class="fas fa-list-ul"></i> Recent Transactions</h3>
+                    <div class="table-responsive">
+                        <table class="sim-table">
+                            <thead>
+                                <tr><th>Date</th><th>Tenant</th><th>Unit</th><th>Amount</th><th>Type</th></tr>
+                            </thead>
+                            <tbody id="recentTransactionsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-note">RentEase v1.0 · Apartment Rental Management System</div>
+    </div>
+
+    <!-- ========== MODALS ========== -->
+
+    <!-- Add / Edit Unit -->
+    <div class="modal-overlay" id="unitModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-door-open"></i> <span id="unitModalTitle">Add Unit</span></h2>
+                <button class="modal-close" data-close="unitModal">&times;</button>
+            </div>
+            <form id="unitForm" autocomplete="off">
+                <input type="hidden" id="unitFormId" value="" />
+                <div class="form-group">
+                    <label for="unitNumber">Unit Number / Name</label>
+                    <input type="text" id="unitNumber" placeholder="e.g. 101, 2A, Studio A" required />
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="unitType">Type</label>
+                        <select id="unitType">
+                            <option>Studio</option><option>1-Bedroom</option><option>2-Bedroom</option>
+                            <option>3-Bedroom</option><option>Penthouse</option><option>Loft</option><option>Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="unitRent">Monthly Rent (₱)</label>
+                        <input type="number" id="unitRent" placeholder="7500" required min="0" step="100" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="unitStatus">Status</label>
+                    <select id="unitStatus"><option>Available</option><option>Occupied</option></select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" data-close="unitModal">Cancel</button>
+                    <button type="submit" class="btn-submit" id="unitSubmitBtn"><i class="fas fa-save"></i> Save Unit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- New / Edit Lease -->
+    <div class="modal-overlay" id="leaseModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-file-signature"></i> <span id="leaseModalTitle">New Lease</span></h2>
+                <button class="modal-close" data-close="leaseModal">&times;</button>
+            </div>
+            <form id="leaseForm" autocomplete="off">
+                <input type="hidden" id="leaseFormId" value="" />
+                <div class="form-group">
+                    <label for="leaseTenant">Tenant Name</label>
+                    <input type="text" id="leaseTenant" placeholder="Full name" required />
+                </div>
+                <div class="form-group">
+                    <label for="leaseUnit">Unit</label>
+                    <select id="leaseUnit" required><option value="">— Select a unit —</option></select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="leaseStart">Start Date</label>
+                        <input type="date" id="leaseStart" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="leaseEnd">End Date</label>
+                        <input type="date" id="leaseEnd" required />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="leaseRent">Monthly Rent (₱)</label>
+                    <input type="number" id="leaseRent" placeholder="10000" required min="0" step="100" />
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" data-close="leaseModal">Cancel</button>
+                    <button type="submit" class="btn-submit" id="leaseSubmitBtn"><i class="fas fa-save"></i> Save Lease</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add / Edit Tenant -->
+    <div class="modal-overlay" id="tenantModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-user-edit"></i> <span id="tenantModalTitle">Add Tenant</span></h2>
+                <button class="modal-close" data-close="tenantModal">&times;</button>
+            </div>
+            <form id="tenantForm" autocomplete="off">
+                <input type="hidden" id="tenantFormId" value="" />
+                <div class="form-group">
+                    <label for="tenantName">Full Name</label>
+                    <input type="text" id="tenantName" placeholder="Full name" required />
+                </div>
+                <div class="form-group">
+                    <label for="tenantEmail">Email Address</label>
+                    <input type="email" id="tenantEmail" placeholder="tenant@email.com" />
+                </div>
+                <div class="form-group">
+                    <label for="tenantPhone">Phone Number</label>
+                    <input type="text" id="tenantPhone" placeholder="+63 912 345 6789" />
+                </div>
+                <div class="form-group">
+                    <label for="tenantUnit">Assigned Unit (optional)</label>
+                    <select id="tenantUnit"><option value="">— None —</option></select>
+                </div>
+                <div class="form-group">
+                    <label for="tenantLeaseStatus">Lease Status</label>
+                    <select id="tenantLeaseStatus">
+                        <option>Active</option><option>Expired</option><option>Pending</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" data-close="tenantModal">Cancel</button>
+                    <button type="submit" class="btn-submit" id="tenantSubmitBtn"><i class="fas fa-save"></i> Save Tenant</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add / Edit Payment -->
+    <div class="modal-overlay" id="paymentModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-coins"></i> <span id="paymentModalTitle">Record Payment</span></h2>
+                <button class="modal-close" data-close="paymentModal">&times;</button>
+            </div>
+            <form id="paymentForm" autocomplete="off">
+                <input type="hidden" id="paymentFormId" value="" />
+                <div class="form-group">
+                    <label for="paymentTenant">Tenant Name</label>
+                    <input type="text" id="paymentTenant" placeholder="Tenant name" required />
+                </div>
+                <div class="form-group">
+                    <label for="paymentUnit">Unit</label>
+                    <input type="text" id="paymentUnit" placeholder="e.g. 101" required />
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="paymentDate">Date</label>
+                        <input type="date" id="paymentDate" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="paymentAmount">Amount (₱)</label>
+                        <input type="number" id="paymentAmount" placeholder="7500" required min="0" step="100" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="paymentStatus">Status</label>
+                    <select id="paymentStatus">
+                        <option>Paid</option><option>Pending</option><option>Overdue</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" data-close="paymentModal">Cancel</button>
+                    <button type="submit" class="btn-submit" id="paymentSubmitBtn"><i class="fas fa-save"></i> Save Payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add / Edit Employee -->
+    <div class="modal-overlay" id="employeeModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-user-tie"></i> <span id="employeeModalTitle">Add Employee</span></h2>
+                <button class="modal-close" data-close="employeeModal">&times;</button>
+            </div>
+            <form id="employeeForm" autocomplete="off">
+                <input type="hidden" id="employeeFormId" value="" />
+                <div class="form-group">
+                    <label for="employeeName">Full Name</label>
+                    <input type="text" id="employeeName" placeholder="Full name" required />
+                </div>
+                <div class="form-group">
+                    <label for="employeeEmail">Email Address</label>
+                    <input type="email" id="employeeEmail" placeholder="employee@rentease.com" />
+                </div>
+                <div class="form-group">
+                    <label for="employeePhone">Phone Number</label>
+                    <input type="text" id="employeePhone" placeholder="+63 912 345 6789" />
+                </div>
+                <div class="form-group">
+                    <label for="employeeRole">Role</label>
+                    <select id="employeeRole">
+                        <option value="Admin">Admin</option>
+                        <option value="Manager">Manager</option>
+                        <option value="Staff">Staff</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" data-close="employeeModal">Cancel</button>
+                    <button type="submit" class="btn-submit" id="employeeSubmitBtn"><i class="fas fa-save"></i> Save Employee</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirm Delete -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal" style="max-width:400px;">
+            <div class="modal-header">
+                <h2><i class="fas fa-exclamation-triangle" style="color:#f43f5e;"></i> Confirm Delete</h2>
+                <button class="modal-close" data-close="confirmModal">&times;</button>
+            </div>
+            <p style="color:var(--text-secondary); margin-bottom:20px; font-size:0.95rem;" id="confirmMessage">Are you sure you want to delete this item?</p>
+            <div class="form-actions" style="justify-content:flex-end;">
+                <button type="button" class="btn-cancel" data-close="confirmModal">Cancel</button>
+                <button type="button" class="btn-submit danger" id="confirmDeleteBtn"><i class="fas fa-trash"></i> Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== TOAST ========== -->
+    <div class="toast" id="toast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastMessage">Success!</span>
+    </div>
+
+    <script src="/js/dashboard.js"></script>
+</body>
+</html>

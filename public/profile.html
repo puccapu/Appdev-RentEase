@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RentEase · Profile</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <link rel="stylesheet" href="/css/profile.css" />
+
+</head>
+<body>
+
+    <!-- SESSION CHECK -->
+    <script>
+        (function() {
+            const sd = sessionStorage.getItem('rentease_session');
+            if (!sd) { window.location.href = '/index.html'; return; }
+            try {
+                const s = JSON.parse(sd);
+                if (Date.now() - s.loginTime > 3600000) {
+                    sessionStorage.removeItem('rentease_session');
+                    window.location.href = '/index.html';
+                    return;
+                }
+                window.__loggedUser = s.user || 'Admin';
+            } catch(e) { window.location.href = '/index.html'; }
+        })();
+    </script>
+
+    <div class="card">
+        <div class="card-inner">
+
+            <!-- ── LEFT SIDEBAR ── -->
+            <div class="sidebar">
+                <div class="sidebar-spacer"></div>
+                <div class="avatar-ring">
+                    <img id="avatarImg" src="" alt="Profile" />
+                </div>
+                <div class="sidebar-name" id="displayName">Admin</div>
+                <span class="role-badge" id="displayRole">
+                    <i class="fas fa-shield-alt"></i> Admin
+                </span>
+
+
+
+                <div class="sidebar-actions">
+                    <button class="btn-sidebar btn-dashboard" id="dashboardBtn">
+                        <i class="fas fa-th-large"></i> Dashboard
+                    </button>
+                    <button class="btn-sidebar btn-logout" id="logoutBtn">
+                        <i class="fas fa-sign-out-alt"></i> Log Out
+                    </button>
+                </div>
+            </div>
+
+            <!-- ── RIGHT PANEL ── -->
+            <div class="main-panel">
+                <div class="panel-title">Account Profile</div>
+                <div class="panel-subtitle">Your personal details and contact information.</div>
+
+                <!-- VIEW MODE -->
+                <div class="view-mode" id="viewMode">
+                    <div class="section-label">Personal Info</div>
+                    <div class="field-grid">
+                        <div class="field-row">
+                            <div class="field-icon"><i class="fas fa-user"></i></div>
+                            <div class="field-info">
+                                <div class="field-label">First Name</div>
+                                <div class="field-value" id="vFirstName">—</div>
+                            </div>
+                        </div>
+                        <div class="field-row">
+                            <div class="field-icon"><i class="fas fa-user"></i></div>
+                            <div class="field-info">
+                                <div class="field-label">Last Name</div>
+                                <div class="field-value" id="vLastName">—</div>
+                            </div>
+                        </div>
+                        <div class="field-row">
+                            <div class="field-icon"><i class="fas fa-envelope"></i></div>
+                            <div class="field-info">
+                                <div class="field-label">Email</div>
+                                <div class="field-value" id="vEmail">—</div>
+                            </div>
+                        </div>
+                        <div class="field-row">
+                            <div class="field-icon"><i class="fas fa-phone"></i></div>
+                            <div class="field-info">
+                                <div class="field-label">Phone</div>
+                                <div class="field-value" id="vPhone">—</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn-main btn-edit-toggle" id="editToggleBtn">
+                        <i class="fas fa-pen"></i> Edit Profile
+                    </button>
+                </div>
+
+                <!-- EDIT MODE -->
+                <div class="edit-form" id="editForm">
+                    <div class="section-label">Edit Info</div>
+                    <form id="profileForm" autocomplete="off">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="eFirstName">First Name</label>
+                                <input type="text" id="eFirstName" placeholder="First name" />
+                            </div>
+                            <div class="form-group">
+                                <label for="eLastName">Last Name</label>
+                                <input type="text" id="eLastName" placeholder="Last name" />
+                            </div>
+                            <div class="form-group">
+                                <label for="eEmail">Email</label>
+                                <input type="email" id="eEmail" placeholder="you@email.com" />
+                            </div>
+                            <div class="form-group">
+                                <label for="ePhone">Phone</label>
+                                <input type="text" id="ePhone" placeholder="+63 912 345 6789" />
+                            </div>
+                        </div>
+                        <div class="edit-actions">
+                            <button type="submit" class="btn-main btn-save">
+                                <i class="fas fa-check"></i> Save Changes
+                            </button>
+                            <button type="button" class="btn-main btn-cancel-edit" id="cancelEditBtn">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="card-footer">RentEase v1.0 · Apartment Rental Management System</div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast" id="toast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastMsg">Saved!</span>
+    </div>
+
+    <script src="/js/profile.js"></script>
+
+</body>
+</html>
