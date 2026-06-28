@@ -131,7 +131,7 @@ app.put('/api/units/:id', requireAuth, async (req, res) => {
     const { number, type, rent, status } = req.body;
     await db.execute(
         'UPDATE units SET number = ?, type = ?, rent = ?, status = ? WHERE id = ?',
-        [number, type, rent, status, req.params.id]
+        [number || null, type || null, rent || null, status || null, req.params.id]
     );
     const [rows] = await db.execute('SELECT * FROM units WHERE id = ?', [req.params.id]);
     res.json(rows[0]);
@@ -164,7 +164,7 @@ app.put('/api/tenants/:id', requireAuth, async (req, res) => {
     const { name, email, phone, unitId, leaseStatus } = req.body;
     await db.execute(
         'UPDATE tenants SET name = ?, email = ?, phone = ?, unit_id = ?, lease_status = ? WHERE id = ?',
-        [name, email, phone, unitId || null, leaseStatus, req.params.id]
+        [name || null, email || null, phone || null, unitId || null, leaseStatus || null, req.params.id]
     );
     const [rows] = await db.execute('SELECT * FROM tenants WHERE id = ?', [req.params.id]);
     res.json(rows[0]);
@@ -197,7 +197,7 @@ app.put('/api/leases/:id', requireAuth, async (req, res) => {
     const { tenant, unitId, start, end, rent } = req.body;
     await db.execute(
         'UPDATE leases SET tenant = ?, unit_id = ?, start_date = ?, end_date = ?, rent = ? WHERE id = ?',
-        [tenant, unitId, start, end, rent, req.params.id]
+        [tenant || null, unitId || null, start || null, end || null, rent || null, req.params.id]
     );
     const [rows] = await db.execute('SELECT * FROM leases WHERE id = ?', [req.params.id]);
     res.json(rows[0]);
@@ -230,7 +230,7 @@ app.put('/api/payments/:id', requireAuth, async (req, res) => {
     const { tenant, unit, date, amount, status } = req.body;
     await db.execute(
         'UPDATE payments SET tenant = ?, unit = ?, payment_date = ?, amount = ?, status = ? WHERE id = ?',
-        [tenant, unit, date, amount, status, req.params.id]
+        [tenant || null, unit || null, date || null, amount || null, status || null, req.params.id]
     );
     const [rows] = await db.execute('SELECT * FROM payments WHERE id = ?', [req.params.id]);
     res.json(rows[0]);
@@ -263,7 +263,7 @@ app.put('/api/employees/:id', requireAuth, async (req, res) => {
     const { name, email, phone, role } = req.body;
     await db.execute(
         'UPDATE employees SET name = ?, email = ?, phone = ?, role = ? WHERE id = ?',
-        [name, email, phone, role, req.params.id]
+        [name || null, email || null, phone || null, role || null, req.params.id]
     );
     const [rows] = await db.execute('SELECT * FROM employees WHERE id = ?', [req.params.id]);
     res.json(rows[0]);

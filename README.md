@@ -6,7 +6,8 @@
 
 *Simplifying property management, one lease at a time.*
 
-[![Made with PHP](https://img.shields.io/badge/Backend-PHP-777BB4?style=flat-square&logo=php&logoColor=white)](#tech-stack)
+[![Made with Node.js](https://img.shields.io/badge/Backend-Node.js-339933?style=flat-square&logo=node.js&logoColor=white)](#tech-stack)
+[![Express](https://img.shields.io/badge/Framework-Express-000000?style=flat-square&logo=express&logoColor=white)](#tech-stack)
 [![Database MySQL](https://img.shields.io/badge/Database-MySQL-4479A1?style=flat-square&logo=mysql&logoColor=white)](#tech-stack)
 [![Frontend HTML CSS JS](https://img.shields.io/badge/Frontend-HTML%20%7C%20CSS%20%7C%20JS-E34F26?style=flat-square&logo=html5&logoColor=white)](#tech-stack)
 [![Server DCISM](https://img.shields.io/badge/Server-DCISM-blue?style=flat-square)](#)
@@ -19,7 +20,7 @@ Developed by **IM2 Developers — Group VI**
 
 </div>
 
-<br> 
+<br>
 
 ---
 
@@ -28,11 +29,11 @@ Developed by **IM2 Developers — Group VI**
 - [Overview](#overview)
 - [Features](#features)
 - [Tech Stack](#tech-stack)
-- [Prerequisites](#prerequisites)
+- [Setup & Installation](#setup--installation)
 - [Contributing Workflow](#-for-contributors)
 - [Team](#team)
 
-<br> 
+<br>
 
 ---
 
@@ -48,7 +49,7 @@ Developed by **IM2 Developers — Group VI**
 
 With a centralized database and a user-friendly interface, RentEase supports efficient, day-to-day property management operations from a single platform.
 
-<br> 
+<br>
 
 ---
 
@@ -62,7 +63,7 @@ With a centralized database and a user-friendly interface, RentEase supports eff
 | 💰 **Payment Tracking** | Log payments and flag outstanding or upcoming dues |
 | 📊 **Centralized Dashboard** | View property and tenant data in one consistent interface |
 
-<br> 
+<br>
 
 ---
 
@@ -70,23 +71,77 @@ With a centralized database and a user-friendly interface, RentEase supports eff
 
 | Layer | Technology |
 |---|---|
-| **Database** | MySQL |
-| **Backend** | PHP |
+| **Runtime** | Node.js |
+| **Framework** | Express |
+| **Database** | MySQL (hosted on DCISM) |
+| **Auth** | express-session + bcrypt |
 | **Frontend** | HTML, CSS, JavaScript |
-| **Server** | DCISM |
 
 <br>
 
 ---
 
-## Prerequisites
+## Setup & Installation
 
-Before contributing to this project, please make sure you have:
+### Prerequisites
 
-- [ ] Installed **Visual Studio Code**
-- [ ] Linked your **GitHub** account with Visual Studio Code
+- [Node.js](https://nodejs.org/) v18 or higher
+- Access to the DCISM server (for database connectivity)
 
-<br> 
+### 1. Clone the repository
+
+```bash
+git clone <repo-url>
+cd RentEase
+```
+
+### 2. Install dependencies
+
+```bash
+npm install
+```
+
+### 3. Configure environment
+
+The `.env` file is already included. Choose the right `DB_HOST` based on your network:
+
+**On school network (on-campus WiFi):**
+```env
+DB_HOST=rentease.dcism.org
+```
+
+**Off-campus (home/mobile data) — requires SSH tunnel:**
+```env
+DB_HOST=127.0.0.1
+```
+
+For off-campus use, open a terminal and run this **before** starting the app — keep it open:
+```bash
+ssh -p22077 -L 3306:localhost:3306 s23400055@web.dcism.org -N
+```
+
+### 4. Seed the database *(first time only)*
+
+```bash
+node seeder.js
+```
+
+### 5. Start the server
+
+```bash
+npm run dev
+```
+
+Then open your browser at:
+```
+http://localhost:20229
+```
+
+**Default login:**
+- Username: `admin`
+- PIN: `2121`
+
+<br>
 
 ---
 
@@ -100,58 +155,58 @@ Each contributor works on a **dedicated branch**. To keep `main` stable, please 
 
 1. **Clone the repository**
    In VS Code, open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`), select **Git: Clone**, then paste the repository URL and choose a local folder to save it in.
+
 2. **Check available branches** *(optional — just in case)*
 ```bash
-   git branch -a
+git branch -a
 ```
-   This lists all local and remote branches so you can confirm your assigned branch exists and is spelled correctly before switching to it.
- 
+
 3. **Switch to your assigned branch**
 ```bash
-   git checkout <your-branch>
+git checkout <your-branch>
 ```
- 
+
 4. **Make your changes, then stage and commit them**
-   You can commit using either the terminal or VS Code's built-in Source Control panel — pick whichever you're more comfortable with.
+
    **Option A — Terminal**
 ```bash
-   git add .
-   git commit -m "Describe your change"
+git add .
+git commit -m "Describe your change"
 ```
- 
+
    **Option B — VS Code Source Control (GUI)**
    1. Click the **Source Control** icon in the left sidebar (or `Ctrl+Shift+G`).
-   2. Hover over each changed file and click the **+** icon to stage it (or click **+** beside "Changes" to stage everything).
+   2. Hover over each changed file and click the **+** icon to stage it.
    3. Type your commit message in the message box at the top.
-   4. Click the **✓ Commit** button (or press `Ctrl+Enter`) to commit your staged changes.
+   4. Click the **✓ Commit** button (or press `Ctrl+Enter`).
+
 5. **Push your branch**
+
    **Option A — Terminal**
 ```bash
-   git push origin <your-branch>
+git push origin <your-branch>
 ```
- 
+
    **Option B — VS Code Source Control (GUI)**
-   Click **Sync Changes** (or the **...** menu → **Push**) at the bottom of the Source Control panel.
- 
+   Click **Sync Changes** (or **...** → **Push**) in the Source Control panel.
+
 6. **Open a Pull Request** to `main` for review
 
-<br> 
+<br>
 
 ---
 
 ## Team
 
-- **Lance Vincent** [ Project Manager ] 
-
-- **Kintanar Matteo** [ Senior Developer ] 
-- **Christian J. Salang** [ Junior Developer / Database Manager ] 
-
-- **Iesha Katriel** [ Documentation Specialist ] 
-- **Martinez Minh** [ Documentation Specialist ] 
+- **Lance Vincent** [ Project Manager ]
+- **Kintanar Matteo** [ Senior Developer ]
+- **Christian J. Salang** [ Junior Developer / Database Manager ]
+- **Iesha Katriel** [ Documentation Specialist ]
+- **Martinez Minh** [ Documentation Specialist ]
 
 <div align="center">
 
-<br> 
+<br>
 
 **IM2 Developers · Group VI**
 

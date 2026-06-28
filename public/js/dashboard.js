@@ -4,8 +4,8 @@
     // ============================================================
     //  REST API CONFIGURATION
     // ============================================================
-    const USE_API = false;  // ← Set to true to enable API calls (requires a working backend)
-    const API_BASE_URL = 'https://your-api-domain.com/api'; // ← Update with your API base URL
+    const USE_API = true;  // ← Set to true to enable API calls (requires a working backend)
+    const API_BASE_URL = '/api'; // ← Update with your API base URL
 
     // --- API Service ---
     const ApiService = {
@@ -823,15 +823,18 @@
     });
 
     // ============================================================
-    //  REFRESH TENANTS
+    //  REFRESH (current section)
     // ============================================================
-    async function refreshTenants() {
-        if (tenants.length === 0) { showToast('No tenants to refresh.', 'warning'); return; }
-        showToast('Refreshing tenants...', 'warning');
-        const sorted = [...tenants].sort((a, b) => a.name.localeCompare(b.name));
-        for (const t of sorted) await DataManager.saveTenant(t);
-        await DataManager.loadAll(); renderAll();
-        showToast(`✅ ${tenants.length} tenants refreshed & sorted!`);
+    async function refresh() {
+        showToast('Refreshing...', 'warning');
+        try {
+            await DataManager.loadAll();
+            renderAll();
+            const label = meta[currentSection]?.title || 'Page';
+            showToast('✅ ' + label + ' refreshed!');
+        } catch (err) {
+            showToast('Refresh failed: ' + err.message, 'error');
+        }
     }
 
     // ============================================================
@@ -877,7 +880,10 @@
         reports:   { title: 'Reports & Analytics', sub: 'Overview of property performance.',          action: 'Export PDF'      },
     };
 
+    let currentSection = 'dashboard';
+
     function switchSection(sectionId) {
+        currentSection = sectionId;
         Object.values(sections).forEach(el => el.classList.remove('active'));
         if (sections[sectionId]) sections[sectionId].classList.add('active');
         navLinks.forEach(link => link.classList.toggle('active', link.dataset.section === sectionId));
@@ -914,7 +920,7 @@
 
     document.getElementById('exportBtn').addEventListener('click', generatePDF);
     document.getElementById('downloadPdfBtn').addEventListener('click', generatePDF);
-    document.getElementById('refreshTenantsBtn').addEventListener('click', refreshTenants);
+    document.getElementById('refreshBtn').addEventListener('click', refresh);
 
     // ============================================================
     //  FORM SUBMITS
@@ -973,16 +979,27 @@
     // ============================================================
     //  INIT
     // ============================================================
-    const username = window.__loggedUser || 'Admin';
-    document.getElementById('profileUsername').textContent = username;
-    document.getElementById('greetingName').textContent   = username;
-    const avatarImg = document.querySelector('.user-profile img');
-    if (avatarImg) avatarImg.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(username) + '&background=003d47&color=fff&size=36';
-
-    console.log(`🔌 RentEase API Mode: ${USE_API ? 'ENABLED' : 'DISABLED (localStorage)'}`);
-    console.log(`📡 API Base URL: ${USE_API ? API_BASE_URL : 'N/A'}`);
-
     (async function init() {
+        // Auth guard — redirect to login if session is invalid
+        const authRes = await fetch('/api/profile');
+        if (authRes.status === 401) {
+            window.location.href = '/index.html';
+            return;
+        }
+        const profileData = await authRes.json();
+
+        // Set username from the real profile (falls back to sessionStorage)
+        const session = JSON.parse(sessionStorage.getItem('rentease_session') || '{}');
+        const username = profileData.first_name || session.user || 'Admin';
+
+        document.getElementById('profileUsername').textContent = username;
+        document.getElementById('greetingName').textContent   = username;
+        const avatarImg = document.querySelector('.user-profile img');
+        if (avatarImg) avatarImg.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(username) + '&background=003d47&color=fff&size=36';
+
+        console.log(`🔌 RentEase API Mode: ${USE_API ? 'ENABLED' : 'DISABLED (localStorage)'}`);
+        console.log(`📡 API Base URL: ${USE_API ? API_BASE_URL : 'N/A'}`);
+
         await DataManager.loadAll();
         renderAll();
         switchSection('dashboard');
