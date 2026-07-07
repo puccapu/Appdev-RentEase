@@ -1,12 +1,17 @@
 #!/bin/bash
 
-set -e  # Exit immediately if any command fails
+set -e
 
-echo " Pulling latest changes..."
+echo "Gi verify kung mao ning latest version..."
 git pull
 
-echo " Installing dependencies..."
+echo "Ga install ug dependencies..."
 npm install
 
-echo " Starting server..."
-npm run start
+echo "Nagsugod nang server, huwata lang..."
+pm2 restart rentease || pm2 start server.js --name "rentease"
+
+echo "Save sa PM2 process list..."
+pm2 save
+
+echo "Deploy done!"
