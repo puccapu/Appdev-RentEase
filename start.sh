@@ -2,16 +2,16 @@
 
 set -e
 
-echo "Gi verify kung mao ning latest version..."
+echo "Checking for the project's latest version..."
 git pull
 
-echo "Ga install ug dependencies..."
+echo "Installing NPM dependencies..."
 npm install
 
-echo "Nagsugod nang server, huwata lang..."
+echo "Starting the server..."
 pm2 restart rentease || pm2 start server.js --name "rentease"
 
-echo "Save sa PM2 process list..."
+echo "Saving PM2 process list..."
 pm2 save
 
-echo "Deploy done!"
+echo "Deployment Successful!"
