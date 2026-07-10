@@ -44,6 +44,7 @@
         createEmployee: (data)     => ApiService._fetch('/employees',         { method: 'POST',   body: JSON.stringify(data) }),
         updateEmployee: (id, data) => ApiService._fetch(`/employees/${id}`,   { method: 'PUT',    body: JSON.stringify(data) }),
         deleteEmployee: (id)       => ApiService._fetch(`/employees/${id}`,   { method: 'DELETE' }),
+        getRecentActivity: ()      => ApiService._fetch('/recent-activity'),
     };
 
     // ============================================================
@@ -60,6 +61,7 @@
     let tenants   = [];
     let payments  = [];
     let employees = [];
+    let recentActivity = [];
 
     // ---------- Helpers ----------
     function generateId() {
@@ -74,6 +76,21 @@
         if (!dateStr) return '—';
         const d = new Date(dateStr + 'T00:00:00');
         return d.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    function timeAgo(timestamp) {
+        if (!timestamp) return '';
+        const then = new Date(timestamp);
+        const diffSec = Math.floor((Date.now() - then.getTime()) / 1000);
+        if (diffSec < 0)   return 'just now';
+        if (diffSec < 60)  return 'just now';
+        const diffMin = Math.floor(diffSec / 60);
+        if (diffMin < 60)  return `${diffMin}m ago`;
+        const diffHr = Math.floor(diffMin / 60);
+        if (diffHr < 24)   return `${diffHr}h ago`;
+        const diffDay = Math.floor(diffHr / 24);
+        if (diffDay < 7)   return `${diffDay}d ago`;
+        return then.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
     }
 
     function getStatusBadge(status) {
@@ -164,12 +181,12 @@
         async loadAll() {
             if (USE_API) {
                 try {
-                    const [u, l, t, p, e] = await Promise.all([
+                    const [u, l, t, p, e, ra] = await Promise.all([
                         ApiService.getUnits(), ApiService.getLeases(), ApiService.getTenants(),
-                        ApiService.getPayments(), ApiService.getEmployees()
+                        ApiService.getPayments(), ApiService.getEmployees(), ApiService.getRecentActivity()
                     ]);
                     units = u || []; leases = l || []; tenants = t || [];
-                    payments = p || []; employees = e || [];
+                    payments = p || []; employees = e || []; recentActivity = ra || [];
                     if (!u || !l || !t || !p || !e) { console.warn('API returned null, falling back to localStorage'); loadFromStorage(); }
                     return;
                 } catch (err) { console.error('API load failed, using localStorage:', err); }
@@ -503,29 +520,34 @@
             </div>
         `;
 
-        const activities = [];
-        leases?.slice(-3).forEach(l => {
-            const unit = units?.find(u => u.id === l.unitId);
-            activities.push({ icon: 'fa-file-signature', title: `Lease signed – ${l.tenant}`, desc: `Unit ${unit ? unit.number : '—'} · ${formatCurrency(l.rent)}/mo`, urgent: false });
-        });
-        payments?.slice(-3).forEach(p => {
-            activities.push({ icon: 'fa-coins', title: `Payment recorded – ${p.unit}`, desc: `${p.tenant} · ${formatCurrency(p.amount)} · ${p.status}`, urgent: p.status === 'Overdue' });
-        });
-        activities.reverse();
+        const ACTIVITY_ICONS = {
+            unit:     'fa-door-open',
+            tenant:   'fa-user-friends',
+            lease:    'fa-file-signature',
+            payment:  'fa-coins',
+            employee: 'fa-user-tie',
+        };
+        const ACTION_ICON_OVERRIDE = {
+            DELETE: 'fa-trash',
+        };
 
         const list = document.getElementById('activityList');
-        list.innerHTML = activities.length === 0
+        list.innerHTML = !recentActivity || recentActivity.length === 0
             ? `<div class="empty-state" style="padding:10px 0;"><p style="font-size:0.85rem;">No recent activity.</p></div>`
-            : activities.slice(0, 5).map(a => `
+            : recentActivity.slice(0, 5).map(a => {
+                const icon = ACTION_ICON_OVERRIDE[a.action_type] || ACTIVITY_ICONS[a.entity_type] || 'fa-clock';
+                const isDelete = a.action_type === 'DELETE';
+                return `
                 <div class="activity-item">
-                    <div class="activity-icon"><i class="fas ${a.icon}"></i></div>
+                    <div class="activity-icon"><i class="fas ${icon}"></i></div>
                     <div class="activity-content">
-                        <div class="title">${a.title}</div>
-                        <div class="desc">${a.desc}</div>
+                        <div class="title">${a.description}</div>
+                        <div class="desc">${a.username || 'Admin'} · ${a.entity_type ? a.entity_type.charAt(0).toUpperCase() + a.entity_type.slice(1) : ''}</div>
                     </div>
-                    <div class="activity-time ${a.urgent ? 'urgent' : ''}">${a.urgent ? 'urgent' : 'now'}</div>
+                    <div class="activity-time ${isDelete ? 'urgent' : ''}">${timeAgo(a.created_at)}</div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
 
         const totalRevenue  = payments?.reduce((s, p) => s + Number(p.amount), 0) || 0;
         const overdueTotal  = payments?.filter(p => p.status === 'Overdue').reduce((s, p) => s + Number(p.amount), 0) || 0;

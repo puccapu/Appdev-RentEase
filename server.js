@@ -42,6 +42,34 @@ function requireAuth(req, res, next) {
 }
 
 // ============================================================
+//  ACTIVITY LOGGING
+// ============================================================
+async function logActivity(req, actionType, entityType, entityId, description) {
+    try {
+        await db.execute(
+            'INSERT INTO recent_activity (action_type, entity_type, entity_id, description, username) VALUES (?, ?, ?, ?, ?)',
+            [actionType, entityType, entityId ?? null, description, req.session.username || 'Admin']
+        );
+    } catch (err) {
+        // Never let activity logging break the actual request
+        console.error('Activity log error:', err);
+    }
+}
+
+// GET /api/recent-activity
+app.get('/api/recent-activity', requireAuth, async (req, res) => {
+    try {
+        const [rows] = await db.execute(
+            'SELECT * FROM recent_activity ORDER BY created_at DESC, id DESC LIMIT 20'
+        );
+        res.json(rows);
+    } catch (err) {
+        console.error('Recent activity GET error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// ============================================================
 //  AUTH ROUTES
 // ============================================================
 
@@ -124,6 +152,7 @@ app.post('/api/units', requireAuth, async (req, res) => {
         [number, type, rent, status || 'Available']
     );
     const [rows] = await db.execute('SELECT * FROM units WHERE id = ?', [result.insertId]);
+    await logActivity(req, 'ADD', 'unit', result.insertId, `Added unit ${number}`);
     res.json(rows[0]);
 });
 
@@ -134,11 +163,14 @@ app.put('/api/units/:id', requireAuth, async (req, res) => {
         [number || null, type || null, rent || null, status || null, req.params.id]
     );
     const [rows] = await db.execute('SELECT * FROM units WHERE id = ?', [req.params.id]);
+    await logActivity(req, 'EDIT', 'unit', req.params.id, `Updated unit ${number || rows[0]?.number}`);
     res.json(rows[0]);
 });
 
 app.delete('/api/units/:id', requireAuth, async (req, res) => {
+    const [existing] = await db.execute('SELECT * FROM units WHERE id = ?', [req.params.id]);
     await db.execute('DELETE FROM units WHERE id = ?', [req.params.id]);
+    await logActivity(req, 'DELETE', 'unit', req.params.id, `Deleted unit ${existing[0]?.number || req.params.id}`);
     res.json({ success: true });
 });
 
@@ -157,6 +189,7 @@ app.post('/api/tenants', requireAuth, async (req, res) => {
         [name, email, phone, unitId || null, leaseStatus || 'Pending']
     );
     const [rows] = await db.execute('SELECT * FROM tenants WHERE id = ?', [result.insertId]);
+    await logActivity(req, 'ADD', 'tenant', result.insertId, `Registered tenant ${name}`);
     res.json(rows[0]);
 });
 
@@ -167,11 +200,14 @@ app.put('/api/tenants/:id', requireAuth, async (req, res) => {
         [name || null, email || null, phone || null, unitId || null, leaseStatus || null, req.params.id]
     );
     const [rows] = await db.execute('SELECT * FROM tenants WHERE id = ?', [req.params.id]);
+    await logActivity(req, 'EDIT', 'tenant', req.params.id, `Updated tenant ${name || rows[0]?.name}`);
     res.json(rows[0]);
 });
 
 app.delete('/api/tenants/:id', requireAuth, async (req, res) => {
+    const [existing] = await db.execute('SELECT * FROM tenants WHERE id = ?', [req.params.id]);
     await db.execute('DELETE FROM tenants WHERE id = ?', [req.params.id]);
+    await logActivity(req, 'DELETE', 'tenant', req.params.id, `Removed tenant ${existing[0]?.name || req.params.id}`);
     res.json({ success: true });
 });
 
@@ -190,6 +226,7 @@ app.post('/api/leases', requireAuth, async (req, res) => {
         [tenant, unitId, start, end, rent]
     );
     const [rows] = await db.execute('SELECT * FROM leases WHERE id = ?', [result.insertId]);
+    await logActivity(req, 'ADD', 'lease', result.insertId, `Created lease for ${tenant}`);
     res.json(rows[0]);
 });
 
@@ -200,11 +237,14 @@ app.put('/api/leases/:id', requireAuth, async (req, res) => {
         [tenant || null, unitId || null, start || null, end || null, rent || null, req.params.id]
     );
     const [rows] = await db.execute('SELECT * FROM leases WHERE id = ?', [req.params.id]);
+    await logActivity(req, 'EDIT', 'lease', req.params.id, `Updated lease for ${tenant || rows[0]?.tenant}`);
     res.json(rows[0]);
 });
 
 app.delete('/api/leases/:id', requireAuth, async (req, res) => {
+    const [existing] = await db.execute('SELECT * FROM leases WHERE id = ?', [req.params.id]);
     await db.execute('DELETE FROM leases WHERE id = ?', [req.params.id]);
+    await logActivity(req, 'DELETE', 'lease', req.params.id, `Deleted lease for ${existing[0]?.tenant || req.params.id}`);
     res.json({ success: true });
 });
 
@@ -223,6 +263,7 @@ app.post('/api/payments', requireAuth, async (req, res) => {
         [tenant, unit, date, amount, status || 'Pending']
     );
     const [rows] = await db.execute('SELECT * FROM payments WHERE id = ?', [result.insertId]);
+    await logActivity(req, 'ADD', 'payment', result.insertId, `Recorded payment of ₱${Number(amount).toLocaleString()} for ${tenant}`);
     res.json(rows[0]);
 });
 
@@ -233,11 +274,14 @@ app.put('/api/payments/:id', requireAuth, async (req, res) => {
         [tenant || null, unit || null, date || null, amount || null, status || null, req.params.id]
     );
     const [rows] = await db.execute('SELECT * FROM payments WHERE id = ?', [req.params.id]);
+    await logActivity(req, 'EDIT', 'payment', req.params.id, `Updated payment for ${tenant || rows[0]?.tenant}`);
     res.json(rows[0]);
 });
 
 app.delete('/api/payments/:id', requireAuth, async (req, res) => {
+    const [existing] = await db.execute('SELECT * FROM payments WHERE id = ?', [req.params.id]);
     await db.execute('DELETE FROM payments WHERE id = ?', [req.params.id]);
+    await logActivity(req, 'DELETE', 'payment', req.params.id, `Deleted payment record for ${existing[0]?.tenant || req.params.id}`);
     res.json({ success: true });
 });
 
@@ -256,6 +300,7 @@ app.post('/api/employees', requireAuth, async (req, res) => {
         [name, email, phone, role || 'Staff']
     );
     const [rows] = await db.execute('SELECT * FROM employees WHERE id = ?', [result.insertId]);
+    await logActivity(req, 'ADD', 'employee', result.insertId, `Added employee ${name}`);
     res.json(rows[0]);
 });
 
@@ -266,11 +311,14 @@ app.put('/api/employees/:id', requireAuth, async (req, res) => {
         [name || null, email || null, phone || null, role || null, req.params.id]
     );
     const [rows] = await db.execute('SELECT * FROM employees WHERE id = ?', [req.params.id]);
+    await logActivity(req, 'EDIT', 'employee', req.params.id, `Updated employee ${name || rows[0]?.name}`);
     res.json(rows[0]);
 });
 
 app.delete('/api/employees/:id', requireAuth, async (req, res) => {
+    const [existing] = await db.execute('SELECT * FROM employees WHERE id = ?', [req.params.id]);
     await db.execute('DELETE FROM employees WHERE id = ?', [req.params.id]);
+    await logActivity(req, 'DELETE', 'employee', req.params.id, `Removed employee ${existing[0]?.name || req.params.id}`);
     res.json({ success: true });
 });
 

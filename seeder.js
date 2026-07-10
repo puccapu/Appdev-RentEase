@@ -88,6 +88,19 @@ async function seed() {
     `);
     console.log('✔ Table: employees');
 
+    await db.execute(`
+        CREATE TABLE IF NOT EXISTS recent_activity (
+            id          INT AUTO_INCREMENT PRIMARY KEY,
+            action_type VARCHAR(20)  NOT NULL,
+            entity_type VARCHAR(30)  NOT NULL,
+            entity_id   INT          DEFAULT NULL,
+            description VARCHAR(255) NOT NULL,
+            username    VARCHAR(50)  DEFAULT 'Admin',
+            created_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+    console.log('✔ Table: recent_activity');
+
     // ============================================================
     //  SEED: Admin user  (PIN: 2121)
     // ============================================================
