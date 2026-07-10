@@ -744,6 +744,11 @@ table.sim-table .badge {
     cursor: pointer;
     transition: all 0.2s;
     box-shadow: 0 4px 16px rgba(0, 61, 71, 0.3);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    line-height: 1;
 }
 .modal .form-actions .btn-submit:hover {
     transform: translateY(-2px);

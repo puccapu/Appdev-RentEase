@@ -853,7 +853,7 @@
             await DataManager.loadAll();
             renderAll();
             const label = meta[currentSection]?.title || 'Page';
-            showToast('✅ ' + label + ' refreshed!');
+            showToast(label + ' refreshed!');
         } catch (err) {
             showToast('Refresh failed: ' + err.message, 'error');
         }
