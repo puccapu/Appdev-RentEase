@@ -29,6 +29,7 @@ const db = mysql.createPool({
     database:        process.env.DB_NAME,
     waitForConnections: true,
     connectionLimit: 10,
+    dateStrings:     true, // return DATE/DATETIME columns as 'YYYY-MM-DD' strings, not JS Date objects
 });
 
 // ============================================================
@@ -177,8 +178,10 @@ app.delete('/api/units/:id', requireAuth, async (req, res) => {
 // ============================================================
 //  TENANTS  /api/tenants
 // ============================================================
+const TENANT_SELECT = 'SELECT id, name, email, phone, unit_id AS unitId, lease_status AS leaseStatus FROM tenants';
+
 app.get('/api/tenants', requireAuth, async (req, res) => {
-    const [rows] = await db.execute('SELECT * FROM tenants ORDER BY name ASC');
+    const [rows] = await db.execute(`${TENANT_SELECT} ORDER BY name ASC`);
     res.json(rows);
 });
 
@@ -188,7 +191,7 @@ app.post('/api/tenants', requireAuth, async (req, res) => {
         'INSERT INTO tenants (name, email, phone, unit_id, lease_status) VALUES (?, ?, ?, ?, ?)',
         [name, email, phone, unitId || null, leaseStatus || 'Pending']
     );
-    const [rows] = await db.execute('SELECT * FROM tenants WHERE id = ?', [result.insertId]);
+    const [rows] = await db.execute(`${TENANT_SELECT} WHERE id = ?`, [result.insertId]);
     await logActivity(req, 'ADD', 'tenant', result.insertId, `Registered tenant ${name}`);
     res.json(rows[0]);
 });
@@ -199,7 +202,7 @@ app.put('/api/tenants/:id', requireAuth, async (req, res) => {
         'UPDATE tenants SET name = ?, email = ?, phone = ?, unit_id = ?, lease_status = ? WHERE id = ?',
         [name || null, email || null, phone || null, unitId || null, leaseStatus || null, req.params.id]
     );
-    const [rows] = await db.execute('SELECT * FROM tenants WHERE id = ?', [req.params.id]);
+    const [rows] = await db.execute(`${TENANT_SELECT} WHERE id = ?`, [req.params.id]);
     await logActivity(req, 'EDIT', 'tenant', req.params.id, `Updated tenant ${name || rows[0]?.name}`);
     res.json(rows[0]);
 });
@@ -214,8 +217,10 @@ app.delete('/api/tenants/:id', requireAuth, async (req, res) => {
 // ============================================================
 //  LEASES  /api/leases
 // ============================================================
+const LEASE_SELECT = 'SELECT id, tenant, unit_id AS unitId, start_date AS start, end_date AS end, rent FROM leases';
+
 app.get('/api/leases', requireAuth, async (req, res) => {
-    const [rows] = await db.execute('SELECT * FROM leases ORDER BY start_date DESC');
+    const [rows] = await db.execute(`${LEASE_SELECT} ORDER BY start_date DESC`);
     res.json(rows);
 });
 
@@ -225,7 +230,7 @@ app.post('/api/leases', requireAuth, async (req, res) => {
         'INSERT INTO leases (tenant, unit_id, start_date, end_date, rent) VALUES (?, ?, ?, ?, ?)',
         [tenant, unitId, start, end, rent]
     );
-    const [rows] = await db.execute('SELECT * FROM leases WHERE id = ?', [result.insertId]);
+    const [rows] = await db.execute(`${LEASE_SELECT} WHERE id = ?`, [result.insertId]);
     await logActivity(req, 'ADD', 'lease', result.insertId, `Created lease for ${tenant}`);
     res.json(rows[0]);
 });
@@ -236,7 +241,7 @@ app.put('/api/leases/:id', requireAuth, async (req, res) => {
         'UPDATE leases SET tenant = ?, unit_id = ?, start_date = ?, end_date = ?, rent = ? WHERE id = ?',
         [tenant || null, unitId || null, start || null, end || null, rent || null, req.params.id]
     );
-    const [rows] = await db.execute('SELECT * FROM leases WHERE id = ?', [req.params.id]);
+    const [rows] = await db.execute(`${LEASE_SELECT} WHERE id = ?`, [req.params.id]);
     await logActivity(req, 'EDIT', 'lease', req.params.id, `Updated lease for ${tenant || rows[0]?.tenant}`);
     res.json(rows[0]);
 });

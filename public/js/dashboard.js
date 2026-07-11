@@ -177,6 +177,20 @@
     // ============================================================
     //  DATA MANAGER
     // ============================================================
+    // IDs coming from the MySQL API are numbers, but every id read back out of the
+    // DOM (data-edit-unit="...", hidden form fields, etc.) is always a string. Strict
+    // === comparisons between the two silently fail (e.g. "Edit" buttons doing
+    // nothing, "Tenant not found"). Normalize every id / foreign-key id to a string
+    // right after loading so comparisons work consistently everywhere.
+    function normalizeIds() {
+        const toStr = v => (v === null || v === undefined || v === '') ? null : String(v);
+        units     = (units     || []).map(u => ({ ...u, id: toStr(u.id) }));
+        leases    = (leases    || []).map(l => ({ ...l, id: toStr(l.id), unitId: toStr(l.unitId) }));
+        tenants   = (tenants   || []).map(t => ({ ...t, id: toStr(t.id), unitId: toStr(t.unitId) }));
+        payments  = (payments  || []).map(p => ({ ...p, id: toStr(p.id) }));
+        employees = (employees || []).map(e => ({ ...e, id: toStr(e.id) }));
+    }
+
     const DataManager = {
         async loadAll() {
             if (USE_API) {
@@ -188,10 +202,12 @@
                     units = u || []; leases = l || []; tenants = t || [];
                     payments = p || []; employees = e || []; recentActivity = ra || [];
                     if (!u || !l || !t || !p || !e) { console.warn('API returned null, falling back to localStorage'); loadFromStorage(); }
+                    normalizeIds();
                     return;
                 } catch (err) { console.error('API load failed, using localStorage:', err); }
             }
             loadFromStorage();
+            normalizeIds();
         },
 
         async saveUnit(data) {
@@ -321,6 +337,29 @@
         return lease ? lease.tenant : null;
     }
 
+    // Derives a tenant's currently-leased unit(s) and lease status directly from the
+    // leases table (matched by tenant name), instead of relying on the tenant's
+    // stored unit_id / lease_status fields, which can go stale as leases are
+    // created, renewed, or expire. This keeps the Tenants tab always in sync.
+    function getTenantLeaseInfo(tenantName) {
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const tenantLeases = leases.filter(l => l.tenant === tenantName);
+        const activeLeases = tenantLeases.filter(l => {
+            const start = new Date(l.start + 'T00:00:00');
+            const end   = new Date(l.end + 'T00:00:00');
+            return start <= today && end >= today;
+        });
+        const unitNumbers = activeLeases
+            .map(l => units.find(u => u.id === l.unitId))
+            .filter(Boolean)
+            .map(u => u.number);
+        let status;
+        if (activeLeases.length > 0)      status = 'Active';
+        else if (tenantLeases.length > 0) status = 'Expired';
+        else                              status = 'Pending';
+        return { status, unitNumbers };
+    }
+
     function renderUnits() {
         const tbody = document.getElementById('unitsTableBody');
         const count = document.getElementById('unitCount');
@@ -386,16 +425,17 @@
             tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="fas fa-users"></i><p>No tenants yet.</p></div></td></tr>`;
             count.textContent = '· 0 active'; return;
         }
-        const active = tenants.filter(t => t.leaseStatus === 'Active').length;
+        const active = tenants.filter(t => getTenantLeaseInfo(t.name).status === 'Active').length;
         count.textContent = `· ${active} active`;
         tbody.innerHTML = tenants.map(t => {
-            const unit = units.find(u => u.id === t.unitId);
+            const { status, unitNumbers } = getTenantLeaseInfo(t.name);
+            const unitDisplay = unitNumbers.length ? unitNumbers.join(', ') : '—';
             return `<tr>
                 <td><strong>${t.name}</strong></td>
                 <td>${t.email || '—'}</td>
                 <td>${t.phone || '—'}</td>
-                <td>${unit ? unit.number : '—'}</td>
-                <td>${getStatusBadge(t.leaseStatus)}</td>
+                <td>${unitDisplay}</td>
+                <td>${getStatusBadge(status)}</td>
                 <td style="text-align:center;">
                     <div class="action-group" style="justify-content:center;">
                         <button class="btn-edit" data-edit-tenant="${t.id}"><i class="fas fa-pen"></i></button>
@@ -483,7 +523,7 @@
     function renderDashboard() {
         const totalUnits    = units?.length || 0;
         const occupied      = units?.filter(u => u.status === 'Occupied').length || 0;
-        const activeTenants = tenants?.filter(t => t.leaseStatus === 'Active').length || 0;
+        const activeTenants = tenants?.filter(t => getTenantLeaseInfo(t.name).status === 'Active').length || 0;
         const totalRent     = leases?.reduce((s, l) => s + Number(l.rent), 0) || 0;
         const totalEmployees= employees?.length || 0;
 
@@ -504,7 +544,7 @@
                 <div class="stat-icon"><i class="fas fa-user-friends"></i></div>
                 <div class="stat-value">${activeTenants}</div>
                 <div class="stat-label">Active Tenants</div>
-                <span class="stat-change"><i class="fas fa-arrow-up"></i> ${tenants?.filter(t => t.leaseStatus === 'Pending').length || 0} pending</span>
+                <span class="stat-change"><i class="fas fa-arrow-up"></i> ${tenants?.filter(t => getTenantLeaseInfo(t.name).status === 'Pending').length || 0} pending</span>
             </div>
             <div class="stat-card">
                 <div class="stat-icon"><i class="fas fa-user-tie"></i></div>

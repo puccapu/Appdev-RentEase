@@ -115,17 +115,19 @@ async function seed() {
     // ============================================================
     //  SEED: Sample units
     // ============================================================
+    // NOTE: 'status' here should agree with the leases seeded below —
+    // a unit is 'Occupied' if a lease currently covers it, 'Available' otherwise.
     const unitCount = (await db.execute('SELECT COUNT(*) AS n FROM units'))[0][0].n;
     if (unitCount === 0) {
         const sampleUnits = [
-            ['101', 'Studio',    7500,  'Occupied' ],
-            ['102', 'Studio',    7500,  'Occupied' ],
-            ['103', '1-Bedroom', 10200, 'Available'],
-            ['104', '1-Bedroom', 10200, 'Occupied' ],
-            ['205', 'Studio',    8000,  'Occupied' ],
-            ['206', '2-Bedroom', 14500, 'Available'],
-            ['304', '1-Bedroom', 12500, 'Occupied' ],
-            ['407', 'Penthouse', 22000, 'Occupied' ],
+            ['101', 'Studio',    7500,  'Occupied' ],  // Diana Reyes  — active lease
+            ['102', 'Studio',    7500,  'Occupied' ],  // John Rivera  — active lease
+            ['103', '1-Bedroom', 10200, 'Occupied' ],  // Rachel Cruz  — active lease (2nd unit)
+            ['104', '1-Bedroom', 10200, 'Available'],  // no lease
+            ['205', 'Studio',    8000,  'Occupied' ],  // Anna Cruz    — active lease
+            ['206', '2-Bedroom', 14500, 'Occupied' ],  // Rachel Cruz  — active lease (1st unit)
+            ['304', '1-Bedroom', 12500, 'Occupied' ],  // Maria Santos — active lease
+            ['407', 'Penthouse', 22000, 'Available'],  // Carlos Lee's lease expired — unit freed up
         ];
         for (const [number, type, rent, status] of sampleUnits) {
             await db.execute(
@@ -141,15 +143,20 @@ async function seed() {
     // ============================================================
     //  SEED: Sample tenants
     // ============================================================
+    // NOTE: lease_status here is just the initial/fallback value stored on the
+    // tenant row. The dashboard now computes the *displayed* lease status (and
+    // leased unit list) live from the leases table below, so these values are
+    // chosen to match what that computation will actually produce.
     const tenantCount = (await db.execute('SELECT COUNT(*) AS n FROM tenants'))[0][0].n;
     if (tenantCount === 0) {
         const sampleTenants = [
-            ['Maria Santos', 'maria@email.com',   '+63 912 3456', 'Active'  ],
-            ['John Rivera',  'john.r@email.com',  '+63 923 4567', 'Active'  ],
-            ['Anna Cruz',    'anna.c@email.com',  '+63 934 5678', 'Active'  ],
-            ['Carlos Lee',   'c.lee@email.com',   '+63 945 6789', 'Expired' ],
-            ['Diana Reyes',  'dreyes@email.com',  '+63 956 7890', 'Active'  ],
-            ['Eduardo Tan',  'ed.tan@email.com',  '+63 967 8901', 'Pending' ],
+            ['Maria Santos', 'maria@email.com',   '+63 912 3456', 'Active'  ], // active lease → 304
+            ['John Rivera',  'john.r@email.com',  '+63 923 4567', 'Active'  ], // active lease → 102
+            ['Anna Cruz',    'anna.c@email.com',  '+63 934 5678', 'Active'  ], // active lease → 205
+            ['Carlos Lee',   'c.lee@email.com',   '+63 945 6789', 'Expired' ], // lease ended → 407
+            ['Diana Reyes',  'dreyes@email.com',  '+63 956 7890', 'Active'  ], // active lease → 101
+            ['Eduardo Tan',  'ed.tan@email.com',  '+63 967 8901', 'Pending' ], // no lease at all
+            ['Rachel Cruz',  'rachel.c@email.com','+63 978 9012', 'Active'  ], // active leases → 206 & 103 (multi-unit)
         ];
         for (const [name, email, phone, leaseStatus] of sampleTenants) {
             await db.execute(
@@ -157,9 +164,49 @@ async function seed() {
                 [name, email, phone, leaseStatus]
             );
         }
-        console.log('✔ Sample tenants seeded (6 tenants)');
+        console.log('✔ Sample tenants seeded (7 tenants)');
     } else {
         console.log('⏭  Tenants already exist — skipping sample data');
+    }
+
+    // ============================================================
+    //  SEED: Sample leases
+    // ============================================================
+    // Drives the live-computed "Unit" and "Lease Status" columns on the Tenants
+    // tab. Dates are chosen relative to today so the demo shows all three
+    // statuses: Active (today falls within the lease), Expired (lease ended),
+    // and Pending (tenant has no lease row at all — see Eduardo Tan above).
+    const leaseCount = (await db.execute('SELECT COUNT(*) AS n FROM leases'))[0][0].n;
+    if (leaseCount === 0) {
+        async function unitIdFor(number) {
+            const [rows] = await db.execute('SELECT id FROM units WHERE number = ? LIMIT 1', [number]);
+            return rows[0] ? rows[0].id : null;
+        }
+        const today = new Date();
+        const iso = (y, m, d) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const thisYear = today.getFullYear();
+
+        const sampleLeases = [
+            // tenant,         unit,   start                    end                       rent
+            ['Maria Santos',  '304',  iso(thisYear - 1, 1, 1),  iso(thisYear + 1, 12, 31), 12500], // Active
+            ['John Rivera',   '102',  iso(thisYear - 1, 9, 1),  iso(thisYear + 1, 8, 31),  7500 ], // Active
+            ['Anna Cruz',     '205',  iso(thisYear, 3, 1),      iso(thisYear + 1, 2, 28),  8000 ], // Active
+            ['Carlos Lee',    '407',  iso(thisYear - 1, 5, 1),  iso(thisYear, 4, 30),      22000], // Expired
+            ['Diana Reyes',   '101',  iso(thisYear, 2, 10),     iso(thisYear + 1, 2, 9),   7500 ], // Active
+            ['Rachel Cruz',   '206',  iso(thisYear, 4, 1),      iso(thisYear + 1, 3, 31),  14500], // Active (unit 1 of 2)
+            ['Rachel Cruz',   '103',  iso(thisYear, 6, 1),      iso(thisYear + 1, 5, 31),  10200], // Active (unit 2 of 2)
+            // Eduardo Tan intentionally has no lease → stays 'Pending'
+        ];
+        for (const [tenant, unitNumber, start, end, rent] of sampleLeases) {
+            const unitId = await unitIdFor(unitNumber);
+            await db.execute(
+                'INSERT INTO leases (tenant, unit_id, start_date, end_date, rent) VALUES (?, ?, ?, ?, ?)',
+                [tenant, unitId, start, end, rent]
+            );
+        }
+        console.log('✔ Sample leases seeded (7 leases)');
+    } else {
+        console.log('⏭  Leases already exist — skipping sample data');
     }
 
     // ============================================================
