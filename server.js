@@ -224,31 +224,110 @@ app.get('/api/leases', requireAuth, async (req, res) => {
     res.json(rows);
 });
 
+// Keeps a tenant row in sync with the unit/status a lease implies. Matches by
+// name since leases only store the tenant's name, not a tenant_id.
+async function syncTenantToUnit(conn, tenantName, unitId, leaseStatus) {
+    const [existing] = await conn.execute('SELECT id FROM tenants WHERE name = ? LIMIT 1', [tenantName]);
+    if (existing[0]) {
+        await conn.execute('UPDATE tenants SET unit_id = ?, lease_status = ? WHERE id = ?', [unitId, leaseStatus, existing[0].id]);
+    } else {
+        await conn.execute('INSERT INTO tenants (name, unit_id, lease_status) VALUES (?, ?, ?)', [tenantName, unitId, leaseStatus]);
+    }
+}
+
 app.post('/api/leases', requireAuth, async (req, res) => {
     const { tenant, unitId, start, end, rent } = req.body;
-    const [result] = await db.execute(
-        'INSERT INTO leases (tenant, unit_id, start_date, end_date, rent) VALUES (?, ?, ?, ?, ?)',
-        [tenant, unitId, start, end, rent]
-    );
-    const [rows] = await db.execute(`${LEASE_SELECT} WHERE id = ?`, [result.insertId]);
-    await logActivity(req, 'ADD', 'lease', result.insertId, `Created lease for ${tenant}`);
-    res.json(rows[0]);
+    const conn = await db.getConnection();
+    try {
+        await conn.beginTransaction();
+
+        const [unitRows] = await conn.execute('SELECT * FROM units WHERE id = ?', [unitId]);
+        const unit = unitRows[0];
+        if (!unit) {
+            await conn.rollback();
+            return res.status(404).json({ message: 'Unit not found.' });
+        }
+
+        const [result] = await conn.execute(
+            'INSERT INTO leases (tenant, unit_id, start_date, end_date, rent) VALUES (?, ?, ?, ?, ?)',
+            [tenant, unitId, start, end, rent]
+        );
+
+        // Occupying the unit and attaching the tenant to it
+        await conn.execute('UPDATE units SET status = ? WHERE id = ?', ['Occupied', unitId]);
+        await syncTenantToUnit(conn, tenant, unitId, 'Active');
+
+        // First payment record for this lease: overdue if the start date has already passed
+        const today = new Date().toISOString().slice(0, 10);
+        const paymentStatus = start < today ? 'Overdue' : 'Pending';
+        await conn.execute(
+            'INSERT INTO payments (tenant, unit, payment_date, amount, status) VALUES (?, ?, ?, ?, ?)',
+            [tenant, unit.number, start, rent, paymentStatus]
+        );
+
+        await conn.commit();
+
+        const [rows] = await db.execute(`${LEASE_SELECT} WHERE id = ?`, [result.insertId]);
+        await logActivity(req, 'ADD', 'lease', result.insertId, `Created lease for ${tenant}`);
+        res.json(rows[0]);
+    } catch (err) {
+        await conn.rollback();
+        console.error('Lease creation error:', err);
+        res.status(500).json({ message: 'Server error creating lease.' });
+    } finally {
+        conn.release();
+    }
 });
 
 app.put('/api/leases/:id', requireAuth, async (req, res) => {
     const { tenant, unitId, start, end, rent } = req.body;
-    await db.execute(
-        'UPDATE leases SET tenant = ?, unit_id = ?, start_date = ?, end_date = ?, rent = ? WHERE id = ?',
-        [tenant || null, unitId || null, start || null, end || null, rent || null, req.params.id]
-    );
-    const [rows] = await db.execute(`${LEASE_SELECT} WHERE id = ?`, [req.params.id]);
-    await logActivity(req, 'EDIT', 'lease', req.params.id, `Updated lease for ${tenant || rows[0]?.tenant}`);
-    res.json(rows[0]);
+    const conn = await db.getConnection();
+    try {
+        await conn.beginTransaction();
+
+        const [existingRows] = await conn.execute('SELECT * FROM leases WHERE id = ?', [req.params.id]);
+        const existing = existingRows[0];
+
+        if (unitId) {
+            const [unitRows] = await conn.execute('SELECT * FROM units WHERE id = ?', [unitId]);
+            if (!unitRows[0]) {
+                await conn.rollback();
+                return res.status(404).json({ message: 'Unit not found.' });
+            }
+        }
+
+        await conn.execute(
+            'UPDATE leases SET tenant = ?, unit_id = ?, start_date = ?, end_date = ?, rent = ? WHERE id = ?',
+            [tenant || null, unitId || null, start || null, end || null, rent || null, req.params.id]
+        );
+
+        // Move occupancy from the old unit to the new one when it changed
+        if (existing && unitId && String(existing.unit_id) !== String(unitId)) {
+            if (existing.unit_id) await conn.execute('UPDATE units SET status = ? WHERE id = ?', ['Available', existing.unit_id]);
+            await conn.execute('UPDATE units SET status = ? WHERE id = ?', ['Occupied', unitId]);
+        }
+        if (tenant && unitId) await syncTenantToUnit(conn, tenant, unitId, 'Active');
+
+        await conn.commit();
+
+        const [rows] = await db.execute(`${LEASE_SELECT} WHERE id = ?`, [req.params.id]);
+        await logActivity(req, 'EDIT', 'lease', req.params.id, `Updated lease for ${tenant || rows[0]?.tenant}`);
+        res.json(rows[0]);
+    } catch (err) {
+        await conn.rollback();
+        console.error('Lease update error:', err);
+        res.status(500).json({ message: 'Server error updating lease.' });
+    } finally {
+        conn.release();
+    }
 });
 
 app.delete('/api/leases/:id', requireAuth, async (req, res) => {
     const [existing] = await db.execute('SELECT * FROM leases WHERE id = ?', [req.params.id]);
     await db.execute('DELETE FROM leases WHERE id = ?', [req.params.id]);
+    if (existing[0]?.unit_id) {
+        await db.execute('UPDATE units SET status = ? WHERE id = ?', ['Available', existing[0].unit_id]);
+    }
     await logActivity(req, 'DELETE', 'lease', req.params.id, `Deleted lease for ${existing[0]?.tenant || req.params.id}`);
     res.json({ success: true });
 });
@@ -256,8 +335,14 @@ app.delete('/api/leases/:id', requireAuth, async (req, res) => {
 // ============================================================
 //  PAYMENTS  /api/payments
 // ============================================================
+const PAYMENT_SELECT = 'SELECT id, tenant, unit, payment_date AS date, amount, status FROM payments';
+
 app.get('/api/payments', requireAuth, async (req, res) => {
-    const [rows] = await db.execute('SELECT * FROM payments ORDER BY payment_date DESC');
+    // Any payment still marked Pending whose due date has passed is now Overdue
+    await db.execute(
+        "UPDATE payments SET status = 'Overdue' WHERE status = 'Pending' AND payment_date < CURDATE()"
+    );
+    const [rows] = await db.execute(`${PAYMENT_SELECT} ORDER BY payment_date DESC`);
     res.json(rows);
 });
 
@@ -267,7 +352,7 @@ app.post('/api/payments', requireAuth, async (req, res) => {
         'INSERT INTO payments (tenant, unit, payment_date, amount, status) VALUES (?, ?, ?, ?, ?)',
         [tenant, unit, date, amount, status || 'Pending']
     );
-    const [rows] = await db.execute('SELECT * FROM payments WHERE id = ?', [result.insertId]);
+    const [rows] = await db.execute(`${PAYMENT_SELECT} WHERE id = ?`, [result.insertId]);
     await logActivity(req, 'ADD', 'payment', result.insertId, `Recorded payment of ₱${Number(amount).toLocaleString()} for ${tenant}`);
     res.json(rows[0]);
 });
@@ -278,7 +363,7 @@ app.put('/api/payments/:id', requireAuth, async (req, res) => {
         'UPDATE payments SET tenant = ?, unit = ?, payment_date = ?, amount = ?, status = ? WHERE id = ?',
         [tenant || null, unit || null, date || null, amount || null, status || null, req.params.id]
     );
-    const [rows] = await db.execute('SELECT * FROM payments WHERE id = ?', [req.params.id]);
+    const [rows] = await db.execute(`${PAYMENT_SELECT} WHERE id = ?`, [req.params.id]);
     await logActivity(req, 'EDIT', 'payment', req.params.id, `Updated payment for ${tenant || rows[0]?.tenant}`);
     res.json(rows[0]);
 });

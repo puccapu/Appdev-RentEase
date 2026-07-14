@@ -654,11 +654,11 @@
     // ============================================================
     function populateLeaseUnitSelect(selectedId) {
         const sel = document.getElementById('leaseUnit');
-        const available = units.filter(u => u.status === 'Available' || u.id === selectedId);
+        const available = units.filter(u => u.status === 'Available' || String(u.id) === String(selectedId));
         sel.innerHTML = '<option value="">— Select a unit —</option>' +
-            available.map(u => `<option value="${u.id}" ${u.id === selectedId ? 'selected' : ''}>${u.number} (${u.type}) — ${formatCurrency(u.rent)}</option>`).join('');
-        if (selectedId && !available.some(u => u.id === selectedId)) {
-            const occ = units.find(u => u.id === selectedId);
+            available.map(u => `<option value="${u.id}" ${String(u.id) === String(selectedId) ? 'selected' : ''}>${u.number} (${u.type}) — ${formatCurrency(u.rent)}</option>`).join('');
+        if (selectedId && !available.some(u => String(u.id) === String(selectedId))) {
+            const occ = units.find(u => String(u.id) === String(selectedId));
             if (occ) sel.innerHTML += `<option value="${occ.id}" selected>${occ.number} (${occ.type}) — ${formatCurrency(occ.rent)}</option>`;
         }
     }
@@ -671,10 +671,10 @@
         const today = new Date();
         document.getElementById('leaseStart').value = today.toISOString().slice(0, 10);
         document.getElementById('leaseEnd').value   = new Date(today.getFullYear() + 1, today.getMonth(), today.getDate()).toISOString().slice(0, 10);
-        document.getElementById('leaseUnit').addEventListener('change', function () {
-            const u = units.find(u => u.id === this.value);
+        document.getElementById('leaseUnit').onchange = function () {
+            const u = units.find(u => String(u.id) === String(this.value));
             if (u) document.getElementById('leaseRent').value = u.rent;
-        });
+        };
         openModal('leaseModal');
     }
     function openEditLeaseModal(id) {
@@ -703,15 +703,9 @@
         if (new Date(end) < new Date(start)) { showToast('End date must be after start date.', 'error'); return; }
         if (!rent || rent < 0) { showToast('Please enter a valid rent amount.', 'error'); return; }
         try {
-            const unit = units.find(u => u.id === unitId); if (!unit) { showToast('Unit not found.', 'error'); return; }
+            const unit = units.find(u => String(u.id) === String(unitId)); if (!unit) { showToast('Unit not found.', 'error'); return; }
             const data = { tenant, unitId, start, end, rent }; if (id) data.id = id;
-            if (id) {
-                const old = leases.find(l => l.id === id);
-                if (old && old.unitId !== unitId) { const oldUnit = units.find(u => u.id === old.unitId); if (oldUnit) oldUnit.status = 'Available'; unit.status = 'Occupied'; }
-            } else {
-                if (unit.status === 'Occupied') { showToast('This unit is already occupied.', 'warning'); return; }
-                unit.status = 'Occupied';
-            }
+            if (!id && unit.status === 'Occupied') { showToast('This unit is already occupied.', 'warning'); return; }
             await DataManager.saveLease(data); await DataManager.loadAll(); renderAll();
             closeModal('leaseModal'); showToast(`Lease for "${tenant}" ${id ? 'updated' : 'created'} successfully.`);
         } catch (err) { showToast('Error: ' + err.message, 'error'); }
