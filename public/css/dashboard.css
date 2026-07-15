@@ -767,6 +767,47 @@ table.sim-table .badge {
     gap: 14px;
 }
 
+/* ---------- Combobox (tenant name autocomplete) ---------- */
+.modal .form-group.combobox { position: relative; }
+.combobox-list {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: #0f1e26;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 20;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+.combobox-list.open { display: block; }
+.combobox-list .combobox-item {
+    padding: 10px 14px;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.combobox-list .combobox-item:hover,
+.combobox-list .combobox-item.active {
+    background: rgba(255, 255, 255, 0.08);
+}
+.combobox-list .combobox-item small {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    margin-top: 2px;
+}
+.combobox-list .combobox-empty {
+    padding: 10px 14px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
 /* ---------- Toast ---------- */
 .toast {
     position: fixed;

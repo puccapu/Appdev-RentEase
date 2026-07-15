@@ -264,11 +264,11 @@
 
         async savePayment(data) {
             if (data.id) {
-                if (USE_API) { const r = await ApiService.updatePayment(data.id, data); if (r) { const i = payments.findIndex(p => p.id === data.id); if (i !== -1) payments[i] = r; return r; } }
+                if (USE_API) { const r = await ApiService.updatePayment(data.id, data); if (r) { const normalized = { ...r, id: String(r.id) }; const i = payments.findIndex(p => p.id === data.id); if (i !== -1) payments[i] = normalized; return normalized; } }
                 const i = payments.findIndex(p => p.id === data.id); if (i !== -1) payments[i] = { ...payments[i], ...data };
             } else {
                 const item = { ...data, id: 'P-' + String(payments.length + 1).padStart(3, '0') };
-                if (USE_API) { const r = await ApiService.createPayment(data); if (r) { payments.push(r); saveToStorage(); return r; } }
+                if (USE_API) { const r = await ApiService.createPayment(data); if (r) { const normalized = { ...r, id: String(r.id) }; payments.push(normalized); saveToStorage(); return normalized; } }
                 payments.push(item);
             }
             saveToStorage(); return data;
@@ -760,20 +760,83 @@
     // ============================================================
     //  CRUD — Payments
     // ============================================================
+    // ---------- Tenant Name combobox (Record Payment) ----------
+    // Restricts the "Tenant Name" field to registered tenants: typing filters a
+    // dropdown of existing tenants, and picking one auto-fills the Unit field
+    // from that tenant's currently-leased unit. Free text that doesn't match a
+    // registered tenant is rejected on submit (see handlePaymentFormSubmit).
+    function renderPaymentTenantSuggestions(query) {
+        const list = document.getElementById('paymentTenantList');
+        const q = (query || '').trim().toLowerCase();
+        const matches = (tenants || [])
+            .filter(t => !q || t.name.toLowerCase().includes(q))
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .slice(0, 8);
+
+        if (!tenants || tenants.length === 0) {
+            list.innerHTML = `<div class="combobox-empty">No registered tenants yet. Register a tenant first.</div>`;
+        } else if (matches.length === 0) {
+            list.innerHTML = `<div class="combobox-empty">No matching tenants</div>`;
+        } else {
+            list.innerHTML = matches.map(t => {
+                const { unitNumbers } = getTenantLeaseInfo(t.name);
+                const unitHint = unitNumbers.length ? `Unit ${unitNumbers.join(', ')}` : 'No unit assigned';
+                return `<div class="combobox-item" data-tenant-id="${t.id}">${t.name}<small>${unitHint}</small></div>`;
+            }).join('');
+        }
+        list.classList.add('open');
+        list.querySelectorAll('.combobox-item[data-tenant-id]').forEach(item => {
+            // mousedown (not click) fires before the input's blur, so the selection
+            // registers before the dropdown gets hidden by the blur handler.
+            item.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                selectPaymentTenant(this.dataset.tenantId);
+            });
+        });
+    }
+    function selectPaymentTenant(tenantId) {
+        const tenant = tenants.find(t => String(t.id) === String(tenantId));
+        if (!tenant) return;
+        const input = document.getElementById('paymentTenant');
+        input.value = tenant.name;
+        input.dataset.confirmedTenant = tenant.name;
+        document.getElementById('paymentTenantList').classList.remove('open');
+        const { unitNumbers } = getTenantLeaseInfo(tenant.name);
+        document.getElementById('paymentUnit').value = unitNumbers.length ? unitNumbers[0] : '';
+    }
+    function closePaymentTenantList() {
+        document.getElementById('paymentTenantList').classList.remove('open');
+    }
+    (function initPaymentTenantCombobox() {
+        const input = document.getElementById('paymentTenant');
+        input.addEventListener('input', function () {
+            this.dataset.confirmedTenant = '';
+            renderPaymentTenantSuggestions(this.value);
+        });
+        input.addEventListener('focus', function () { renderPaymentTenantSuggestions(this.value); });
+        document.addEventListener('click', function (e) {
+            if (!document.getElementById('paymentTenantCombobox').contains(e.target)) closePaymentTenantList();
+        });
+    })();
+
     function openAddPaymentModal() {
         document.getElementById('paymentModalTitle').textContent = 'Record Payment';
         document.getElementById('paymentSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Save Payment';
         document.getElementById('paymentFormId').value = '';
         document.getElementById('paymentForm').reset();
+        document.getElementById('paymentTenant').dataset.confirmedTenant = '';
+        closePaymentTenantList();
         document.getElementById('paymentDate').value = new Date().toISOString().slice(0, 10);
         openModal('paymentModal');
     }
     function openEditPaymentModal(id) {
-        const payment = payments.find(p => p.id === id); if (!payment) { showToast('Payment not found.', 'error'); return; }
+        const payment = payments.find(p => String(p.id) === String(id)); if (!payment) { showToast('Payment not found.', 'error'); return; }
         document.getElementById('paymentModalTitle').textContent = 'Edit Payment';
         document.getElementById('paymentSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Update Payment';
         document.getElementById('paymentFormId').value   = id;
         document.getElementById('paymentTenant').value   = payment.tenant;
+        document.getElementById('paymentTenant').dataset.confirmedTenant = payment.tenant;
+        closePaymentTenantList();
         document.getElementById('paymentUnit').value     = payment.unit;
         document.getElementById('paymentDate').value     = payment.date;
         document.getElementById('paymentAmount').value   = payment.amount;
@@ -782,13 +845,16 @@
     }
     async function handlePaymentFormSubmit(e) {
         e.preventDefault();
-        const id     = document.getElementById('paymentFormId').value;
-        const tenant = document.getElementById('paymentTenant').value.trim();
-        const unit   = document.getElementById('paymentUnit').value.trim();
-        const date   = document.getElementById('paymentDate').value;
-        const amount = parseFloat(document.getElementById('paymentAmount').value);
-        const status = document.getElementById('paymentStatus').value;
-        if (!tenant) { showToast('Please enter tenant name.', 'error'); return; }
+        const id         = document.getElementById('paymentFormId').value;
+        const tenantText = document.getElementById('paymentTenant').value.trim();
+        const unit       = document.getElementById('paymentUnit').value.trim();
+        const date       = document.getElementById('paymentDate').value;
+        const amount     = parseFloat(document.getElementById('paymentAmount').value);
+        const status     = document.getElementById('paymentStatus').value;
+        if (!tenantText) { showToast('Please enter tenant name.', 'error'); return; }
+        const matchedTenant = tenants.find(t => t.name.toLowerCase() === tenantText.toLowerCase());
+        if (!matchedTenant) { showToast('Please select an existing tenant from the list.', 'error'); return; }
+        const tenant = matchedTenant.name;
         if (!unit)   { showToast('Please enter unit number.', 'error'); return; }
         if (!date)   { showToast('Please select a date.', 'error'); return; }
         if (!amount || amount < 0) { showToast('Please enter a valid amount.', 'error'); return; }
@@ -848,7 +914,7 @@
         if      (type === 'unit')     { const i = units.find(u => u.id === id);     name = i ? i.number  : 'this unit'; }
         else if (type === 'lease')    { const i = leases.find(l => l.id === id);    name = i ? i.tenant  : 'this lease'; }
         else if (type === 'tenant')   { const i = tenants.find(t => t.id === id);   name = i ? i.name    : 'this tenant'; }
-        else if (type === 'payment')  { const i = payments.find(p => p.id === id);  name = i ? i.tenant  : 'this payment'; }
+        else if (type === 'payment')  { const i = payments.find(p => String(p.id) === String(id));  name = i ? i.tenant  : 'this payment'; }
         else if (type === 'employee') { const i = employees.find(e => e.id === id); name = i ? i.name    : 'this employee'; }
 
         let msg = `Are you sure you want to delete "${name}"? This action cannot be undone.`;

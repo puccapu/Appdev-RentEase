@@ -358,13 +358,14 @@
             </div>
             <form id="paymentForm" autocomplete="off">
                 <input type="hidden" id="paymentFormId" value="" />
-                <div class="form-group">
+                <div class="form-group combobox" id="paymentTenantCombobox">
                     <label for="paymentTenant">Tenant Name</label>
-                    <input type="text" id="paymentTenant" placeholder="Tenant name" required />
+                    <input type="text" id="paymentTenant" placeholder="Start typing a tenant name…" autocomplete="off" required />
+                    <div class="combobox-list" id="paymentTenantList"></div>
                 </div>
                 <div class="form-group">
                     <label for="paymentUnit">Unit</label>
-                    <input type="text" id="paymentUnit" placeholder="e.g. 101" required />
+                    <input type="text" id="paymentUnit" placeholder="Auto-filled from tenant" required />
                 </div>
                 <div class="form-row">
                     <div class="form-group">
