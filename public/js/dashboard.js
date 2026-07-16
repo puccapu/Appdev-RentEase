@@ -904,7 +904,7 @@
         leases:    { title: 'Lease Contracts',     sub: 'View and manage all lease agreements.',      action: 'New Lease'       },
         payments:  { title: 'Payment Records',     sub: 'View and manage all rental payments.',       action: 'Record Payment'  },
         employees: { title: 'Employee Management', sub: 'Manage your team members and their roles.', action: 'Add Employee'    },
-        reports:   { title: 'Reports & Analytics', sub: 'Overview of property performance.',          action: 'Export PDF'      },
+        reports:   { title: 'Reports & Analytics', sub: 'Overview of property performance.' },
     };
 
     let currentSection = 'dashboard';
@@ -916,16 +916,22 @@
         navLinks.forEach(link => link.classList.toggle('active', link.dataset.section === sectionId));
         const d = meta[sectionId] || meta.dashboard;
         document.getElementById('pageTitle').innerHTML = `${d.title} <small>${d.sub}</small>`;
-        document.getElementById('actionBtnText').textContent = d.action;
-        document.getElementById('heroActionBtn').onclick = () => {
-            if      (sectionId === 'units')                          openAddUnitModal();
-            else if (sectionId === 'leases' || sectionId === 'dashboard') openAddLeaseModal();
-            else if (sectionId === 'tenants')                        openAddTenantModal();
-            else if (sectionId === 'payments')                       openAddPaymentModal();
-            else if (sectionId === 'employees')                      openAddEmployeeModal();
-            else if (sectionId === 'reports')                        generatePDF();
-            else openAddLeaseModal();
-        };
+        const heroActionBtn = document.getElementById('heroActionBtn');
+        if (sectionId === 'reports') {
+            // The global "Export Report" button already exports PDFs; no need for a duplicate here.
+            heroActionBtn.style.display = 'none';
+        } else {
+            heroActionBtn.style.display = '';
+            document.getElementById('actionBtnText').textContent = d.action;
+            heroActionBtn.onclick = () => {
+                if      (sectionId === 'units')                          openAddUnitModal();
+                else if (sectionId === 'leases' || sectionId === 'dashboard') openAddLeaseModal();
+                else if (sectionId === 'tenants')                        openAddTenantModal();
+                else if (sectionId === 'payments')                       openAddPaymentModal();
+                else if (sectionId === 'employees')                      openAddEmployeeModal();
+                else openAddLeaseModal();
+            };
+        }
     }
 
     navLinks.forEach(link => link.addEventListener('click', function (e) {
@@ -946,7 +952,6 @@
     }));
 
     document.getElementById('exportBtn').addEventListener('click', generatePDF);
-    document.getElementById('downloadPdfBtn').addEventListener('click', generatePDF);
     document.getElementById('refreshBtn').addEventListener('click', refresh);
 
     // ============================================================
@@ -997,7 +1002,7 @@
         }
         const active = document.querySelector('.nav-links a.active');
         if (active) {
-            const map = { dashboard: 'New Lease', units: 'Add Unit', tenants: 'Register Tenant', leases: 'New Lease', payments: 'Record Payment', employees: 'Add Employee', reports: 'Export PDF' };
+            const map = { dashboard: 'New Lease', units: 'Add Unit', tenants: 'Register Tenant', leases: 'New Lease', payments: 'Record Payment', employees: 'Add Employee' };
             const t = map[active.dataset.section];
             if (t) document.getElementById('actionBtnText').textContent = t;
         }
