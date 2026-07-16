@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🏢 RentEase
+# RentEase
 
 ### Apartment Rental Management System
 
@@ -24,7 +24,7 @@ Developed by **IM2 Developers — Group VI**
 
 ---
 
-## 📑 Table of Contents
+## Table of Contents
 
 - [Overview](#overview)
 - [Features](#features)
@@ -57,11 +57,11 @@ With a centralized database and a user-friendly interface, RentEase supports eff
 
 | Module | Description |
 |---|---|
-| 🏠 **Unit Management** | Categorize units by type and configure individual rental rates |
-| 👤 **Tenant Records** | Maintain detailed tenant profiles and contact information |
-| 📄 **Lease Contracts** | Create and track contracts with custom terms and durations |
-| 💰 **Payment Tracking** | Log payments and flag outstanding or upcoming dues |
-| 📊 **Centralized Dashboard** | View property and tenant data in one consistent interface |
+| **Unit Management** | Categorize units by type and configure individual rental rates |
+| **Tenant Records** | Maintain detailed tenant profiles and contact information |
+| **Lease Contracts** | Create and track contracts with custom terms and durations |
+| **Payment Tracking** | Log payments and flag outstanding or upcoming dues |
+| **Centralized Dashboard** | View property and tenant data in one consistent interface |
 
 <br>
 
@@ -83,56 +83,27 @@ With a centralized database and a user-friendly interface, RentEase supports eff
 
 ## Setup & Installation
 
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) v18 or higher
-- Access to the DCISM server (for database connectivity)
-
-### 1. Clone the repository
-
+**1. Open tunnel**
 ```bash
-git clone <repo-url>
-cd RentEase
+ssh -p22077 -L 3306:localhost:3306 s23400055@web.dcism.org
 ```
 
-### 2. Install dependencies
-
-```bash
-npm install
+**2. Enter password**
+```
+salang-12345
 ```
 
-### 3. Configure environment
-
-The `.env` file is already included. Choose the right `DB_HOST` based on your network:
-
-**On school network (on-campus WiFi):**
-```env
-DB_HOST=rentease.dcism.org
-```
-
-**Off-campus (home/mobile data) — requires SSH tunnel:**
-```env
-DB_HOST=127.0.0.1
-```
-
-For off-campus use, open a terminal and run this **before** starting the app — keep it open:
-```bash
-ssh -p22077 -L 3306:localhost:3306 s23400055@web.dcism.org -N
-```
-
-### 4. Seed the database *(first time only)*
-
+**3. Seed database**
 ```bash
 node seeder.js
 ```
 
-### 5. Start the server
-
+**4. Start server**
 ```bash
 npm run dev
 ```
 
-Then open your browser at:
+**5. Open browser**
 ```
 http://localhost:20229
 ```
@@ -145,7 +116,7 @@ http://localhost:20229
 
 ---
 
-## 🔒 For Contributors
+## For Contributors
 
 > This project is maintained exclusively by **IM2 Developers — Group VI**. Contributions are limited to authorized team members only.
 
@@ -178,7 +149,7 @@ git commit -m "Describe your change"
    1. Click the **Source Control** icon in the left sidebar (or `Ctrl+Shift+G`).
    2. Hover over each changed file and click the **+** icon to stage it.
    3. Type your commit message in the message box at the top.
-   4. Click the **✓ Commit** button (or press `Ctrl+Enter`).
+   4. Click the **Commit** button (or press `Ctrl+Enter`).
 
 5. **Push your branch**
 
@@ -210,6 +181,6 @@ git push origin <your-branch>
 
 **IM2 Developers · Group VI**
 
-Made with ❤️ and a healthy amount of caffeine
+Made with dedication and a healthy amount of caffeine
 
 </div>
