@@ -48,8 +48,8 @@ function requireAuth(req, res, next) {
 async function logActivity(req, actionType, entityType, entityId, description) {
     try {
         await db.execute(
-            'INSERT INTO recent_activity (action_type, entity_type, entity_id, description, username) VALUES (?, ?, ?, ?, ?)',
-            [actionType, entityType, entityId ?? null, description, req.session.username || 'Admin']
+            'INSERT INTO recent_activity (user_id, action_type, entity_type, entity_id, description, username) VALUES (?, ?, ?, ?, ?, ?)',
+            [req.session.userId ?? null, actionType, entityType, entityId ?? null, description, req.session.username || 'Admin']
         );
     } catch (err) {
         // Never let activity logging break the actual request
@@ -61,7 +61,7 @@ async function logActivity(req, actionType, entityType, entityId, description) {
 app.get('/api/recent-activity', requireAuth, async (req, res) => {
     try {
         const [rows] = await db.execute(
-            'SELECT * FROM recent_activity ORDER BY created_at DESC, id DESC LIMIT 20'
+            'SELECT * FROM recent_activity ORDER BY created_at DESC, activity_id DESC LIMIT 20'
         );
         res.json(rows);
     } catch (err) {
@@ -90,7 +90,7 @@ app.post('/api/login', async (req, res) => {
         const user = rows[0];
 
         if (user && await bcrypt.compare(pin, user.pin_hash)) {
-            req.session.userId   = user.id;
+            req.session.userId   = user.user_id;
             req.session.username = user.username;
             return res.json({ success: true, user: user.first_name || user.username });
         }
@@ -106,7 +106,7 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/profile', requireAuth, async (req, res) => {
     try {
         const [rows] = await db.execute(
-            'SELECT first_name, last_name, email, phone, role FROM users WHERE id = ?',
+            'SELECT first_name, last_name, email, phone, role FROM users WHERE user_id = ?',
             [req.session.userId]
         );
         res.json(rows[0] || {});
@@ -121,7 +121,7 @@ app.post('/api/profile', requireAuth, async (req, res) => {
     const { firstName, lastName, email, phone } = req.body;
     try {
         await db.execute(
-            'UPDATE users SET first_name = ?, last_name = ?, email = ?, phone = ? WHERE id = ?',
+            'UPDATE users SET first_name = ?, last_name = ?, email = ?, phone = ? WHERE user_id = ?',
             [firstName, lastName, email, phone, req.session.userId]
         );
         res.json({ success: true });
@@ -141,8 +141,10 @@ app.post('/api/logout', (req, res) => {
 // ============================================================
 //  UNITS  /api/units
 // ============================================================
+const UNIT_SELECT = 'SELECT unit_id AS id, number, type, rent, status FROM units';
+
 app.get('/api/units', requireAuth, async (req, res) => {
-    const [rows] = await db.execute('SELECT * FROM units ORDER BY number ASC');
+    const [rows] = await db.execute(`${UNIT_SELECT} ORDER BY number ASC`);
     res.json(rows);
 });
 
@@ -152,7 +154,7 @@ app.post('/api/units', requireAuth, async (req, res) => {
         'INSERT INTO units (number, type, rent, status) VALUES (?, ?, ?, ?)',
         [number, type, rent, status || 'Available']
     );
-    const [rows] = await db.execute('SELECT * FROM units WHERE id = ?', [result.insertId]);
+    const [rows] = await db.execute(`${UNIT_SELECT} WHERE unit_id = ?`, [result.insertId]);
     await logActivity(req, 'ADD', 'unit', result.insertId, `Added unit ${number}`);
     res.json(rows[0]);
 });
@@ -160,17 +162,17 @@ app.post('/api/units', requireAuth, async (req, res) => {
 app.put('/api/units/:id', requireAuth, async (req, res) => {
     const { number, type, rent, status } = req.body;
     await db.execute(
-        'UPDATE units SET number = ?, type = ?, rent = ?, status = ? WHERE id = ?',
+        'UPDATE units SET number = ?, type = ?, rent = ?, status = ? WHERE unit_id = ?',
         [number || null, type || null, rent || null, status || null, req.params.id]
     );
-    const [rows] = await db.execute('SELECT * FROM units WHERE id = ?', [req.params.id]);
+    const [rows] = await db.execute(`${UNIT_SELECT} WHERE unit_id = ?`, [req.params.id]);
     await logActivity(req, 'EDIT', 'unit', req.params.id, `Updated unit ${number || rows[0]?.number}`);
     res.json(rows[0]);
 });
 
 app.delete('/api/units/:id', requireAuth, async (req, res) => {
-    const [existing] = await db.execute('SELECT * FROM units WHERE id = ?', [req.params.id]);
-    await db.execute('DELETE FROM units WHERE id = ?', [req.params.id]);
+    const [existing] = await db.execute(`${UNIT_SELECT} WHERE unit_id = ?`, [req.params.id]);
+    await db.execute('DELETE FROM units WHERE unit_id = ?', [req.params.id]);
     await logActivity(req, 'DELETE', 'unit', req.params.id, `Deleted unit ${existing[0]?.number || req.params.id}`);
     res.json({ success: true });
 });
@@ -178,7 +180,7 @@ app.delete('/api/units/:id', requireAuth, async (req, res) => {
 // ============================================================
 //  TENANTS  /api/tenants
 // ============================================================
-const TENANT_SELECT = 'SELECT id, name, email, phone, unit_id AS unitId, lease_status AS leaseStatus FROM tenants';
+const TENANT_SELECT = 'SELECT tenant_id AS id, name, email, phone, unit_id AS unitId, lease_status AS leaseStatus FROM tenants';
 
 app.get('/api/tenants', requireAuth, async (req, res) => {
     const [rows] = await db.execute(`${TENANT_SELECT} ORDER BY name ASC`);
@@ -191,7 +193,7 @@ app.post('/api/tenants', requireAuth, async (req, res) => {
         'INSERT INTO tenants (name, email, phone, unit_id, lease_status) VALUES (?, ?, ?, ?, ?)',
         [name, email, phone, unitId || null, leaseStatus || 'Pending']
     );
-    const [rows] = await db.execute(`${TENANT_SELECT} WHERE id = ?`, [result.insertId]);
+    const [rows] = await db.execute(`${TENANT_SELECT} WHERE tenant_id = ?`, [result.insertId]);
     await logActivity(req, 'ADD', 'tenant', result.insertId, `Registered tenant ${name}`);
     res.json(rows[0]);
 });
@@ -199,17 +201,17 @@ app.post('/api/tenants', requireAuth, async (req, res) => {
 app.put('/api/tenants/:id', requireAuth, async (req, res) => {
     const { name, email, phone, unitId, leaseStatus } = req.body;
     await db.execute(
-        'UPDATE tenants SET name = ?, email = ?, phone = ?, unit_id = ?, lease_status = ? WHERE id = ?',
+        'UPDATE tenants SET name = ?, email = ?, phone = ?, unit_id = ?, lease_status = ? WHERE tenant_id = ?',
         [name || null, email || null, phone || null, unitId || null, leaseStatus || null, req.params.id]
     );
-    const [rows] = await db.execute(`${TENANT_SELECT} WHERE id = ?`, [req.params.id]);
+    const [rows] = await db.execute(`${TENANT_SELECT} WHERE tenant_id = ?`, [req.params.id]);
     await logActivity(req, 'EDIT', 'tenant', req.params.id, `Updated tenant ${name || rows[0]?.name}`);
     res.json(rows[0]);
 });
 
 app.delete('/api/tenants/:id', requireAuth, async (req, res) => {
-    const [existing] = await db.execute('SELECT * FROM tenants WHERE id = ?', [req.params.id]);
-    await db.execute('DELETE FROM tenants WHERE id = ?', [req.params.id]);
+    const [existing] = await db.execute('SELECT * FROM tenants WHERE tenant_id = ?', [req.params.id]);
+    await db.execute('DELETE FROM tenants WHERE tenant_id = ?', [req.params.id]);
     await logActivity(req, 'DELETE', 'tenant', req.params.id, `Removed tenant ${existing[0]?.name || req.params.id}`);
     res.json({ success: true });
 });
@@ -217,21 +219,32 @@ app.delete('/api/tenants/:id', requireAuth, async (req, res) => {
 // ============================================================
 //  LEASES  /api/leases
 // ============================================================
-const LEASE_SELECT = 'SELECT id, tenant, unit_id AS unitId, start_date AS start, end_date AS end, rent FROM leases';
+// Joins to tenants so the API keeps returning the tenant's name under
+// `tenant` (what the dashboard expects), while the leases table itself
+// stores a real tenant_id foreign key rather than a name string.
+const LEASE_SELECT = `
+    SELECT leases.lease_id AS id, tenants.name AS tenant, leases.unit_id AS unitId,
+           leases.start_date AS start, leases.end_date AS end, leases.rent AS rent
+    FROM leases
+    JOIN tenants ON leases.tenant_id = tenants.tenant_id
+`;
 
 app.get('/api/leases', requireAuth, async (req, res) => {
-    const [rows] = await db.execute(`${LEASE_SELECT} ORDER BY start_date DESC`);
+    const [rows] = await db.execute(`${LEASE_SELECT} ORDER BY leases.start_date DESC`);
     res.json(rows);
 });
 
-// Keeps a tenant row in sync with the unit/status a lease implies. Matches by
-// name since leases only store the tenant's name, not a tenant_id.
+// Finds a tenant by name (creating one if it doesn't exist yet), and keeps
+// that tenant's unit_id/lease_status in sync with the lease being saved.
+// Returns the tenant_id so the caller can store a proper foreign key.
 async function syncTenantToUnit(conn, tenantName, unitId, leaseStatus) {
-    const [existing] = await conn.execute('SELECT id FROM tenants WHERE name = ? LIMIT 1', [tenantName]);
+    const [existing] = await conn.execute('SELECT tenant_id FROM tenants WHERE name = ? LIMIT 1', [tenantName]);
     if (existing[0]) {
-        await conn.execute('UPDATE tenants SET unit_id = ?, lease_status = ? WHERE id = ?', [unitId, leaseStatus, existing[0].id]);
+        await conn.execute('UPDATE tenants SET unit_id = ?, lease_status = ? WHERE tenant_id = ?', [unitId, leaseStatus, existing[0].tenant_id]);
+        return existing[0].tenant_id;
     } else {
-        await conn.execute('INSERT INTO tenants (name, unit_id, lease_status) VALUES (?, ?, ?)', [tenantName, unitId, leaseStatus]);
+        const [result] = await conn.execute('INSERT INTO tenants (name, unit_id, lease_status) VALUES (?, ?, ?)', [tenantName, unitId, leaseStatus]);
+        return result.insertId;
     }
 }
 
@@ -241,33 +254,34 @@ app.post('/api/leases', requireAuth, async (req, res) => {
     try {
         await conn.beginTransaction();
 
-        const [unitRows] = await conn.execute('SELECT * FROM units WHERE id = ?', [unitId]);
+        const [unitRows] = await conn.execute('SELECT * FROM units WHERE unit_id = ?', [unitId]);
         const unit = unitRows[0];
         if (!unit) {
             await conn.rollback();
             return res.status(404).json({ message: 'Unit not found.' });
         }
 
+        const tenantId = await syncTenantToUnit(conn, tenant, unitId, 'Active');
+
         const [result] = await conn.execute(
-            'INSERT INTO leases (tenant, unit_id, start_date, end_date, rent) VALUES (?, ?, ?, ?, ?)',
-            [tenant, unitId, start, end, rent]
+            'INSERT INTO leases (tenant_id, unit_id, start_date, end_date, rent) VALUES (?, ?, ?, ?, ?)',
+            [tenantId, unitId, start, end, rent]
         );
 
-        // Occupying the unit and attaching the tenant to it
-        await conn.execute('UPDATE units SET status = ? WHERE id = ?', ['Occupied', unitId]);
-        await syncTenantToUnit(conn, tenant, unitId, 'Active');
+        // Occupying the unit
+        await conn.execute('UPDATE units SET status = ? WHERE unit_id = ?', ['Occupied', unitId]);
 
         // First payment record for this lease: overdue if the start date has already passed
         const today = new Date().toISOString().slice(0, 10);
         const paymentStatus = start < today ? 'Overdue' : 'Pending';
         await conn.execute(
-            'INSERT INTO payments (tenant, unit, payment_date, amount, status) VALUES (?, ?, ?, ?, ?)',
-            [tenant, unit.number, start, rent, paymentStatus]
+            'INSERT INTO payments (tenant_id, unit_id, lease_id, payment_date, amount, status) VALUES (?, ?, ?, ?, ?, ?)',
+            [tenantId, unitId, result.insertId, start, rent, paymentStatus]
         );
 
         await conn.commit();
 
-        const [rows] = await db.execute(`${LEASE_SELECT} WHERE id = ?`, [result.insertId]);
+        const [rows] = await db.execute(`${LEASE_SELECT} WHERE leases.lease_id = ?`, [result.insertId]);
         await logActivity(req, 'ADD', 'lease', result.insertId, `Created lease for ${tenant}`);
         res.json(rows[0]);
     } catch (err) {
@@ -285,32 +299,38 @@ app.put('/api/leases/:id', requireAuth, async (req, res) => {
     try {
         await conn.beginTransaction();
 
-        const [existingRows] = await conn.execute('SELECT * FROM leases WHERE id = ?', [req.params.id]);
+        const [existingRows] = await conn.execute('SELECT * FROM leases WHERE lease_id = ?', [req.params.id]);
         const existing = existingRows[0];
 
         if (unitId) {
-            const [unitRows] = await conn.execute('SELECT * FROM units WHERE id = ?', [unitId]);
+            const [unitRows] = await conn.execute('SELECT * FROM units WHERE unit_id = ?', [unitId]);
             if (!unitRows[0]) {
                 await conn.rollback();
                 return res.status(404).json({ message: 'Unit not found.' });
             }
         }
 
+        // Resolve/keep the tenant_id foreign key
+        let tenantId = existing ? existing.tenant_id : null;
+        if (tenant) {
+            const effectiveUnitId = unitId || (existing && existing.unit_id) || null;
+            tenantId = await syncTenantToUnit(conn, tenant, effectiveUnitId, 'Active');
+        }
+
         await conn.execute(
-            'UPDATE leases SET tenant = ?, unit_id = ?, start_date = ?, end_date = ?, rent = ? WHERE id = ?',
-            [tenant || null, unitId || null, start || null, end || null, rent || null, req.params.id]
+            'UPDATE leases SET tenant_id = ?, unit_id = ?, start_date = ?, end_date = ?, rent = ? WHERE lease_id = ?',
+            [tenantId, unitId || null, start || null, end || null, rent || null, req.params.id]
         );
 
         // Move occupancy from the old unit to the new one when it changed
         if (existing && unitId && String(existing.unit_id) !== String(unitId)) {
-            if (existing.unit_id) await conn.execute('UPDATE units SET status = ? WHERE id = ?', ['Available', existing.unit_id]);
-            await conn.execute('UPDATE units SET status = ? WHERE id = ?', ['Occupied', unitId]);
+            if (existing.unit_id) await conn.execute('UPDATE units SET status = ? WHERE unit_id = ?', ['Available', existing.unit_id]);
+            await conn.execute('UPDATE units SET status = ? WHERE unit_id = ?', ['Occupied', unitId]);
         }
-        if (tenant && unitId) await syncTenantToUnit(conn, tenant, unitId, 'Active');
 
         await conn.commit();
 
-        const [rows] = await db.execute(`${LEASE_SELECT} WHERE id = ?`, [req.params.id]);
+        const [rows] = await db.execute(`${LEASE_SELECT} WHERE leases.lease_id = ?`, [req.params.id]);
         await logActivity(req, 'EDIT', 'lease', req.params.id, `Updated lease for ${tenant || rows[0]?.tenant}`);
         res.json(rows[0]);
     } catch (err) {
@@ -323,10 +343,10 @@ app.put('/api/leases/:id', requireAuth, async (req, res) => {
 });
 
 app.delete('/api/leases/:id', requireAuth, async (req, res) => {
-    const [existing] = await db.execute('SELECT * FROM leases WHERE id = ?', [req.params.id]);
-    await db.execute('DELETE FROM leases WHERE id = ?', [req.params.id]);
-    if (existing[0]?.unit_id) {
-        await db.execute('UPDATE units SET status = ? WHERE id = ?', ['Available', existing[0].unit_id]);
+    const [existing] = await db.execute(`${LEASE_SELECT} WHERE leases.lease_id = ?`, [req.params.id]);
+    await db.execute('DELETE FROM leases WHERE lease_id = ?', [req.params.id]);
+    if (existing[0]?.unitId) {
+        await db.execute('UPDATE units SET status = ? WHERE unit_id = ?', ['Available', existing[0].unitId]);
     }
     await logActivity(req, 'DELETE', 'lease', req.params.id, `Deleted lease for ${existing[0]?.tenant || req.params.id}`);
     res.json({ success: true });
@@ -335,42 +355,117 @@ app.delete('/api/leases/:id', requireAuth, async (req, res) => {
 // ============================================================
 //  PAYMENTS  /api/payments
 // ============================================================
-const PAYMENT_SELECT = 'SELECT id, tenant, unit, payment_date AS date, amount, status FROM payments';
+// Joins back to tenants/units so the API keeps returning tenant name and
+// unit number (what the dashboard expects), while payments itself stores
+// real tenant_id / unit_id / lease_id foreign keys.
+const PAYMENT_SELECT = `
+    SELECT payments.payment_id AS id, tenants.name AS tenant, units.number AS unit,
+           payments.payment_date AS date, payments.amount AS amount, payments.status AS status
+    FROM payments
+    JOIN tenants ON payments.tenant_id = tenants.tenant_id
+    JOIN units   ON payments.unit_id   = units.unit_id
+`;
+
+// Finds a tenant by name, creating a bare tenant record if none exists yet.
+// Unlike syncTenantToUnit, this never touches unit_id/lease_status — a
+// payment shouldn't silently reassign what unit a tenant is leasing.
+async function resolveTenantId(conn, tenantName) {
+    const [existing] = await conn.execute('SELECT tenant_id FROM tenants WHERE name = ? LIMIT 1', [tenantName]);
+    if (existing[0]) return existing[0].tenant_id;
+    const [result] = await conn.execute('INSERT INTO tenants (name) VALUES (?)', [tenantName]);
+    return result.insertId;
+}
+
+// Best-effort match to the lease this payment is settling, so payments stay
+// traceable to a specific contract when one exists.
+async function findLeaseId(conn, tenantId, unitId) {
+    const [rows] = await conn.execute(
+        'SELECT lease_id FROM leases WHERE tenant_id = ? AND unit_id = ? ORDER BY start_date DESC LIMIT 1',
+        [tenantId, unitId]
+    );
+    return rows[0] ? rows[0].lease_id : null;
+}
 
 app.get('/api/payments', requireAuth, async (req, res) => {
     // Any payment still marked Pending whose due date has passed is now Overdue
     await db.execute(
         "UPDATE payments SET status = 'Overdue' WHERE status = 'Pending' AND payment_date < CURDATE()"
     );
-    const [rows] = await db.execute(`${PAYMENT_SELECT} ORDER BY payment_date DESC`);
+    const [rows] = await db.execute(`${PAYMENT_SELECT} ORDER BY payments.payment_date DESC`);
     res.json(rows);
 });
 
 app.post('/api/payments', requireAuth, async (req, res) => {
     const { tenant, unit, date, amount, status } = req.body;
-    const [result] = await db.execute(
-        'INSERT INTO payments (tenant, unit, payment_date, amount, status) VALUES (?, ?, ?, ?, ?)',
-        [tenant, unit, date, amount, status || 'Pending']
-    );
-    const [rows] = await db.execute(`${PAYMENT_SELECT} WHERE id = ?`, [result.insertId]);
-    await logActivity(req, 'ADD', 'payment', result.insertId, `Recorded payment of ₱${Number(amount).toLocaleString()} for ${tenant}`);
-    res.json(rows[0]);
+    const conn = await db.getConnection();
+    try {
+        await conn.beginTransaction();
+
+        const [unitRows] = await conn.execute('SELECT unit_id FROM units WHERE number = ? LIMIT 1', [unit]);
+        if (!unitRows[0]) {
+            await conn.rollback();
+            return res.status(404).json({ message: 'Unit not found.' });
+        }
+        const unitId    = unitRows[0].unit_id;
+        const tenantId  = await resolveTenantId(conn, tenant);
+        const leaseId   = await findLeaseId(conn, tenantId, unitId);
+
+        const [result] = await conn.execute(
+            'INSERT INTO payments (tenant_id, unit_id, lease_id, payment_date, amount, status) VALUES (?, ?, ?, ?, ?, ?)',
+            [tenantId, unitId, leaseId, date, amount, status || 'Pending']
+        );
+
+        await conn.commit();
+
+        const [rows] = await db.execute(`${PAYMENT_SELECT} WHERE payments.payment_id = ?`, [result.insertId]);
+        await logActivity(req, 'ADD', 'payment', result.insertId, `Recorded payment of ₱${Number(amount).toLocaleString()} for ${tenant}`);
+        res.json(rows[0]);
+    } catch (err) {
+        await conn.rollback();
+        console.error('Payment creation error:', err);
+        res.status(500).json({ message: 'Server error creating payment.' });
+    } finally {
+        conn.release();
+    }
 });
 
 app.put('/api/payments/:id', requireAuth, async (req, res) => {
     const { tenant, unit, date, amount, status } = req.body;
-    await db.execute(
-        'UPDATE payments SET tenant = ?, unit = ?, payment_date = ?, amount = ?, status = ? WHERE id = ?',
-        [tenant || null, unit || null, date || null, amount || null, status || null, req.params.id]
-    );
-    const [rows] = await db.execute(`${PAYMENT_SELECT} WHERE id = ?`, [req.params.id]);
-    await logActivity(req, 'EDIT', 'payment', req.params.id, `Updated payment for ${tenant || rows[0]?.tenant}`);
-    res.json(rows[0]);
+    const conn = await db.getConnection();
+    try {
+        await conn.beginTransaction();
+
+        const [unitRows] = await conn.execute('SELECT unit_id FROM units WHERE number = ? LIMIT 1', [unit]);
+        if (!unitRows[0]) {
+            await conn.rollback();
+            return res.status(404).json({ message: 'Unit not found.' });
+        }
+        const unitId   = unitRows[0].unit_id;
+        const tenantId = await resolveTenantId(conn, tenant);
+        const leaseId  = await findLeaseId(conn, tenantId, unitId);
+
+        await conn.execute(
+            'UPDATE payments SET tenant_id = ?, unit_id = ?, lease_id = ?, payment_date = ?, amount = ?, status = ? WHERE payment_id = ?',
+            [tenantId, unitId, leaseId, date || null, amount || null, status || null, req.params.id]
+        );
+
+        await conn.commit();
+
+        const [rows] = await db.execute(`${PAYMENT_SELECT} WHERE payments.payment_id = ?`, [req.params.id]);
+        await logActivity(req, 'EDIT', 'payment', req.params.id, `Updated payment for ${tenant || rows[0]?.tenant}`);
+        res.json(rows[0]);
+    } catch (err) {
+        await conn.rollback();
+        console.error('Payment update error:', err);
+        res.status(500).json({ message: 'Server error updating payment.' });
+    } finally {
+        conn.release();
+    }
 });
 
 app.delete('/api/payments/:id', requireAuth, async (req, res) => {
-    const [existing] = await db.execute('SELECT * FROM payments WHERE id = ?', [req.params.id]);
-    await db.execute('DELETE FROM payments WHERE id = ?', [req.params.id]);
+    const [existing] = await db.execute(`${PAYMENT_SELECT} WHERE payments.payment_id = ?`, [req.params.id]);
+    await db.execute('DELETE FROM payments WHERE payment_id = ?', [req.params.id]);
     await logActivity(req, 'DELETE', 'payment', req.params.id, `Deleted payment record for ${existing[0]?.tenant || req.params.id}`);
     res.json({ success: true });
 });
@@ -378,8 +473,10 @@ app.delete('/api/payments/:id', requireAuth, async (req, res) => {
 // ============================================================
 //  EMPLOYEES  /api/employees
 // ============================================================
+const EMPLOYEE_SELECT = 'SELECT employee_id AS id, name, email, phone, role FROM employees';
+
 app.get('/api/employees', requireAuth, async (req, res) => {
-    const [rows] = await db.execute('SELECT * FROM employees ORDER BY name ASC');
+    const [rows] = await db.execute(`${EMPLOYEE_SELECT} ORDER BY name ASC`);
     res.json(rows);
 });
 
@@ -389,7 +486,7 @@ app.post('/api/employees', requireAuth, async (req, res) => {
         'INSERT INTO employees (name, email, phone, role) VALUES (?, ?, ?, ?)',
         [name, email, phone, role || 'Staff']
     );
-    const [rows] = await db.execute('SELECT * FROM employees WHERE id = ?', [result.insertId]);
+    const [rows] = await db.execute(`${EMPLOYEE_SELECT} WHERE employee_id = ?`, [result.insertId]);
     await logActivity(req, 'ADD', 'employee', result.insertId, `Added employee ${name}`);
     res.json(rows[0]);
 });
@@ -397,17 +494,17 @@ app.post('/api/employees', requireAuth, async (req, res) => {
 app.put('/api/employees/:id', requireAuth, async (req, res) => {
     const { name, email, phone, role } = req.body;
     await db.execute(
-        'UPDATE employees SET name = ?, email = ?, phone = ?, role = ? WHERE id = ?',
+        'UPDATE employees SET name = ?, email = ?, phone = ?, role = ? WHERE employee_id = ?',
         [name || null, email || null, phone || null, role || null, req.params.id]
     );
-    const [rows] = await db.execute('SELECT * FROM employees WHERE id = ?', [req.params.id]);
+    const [rows] = await db.execute(`${EMPLOYEE_SELECT} WHERE employee_id = ?`, [req.params.id]);
     await logActivity(req, 'EDIT', 'employee', req.params.id, `Updated employee ${name || rows[0]?.name}`);
     res.json(rows[0]);
 });
 
 app.delete('/api/employees/:id', requireAuth, async (req, res) => {
-    const [existing] = await db.execute('SELECT * FROM employees WHERE id = ?', [req.params.id]);
-    await db.execute('DELETE FROM employees WHERE id = ?', [req.params.id]);
+    const [existing] = await db.execute(`${EMPLOYEE_SELECT} WHERE employee_id = ?`, [req.params.id]);
+    await db.execute('DELETE FROM employees WHERE employee_id = ?', [req.params.id]);
     await logActivity(req, 'DELETE', 'employee', req.params.id, `Removed employee ${existing[0]?.name || req.params.id}`);
     res.json({ success: true });
 });
