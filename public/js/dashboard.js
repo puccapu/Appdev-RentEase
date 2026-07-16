@@ -867,21 +867,270 @@
     // ============================================================
     //  PDF GENERATION
     // ============================================================
+    // The live dashboard uses a dark, translucent "glass" theme (backdrop-filter
+    // blur, near-transparent panel backgrounds) designed for screen viewing.
+    // html2canvas can't render backdrop-filter, and the panels lose the dark
+    // gradient they're meant to blend into once captured in isolation — so a
+    // straight screenshot of the dashboard comes out low-contrast and hard to
+    // read. Instead, build a dedicated light, print-friendly layout from the
+    // underlying data for whichever page is currently active, and capture that.
+
+    function pdfHeader(sectionTitle) {
+        const generatedOn = new Date().toLocaleString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        return `
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:3px solid #000000; padding-bottom:16px; margin-bottom:24px;">
+                <div>
+                    <div style="font-size:22px; font-weight:700; color:#000000;">RentEase</div>
+                    <div style="font-size:13px; color:#666666;">Apartment Rental Management System</div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:16px; font-weight:700; color:#000000;">${sectionTitle}</div>
+                    <div style="font-size:12px; color:#666666;">Generated ${generatedOn}</div>
+                </div>
+            </div>`;
+    }
+
+    function pdfFooter() {
+        return `
+            <div style="margin-top:32px; padding-top:14px; border-top:1px solid #cccccc; font-size:11px; color:#666666; text-align:center;">
+                RentEase v1.0 · This report was generated automatically from live property data.
+            </div>`;
+    }
+
+    function pdfWrap(innerHtml) {
+        return `<div style="width:1000px; padding:40px 48px; background:#ffffff; color:#000000; font-family: Helvetica, Arial, sans-serif;">${innerHtml}</div>`;
+    }
+
+    function pdfStatCard(label, value) {
+        return `
+            <div style="flex:1; min-width:180px; background:#f5f5f5; border:1px solid #cccccc; border-radius:10px; padding:16px 18px;">
+                <div style="font-size:24px; font-weight:700; color:#000000;">${value}</div>
+                <div style="font-size:12px; color:#666666; margin-top:4px;">${label}</div>
+            </div>`;
+    }
+
+    // Grayscale-only badge styling — distinguished by fill weight/outline rather
+    // than color, so status is still clear on a B&W printout.
+    function pdfBadge(status) {
+        const solid   = ['Paid', 'Occupied', 'Active'];
+        const outline = ['Overdue', 'Expired'];
+        const style = solid.includes(status)
+            ? 'background:#000000; color:#ffffff;'
+            : outline.includes(status)
+                ? 'background:#ffffff; color:#000000; border:1.5px solid #000000;'
+                : 'background:#e5e5e5; color:#000000;';
+        return `<span style="display:inline-block; padding:2px 10px; border-radius:20px; font-size:11px; font-weight:600; ${style}">${status}</span>`;
+    }
+
+    function pdfTable(columns, bodyRowsHtml, emptyMessage) {
+        return `
+            <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                <thead>
+                    <tr style="background:#000000;">
+                        ${columns.map(c => `<th style="padding:10px 12px; text-align:${c.align || 'left'}; color:#ffffff; font-weight:600;">${c.label}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>${bodyRowsHtml.length ? bodyRowsHtml.join('') : `<tr><td colspan="${columns.length}" style="padding:16px; text-align:center; color:#666666;">${emptyMessage}</td></tr>`}</tbody>
+            </table>`;
+    }
+
+    function pdfRow(cellsHtml, zebraIndex) {
+        return `<tr style="background:${zebraIndex % 2 === 0 ? '#ffffff' : '#f2f2f2'};">${cellsHtml.map(c => `<td style="padding:10px 12px; border-bottom:1px solid #cccccc;${c.align ? ' text-align:' + c.align + ';' : ''}">${c.value}</td>`).join('')}</tr>`;
+    }
+
+    function buildUnitsPDF() {
+        const rows = (units || []).map((u, i) => pdfRow([
+            { value: `<strong>${u.number}</strong>` },
+            { value: u.type },
+            { value: formatCurrency(u.rent), align: 'right' },
+            { value: pdfBadge(u.status) },
+            { value: getTenantForUnit(u.id) || '—' },
+        ], i));
+        const columns = [
+            { label: 'Unit #' }, { label: 'Type' }, { label: 'Rent', align: 'right' },
+            { label: 'Status' }, { label: 'Tenant' },
+        ];
+        return pdfWrap(pdfHeader('Unit Management') + pdfTable(columns, rows, 'No units yet.') + pdfFooter());
+    }
+
+    function buildTenantsPDF() {
+        const rows = (tenants || []).map((t, i) => {
+            const { status, unitNumbers } = getTenantLeaseInfo(t.name);
+            return pdfRow([
+                { value: `<strong>${t.name}</strong>` },
+                { value: t.email || '—' },
+                { value: t.phone || '—' },
+                { value: unitNumbers.length ? unitNumbers.join(', ') : '—' },
+                { value: pdfBadge(status) },
+            ], i);
+        });
+        const columns = [
+            { label: 'Name' }, { label: 'Email' }, { label: 'Phone' },
+            { label: 'Unit(s)' }, { label: 'Status' },
+        ];
+        return pdfWrap(pdfHeader('Tenant Management') + pdfTable(columns, rows, 'No tenants yet.') + pdfFooter());
+    }
+
+    function buildLeasesPDF() {
+        const rows = (leases || []).map((l, i) => {
+            const unit = units.find(u => u.id === l.unitId);
+            return pdfRow([
+                { value: `<strong>${l.id}</strong>` },
+                { value: l.tenant },
+                { value: unit ? unit.number : '—' },
+                { value: formatDate(l.start) },
+                { value: formatDate(l.end) },
+                { value: formatCurrency(l.rent), align: 'right' },
+            ], i);
+        });
+        const columns = [
+            { label: 'Lease ID' }, { label: 'Tenant' }, { label: 'Unit' },
+            { label: 'Start' }, { label: 'End' }, { label: 'Rent', align: 'right' },
+        ];
+        return pdfWrap(pdfHeader('Lease Contracts') + pdfTable(columns, rows, 'No leases yet.') + pdfFooter());
+    }
+
+    function buildPaymentsPDF() {
+        const rows = (payments || []).map((p, i) => pdfRow([
+            { value: `<strong>${p.id}</strong>` },
+            { value: formatDate(p.date) },
+            { value: p.tenant },
+            { value: p.unit },
+            { value: formatCurrency(p.amount), align: 'right' },
+            { value: pdfBadge(p.status) },
+        ], i));
+        const columns = [
+            { label: 'Payment ID' }, { label: 'Date' }, { label: 'Tenant' },
+            { label: 'Unit' }, { label: 'Amount', align: 'right' }, { label: 'Status' },
+        ];
+        return pdfWrap(pdfHeader('Payment Records') + pdfTable(columns, rows, 'No payment records yet.') + pdfFooter());
+    }
+
+    function buildEmployeesPDF() {
+        const rows = (employees || []).map((e, i) => pdfRow([
+            { value: `<strong>${e.name}</strong>` },
+            { value: e.email || '—' },
+            { value: e.phone || '—' },
+            { value: pdfBadge(e.role || 'Staff') },
+        ], i));
+        const columns = [
+            { label: 'Name' }, { label: 'Email' }, { label: 'Phone' }, { label: 'Role' },
+        ];
+        return pdfWrap(pdfHeader('Employee Management') + pdfTable(columns, rows, 'No employees yet.') + pdfFooter());
+    }
+
+    function buildDashboardPDF() {
+        const totalUnits     = units?.length || 0;
+        const occupied       = units?.filter(u => u.status === 'Occupied').length || 0;
+        const activeTenants  = tenants?.filter(t => getTenantLeaseInfo(t.name).status === 'Active').length || 0;
+        const totalRent      = leases?.reduce((s, l) => s + Number(l.rent), 0) || 0;
+        const totalEmployees = employees?.length || 0;
+
+        const stats = `
+            <div style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:28px;">
+                ${pdfStatCard('Total Units', totalUnits)}
+                ${pdfStatCard('Occupied', occupied)}
+                ${pdfStatCard('Active Tenants', activeTenants)}
+                ${pdfStatCard('Employees', totalEmployees)}
+                ${pdfStatCard('Monthly Rent Roll', formatCurrency(totalRent))}
+            </div>`;
+
+        const activityRows = (!recentActivity || recentActivity.length === 0)
+            ? []
+            : recentActivity.slice(0, 10).map((a, i) => pdfRow([
+                { value: timeAgo(a.created_at) },
+                { value: a.description },
+                { value: a.username || 'Admin' },
+            ], i));
+        const activityTable = pdfTable(
+            [{ label: 'When' }, { label: 'Activity' }, { label: 'By' }],
+            activityRows,
+            'No recent activity.'
+        );
+
+        return pdfWrap(
+            pdfHeader('Dashboard Overview') + stats +
+            `<div style="font-size:15px; font-weight:700; color:#000000; margin-bottom:10px;">Recent Activity</div>` +
+            activityTable + pdfFooter()
+        );
+    }
+
+    function buildReportsPDF() {
+        const totalUnits     = units?.length || 0;
+        const occupied       = units?.filter(u => u.status === 'Occupied').length || 0;
+        const occupancyRate  = totalUnits ? Math.round(occupied / totalUnits * 100) : 0;
+        const totalRevenue   = payments?.reduce((s, p) => s + Number(p.amount), 0) || 0;
+        const overdueTotal   = payments?.filter(p => p.status === 'Overdue').reduce((s, p) => s + Number(p.amount), 0) || 0;
+        const expiringLeases = leases?.filter(l => {
+            const diff = (new Date(l.end + 'T00:00:00') - new Date()) / 86400000;
+            return diff > 0 && diff <= 30;
+        }).length || 0;
+
+        const stats = `
+            <div style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:28px;">
+                ${pdfStatCard('Total Revenue', formatCurrency(totalRevenue))}
+                ${pdfStatCard('Occupancy Rate', occupancyRate + '%')}
+                ${pdfStatCard('Total Overdue', formatCurrency(overdueTotal))}
+                ${pdfStatCard('Leases Ending Soon', expiringLeases)}
+            </div>`;
+
+        const rows = (payments || []).slice().reverse().slice(0, 10).map((p, i) => pdfRow([
+            { value: formatDate(p.date) },
+            { value: p.tenant },
+            { value: p.unit },
+            { value: formatCurrency(p.amount), align: 'right' },
+            { value: 'Rent' },
+        ], i));
+        const table = pdfTable(
+            [{ label: 'Date' }, { label: 'Tenant' }, { label: 'Unit' }, { label: 'Amount', align: 'right' }, { label: 'Type' }],
+            rows,
+            'No transactions yet.'
+        );
+
+        return pdfWrap(
+            pdfHeader('Property Report') + stats +
+            `<div style="font-size:15px; font-weight:700; color:#000000; margin-bottom:10px;">Recent Transactions</div>` +
+            table + pdfFooter()
+        );
+    }
+
+    function buildPrintableReportHTML(section) {
+        switch (section) {
+            case 'units':     return buildUnitsPDF();
+            case 'tenants':   return buildTenantsPDF();
+            case 'leases':    return buildLeasesPDF();
+            case 'payments':  return buildPaymentsPDF();
+            case 'employees': return buildEmployeesPDF();
+            case 'reports':   return buildReportsPDF();
+            case 'dashboard':
+            default:          return buildDashboardPDF();
+        }
+    }
+
     function generatePDF() {
-        const element = document.getElementById('reportContent');
-        if (!element) { showToast('Report content not found.', 'error'); return; }
         showToast('Generating PDF...', 'warning');
+
+        // Render the printable layout off-screen so it never appears in the live UI.
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'fixed';
+        wrapper.style.top = '0';
+        wrapper.style.left = '-10000px';
+        wrapper.innerHTML = buildPrintableReportHTML(currentSection);
+        document.body.appendChild(wrapper);
+
+        const sectionSlug = (currentSection || 'dashboard').charAt(0).toUpperCase() + (currentSection || 'dashboard').slice(1);
         const opt = {
-            margin: 0.5,
-            filename: 'RentEase_Report_' + new Date().toISOString().slice(0, 10) + '.pdf',
+            margin: 0.4,
+            filename: `RentEase_${sectionSlug}_` + new Date().toISOString().slice(0, 10) + '.pdf',
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#0f1e26' },
-            jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
+            html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' },
+            jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' },
             pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
         };
-        html2pdf().set(opt).from(element).save()
+        html2pdf().set(opt).from(wrapper.firstElementChild).save()
             .then(() => showToast('PDF downloaded successfully!'))
-            .catch(err => showToast('PDF generation failed: ' + err.message, 'error'));
+            .catch(err => showToast('PDF generation failed: ' + err.message, 'error'))
+            .finally(() => wrapper.remove());
     }
 
     // ============================================================
