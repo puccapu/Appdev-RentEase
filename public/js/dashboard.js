@@ -4,17 +4,14 @@
     // ============================================================
     //  REST API CONFIGURATION
     // ============================================================
-    const USE_API = true;  // ← Set to true to enable API calls (requires a working backend)
     const API_BASE_URL = '/api'; // ← Update with your API base URL
 
     // --- API Service ---
     const ApiService = {
         async _fetch(endpoint, options = {}) {
-            if (!USE_API) return null;
             const url = `${API_BASE_URL}${endpoint}`;
             const headers = {
                 'Content-Type': 'application/json',
-                ...(localStorage.getItem('api_token') ? { 'Authorization': 'Bearer ' + localStorage.getItem('api_token') } : {}),
                 ...options.headers,
             };
             const response = await fetch(url, { ...options, headers });
@@ -50,12 +47,6 @@
     // ============================================================
     //  DATA LAYER
     // ============================================================
-    const STORAGE_KEY_UNITS     = 'rentease_units';
-    const STORAGE_KEY_LEASES    = 'rentease_leases';
-    const STORAGE_KEY_TENANTS   = 'rentease_tenants';
-    const STORAGE_KEY_PAYMENTS  = 'rentease_payments';
-    const STORAGE_KEY_EMPLOYEES = 'rentease_employees';
-
     let units     = [];
     let leases    = [];
     let tenants   = [];
@@ -64,10 +55,6 @@
     let recentActivity = [];
 
     // ---------- Helpers ----------
-    function generateId() {
-        return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    }
-
     function formatCurrency(amount) {
         return '₱' + Number(amount).toLocaleString('en-PH', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
     }
@@ -110,70 +97,6 @@
         return `<span class="badge ${cls}">${status}</span>`;
     }
 
-    // ---------- localStorage ----------
-    function loadFromStorage() {
-        try {
-            units     = JSON.parse(localStorage.getItem(STORAGE_KEY_UNITS))     || [];
-            leases    = JSON.parse(localStorage.getItem(STORAGE_KEY_LEASES))    || [];
-            tenants   = JSON.parse(localStorage.getItem(STORAGE_KEY_TENANTS))   || [];
-            payments  = JSON.parse(localStorage.getItem(STORAGE_KEY_PAYMENTS))  || [];
-            employees = JSON.parse(localStorage.getItem(STORAGE_KEY_EMPLOYEES)) || [];
-        } catch (e) {
-            units = []; leases = []; tenants = []; payments = []; employees = [];
-        }
-        if (units.length === 0 && leases.length === 0) seedData();
-    }
-
-    function saveToStorage() {
-        localStorage.setItem(STORAGE_KEY_UNITS,     JSON.stringify(units));
-        localStorage.setItem(STORAGE_KEY_LEASES,    JSON.stringify(leases));
-        localStorage.setItem(STORAGE_KEY_TENANTS,   JSON.stringify(tenants));
-        localStorage.setItem(STORAGE_KEY_PAYMENTS,  JSON.stringify(payments));
-        localStorage.setItem(STORAGE_KEY_EMPLOYEES, JSON.stringify(employees));
-    }
-
-    // ---------- Seed Data ----------
-    function seedData() {
-        units = [
-            { id: 'u1', number: '101', type: 'Studio',    rent: 7500,  status: 'Occupied'  },
-            { id: 'u2', number: '102', type: 'Studio',    rent: 7500,  status: 'Occupied'  },
-            { id: 'u3', number: '103', type: '1-Bedroom', rent: 10200, status: 'Available' },
-            { id: 'u4', number: '104', type: '1-Bedroom', rent: 10200, status: 'Occupied'  },
-            { id: 'u5', number: '205', type: 'Studio',    rent: 8000,  status: 'Occupied'  },
-            { id: 'u6', number: '206', type: '2-Bedroom', rent: 14500, status: 'Available' },
-            { id: 'u7', number: '304', type: '1-Bedroom', rent: 12500, status: 'Occupied'  },
-            { id: 'u8', number: '407', type: 'Penthouse', rent: 22000, status: 'Occupied'  },
-        ];
-        leases = [
-            { id: 'l1', tenant: 'Maria Santos', unitId: 'u7', start: '2026-01-15', end: '2027-01-14', rent: 12500 },
-            { id: 'l2', tenant: 'John Rivera',  unitId: 'u2', start: '2025-11-01', end: '2026-10-31', rent: 7500  },
-            { id: 'l3', tenant: 'Anna Cruz',    unitId: 'u5', start: '2026-03-01', end: '2027-02-28', rent: 8000  },
-            { id: 'l4', tenant: 'Carlos Lee',   unitId: 'u8', start: '2025-05-01', end: '2026-04-30', rent: 22000 },
-            { id: 'l5', tenant: 'Diana Reyes',  unitId: 'u1', start: '2026-02-10', end: '2027-02-09', rent: 7500  },
-        ];
-        tenants = [
-            { id: 't1', name: 'Maria Santos', email: 'maria@email.com',   phone: '+63 912 3456', unitId: 'u7', leaseStatus: 'Active'   },
-            { id: 't2', name: 'John Rivera',  email: 'john.r@email.com',  phone: '+63 923 4567', unitId: 'u2', leaseStatus: 'Active'   },
-            { id: 't3', name: 'Anna Cruz',    email: 'anna.c@email.com',  phone: '+63 934 5678', unitId: 'u5', leaseStatus: 'Active'   },
-            { id: 't4', name: 'Carlos Lee',   email: 'c.lee@email.com',   phone: '+63 945 6789', unitId: 'u8', leaseStatus: 'Expired'  },
-            { id: 't5', name: 'Diana Reyes',  email: 'dreyes@email.com',  phone: '+63 956 7890', unitId: 'u1', leaseStatus: 'Active'   },
-            { id: 't6', name: 'Eduardo Tan',  email: 'ed.tan@email.com',  phone: '+63 967 8901', unitId: null, leaseStatus: 'Pending'  },
-        ];
-        payments = [
-            { id: 'p1', date: '2026-05-15', tenant: 'Maria Santos', unit: '304', amount: 12500, status: 'Paid'    },
-            { id: 'p2', date: '2026-05-14', tenant: 'John Rivera',  unit: '102', amount: 7500,  status: 'Paid'    },
-            { id: 'p3', date: '2026-05-12', tenant: 'Anna Cruz',    unit: '205', amount: 8000,  status: 'Paid'    },
-            { id: 'p4', date: '2026-05-01', tenant: 'Carlos Lee',   unit: '407', amount: 22000, status: 'Overdue' },
-            { id: 'p5', date: '2026-05-10', tenant: 'Diana Reyes',  unit: '101', amount: 7500,  status: 'Pending' },
-        ];
-        employees = [
-            { id: 'e1', name: 'Alice Johnson', email: 'alice@rentease.com', phone: '+63 999 1111', role: 'Admin'   },
-            { id: 'e2', name: 'Bob Smith',     email: 'bob@rentease.com',   phone: '+63 999 2222', role: 'Manager' },
-            { id: 'e3', name: 'Carol Tan',     email: 'carol@rentease.com', phone: '+63 999 3333', role: 'Staff'   },
-        ];
-        saveToStorage();
-    }
-
     // ============================================================
     //  DATA MANAGER
     // ============================================================
@@ -193,107 +116,89 @@
 
     const DataManager = {
         async loadAll() {
-            if (USE_API) {
-                try {
-                    const [u, l, t, p, e, ra] = await Promise.all([
-                        ApiService.getUnits(), ApiService.getLeases(), ApiService.getTenants(),
-                        ApiService.getPayments(), ApiService.getEmployees(), ApiService.getRecentActivity()
-                    ]);
-                    units = u || []; leases = l || []; tenants = t || [];
-                    payments = p || []; employees = e || []; recentActivity = ra || [];
-                    if (!u || !l || !t || !p || !e) { console.warn('API returned null, falling back to localStorage'); loadFromStorage(); }
-                    normalizeIds();
-                    return;
-                } catch (err) { console.error('API load failed, using localStorage:', err); }
-            }
-            loadFromStorage();
+            const [u, l, t, p, e, ra] = await Promise.all([
+                ApiService.getUnits(), ApiService.getLeases(), ApiService.getTenants(),
+                ApiService.getPayments(), ApiService.getEmployees(), ApiService.getRecentActivity()
+            ]);
+            units = u || []; leases = l || []; tenants = t || [];
+            payments = p || []; employees = e || []; recentActivity = ra || [];
             normalizeIds();
         },
 
         async saveUnit(data) {
             if (data.id) {
-                if (USE_API) { const r = await ApiService.updateUnit(data.id, data); if (r) { const i = units.findIndex(u => u.id === data.id); if (i !== -1) units[i] = r; return r; } }
-                const i = units.findIndex(u => u.id === data.id); if (i !== -1) units[i] = { ...units[i], ...data };
+                const r = await ApiService.updateUnit(data.id, data);
+                if (r) { const i = units.findIndex(u => u.id === data.id); if (i !== -1) units[i] = r; return r; }
             } else {
-                const item = { ...data, id: generateId() };
-                if (USE_API) { const r = await ApiService.createUnit(data); if (r) { units.push(r); saveToStorage(); return r; } }
-                units.push(item);
+                const r = await ApiService.createUnit(data);
+                if (r) { units.push(r); return r; }
             }
-            saveToStorage(); return data;
+            return data;
         },
         async deleteUnit(id) {
-            if (USE_API) await ApiService.deleteUnit(id);
+            await ApiService.deleteUnit(id);
             units   = units.filter(u => u.id !== id);
             tenants = tenants.filter(t => t.unitId !== id);
-            saveToStorage();
         },
 
         async saveLease(data) {
             if (data.id) {
-                if (USE_API) { const r = await ApiService.updateLease(data.id, data); if (r) { const i = leases.findIndex(l => l.id === data.id); if (i !== -1) leases[i] = r; return r; } }
-                const i = leases.findIndex(l => l.id === data.id); if (i !== -1) leases[i] = { ...leases[i], ...data };
+                const r = await ApiService.updateLease(data.id, data);
+                if (r) { const i = leases.findIndex(l => l.id === data.id); if (i !== -1) leases[i] = r; return r; }
             } else {
-                const item = { ...data, id: 'L-' + String(leases.length + 1).padStart(3, '0') };
-                if (USE_API) { const r = await ApiService.createLease(data); if (r) { leases.push(r); saveToStorage(); return r; } }
-                leases.push(item);
+                const r = await ApiService.createLease(data);
+                if (r) { leases.push(r); return r; }
             }
-            saveToStorage(); return data;
+            return data;
         },
         async deleteLease(id) {
-            if (USE_API) await ApiService.deleteLease(id);
+            await ApiService.deleteLease(id);
             leases = leases.filter(l => l.id !== id);
-            saveToStorage();
         },
 
         async saveTenant(data) {
             if (data.id) {
-                if (USE_API) { const r = await ApiService.updateTenant(data.id, data); if (r) { const i = tenants.findIndex(t => t.id === data.id); if (i !== -1) tenants[i] = r; return r; } }
-                const i = tenants.findIndex(t => t.id === data.id); if (i !== -1) tenants[i] = { ...tenants[i], ...data };
+                const r = await ApiService.updateTenant(data.id, data);
+                if (r) { const i = tenants.findIndex(t => t.id === data.id); if (i !== -1) tenants[i] = r; return r; }
             } else {
-                const item = { ...data, id: 't' + generateId() };
-                if (USE_API) { const r = await ApiService.createTenant(data); if (r) { tenants.push(r); saveToStorage(); return r; } }
-                tenants.push(item);
+                const r = await ApiService.createTenant(data);
+                if (r) { tenants.push(r); return r; }
             }
-            saveToStorage(); return data;
+            return data;
         },
         async deleteTenant(id) {
-            if (USE_API) await ApiService.deleteTenant(id);
+            await ApiService.deleteTenant(id);
             tenants = tenants.filter(t => t.id !== id);
-            saveToStorage();
         },
 
         async savePayment(data) {
             if (data.id) {
-                if (USE_API) { const r = await ApiService.updatePayment(data.id, data); if (r) { const normalized = { ...r, id: String(r.id) }; const i = payments.findIndex(p => p.id === data.id); if (i !== -1) payments[i] = normalized; return normalized; } }
-                const i = payments.findIndex(p => p.id === data.id); if (i !== -1) payments[i] = { ...payments[i], ...data };
+                const r = await ApiService.updatePayment(data.id, data);
+                if (r) { const normalized = { ...r, id: String(r.id) }; const i = payments.findIndex(p => p.id === data.id); if (i !== -1) payments[i] = normalized; return normalized; }
             } else {
-                const item = { ...data, id: 'P-' + String(payments.length + 1).padStart(3, '0') };
-                if (USE_API) { const r = await ApiService.createPayment(data); if (r) { const normalized = { ...r, id: String(r.id) }; payments.push(normalized); saveToStorage(); return normalized; } }
-                payments.push(item);
+                const r = await ApiService.createPayment(data);
+                if (r) { const normalized = { ...r, id: String(r.id) }; payments.push(normalized); return normalized; }
             }
-            saveToStorage(); return data;
+            return data;
         },
         async deletePayment(id) {
-            if (USE_API) await ApiService.deletePayment(id);
+            await ApiService.deletePayment(id);
             payments = payments.filter(p => p.id !== id);
-            saveToStorage();
         },
 
         async saveEmployee(data) {
             if (data.id) {
-                if (USE_API) { const r = await ApiService.updateEmployee(data.id, data); if (r) { const i = employees.findIndex(e => e.id === data.id); if (i !== -1) employees[i] = r; return r; } }
-                const i = employees.findIndex(e => e.id === data.id); if (i !== -1) employees[i] = { ...employees[i], ...data };
+                const r = await ApiService.updateEmployee(data.id, data);
+                if (r) { const i = employees.findIndex(e => e.id === data.id); if (i !== -1) employees[i] = r; return r; }
             } else {
-                const item = { ...data, id: 'e' + generateId() };
-                if (USE_API) { const r = await ApiService.createEmployee(data); if (r) { employees.push(r); saveToStorage(); return r; } }
-                employees.push(item);
+                const r = await ApiService.createEmployee(data);
+                if (r) { employees.push(r); return r; }
             }
-            saveToStorage(); return data;
+            return data;
         },
         async deleteEmployee(id) {
-            if (USE_API) await ApiService.deleteEmployee(id);
+            await ApiService.deleteEmployee(id);
             employees = employees.filter(e => e.id !== id);
-            saveToStorage();
         },
     };
 
@@ -1087,8 +992,8 @@
         renderUnits(); renderLeases(); renderTenants(); renderPayments(); renderEmployees(); renderDashboard(); 
         const badge = document.getElementById('apiBadge');
         if (badge) {
-            badge.innerHTML = USE_API ? '<i class="fas fa-cloud"></i> API' : '<i class="fas fa-cloud"></i>';
-            badge.className = USE_API ? 'api-badge' : 'api-badge off';
+            badge.innerHTML = '<i class="fas fa-cloud"></i> API';
+            badge.className = 'api-badge';
         }
         const active = document.querySelector('.nav-links a.active');
         if (active) {
@@ -1119,17 +1024,11 @@
         const avatarImg = document.querySelector('.user-profile img');
         if (avatarImg) avatarImg.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(username) + '&background=003d47&color=fff&size=36';
 
-        console.log(`🔌 RentEase API Mode: ${USE_API ? 'ENABLED' : 'DISABLED (localStorage)'}`);
-        console.log(`📡 API Base URL: ${USE_API ? API_BASE_URL : 'N/A'}`);
+        console.log(`📡 API Base URL: ${API_BASE_URL}`);
 
         await DataManager.loadAll();
         renderAll();
         switchSection('dashboard');
-        if (!USE_API) {
-            window.addEventListener('storage', function (e) {
-                if (e.key?.startsWith('rentease_')) DataManager.loadAll().then(() => renderAll());
-            });
-        }
     })();
 
 })();
