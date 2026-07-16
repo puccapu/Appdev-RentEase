@@ -190,7 +190,7 @@ async function seed() {
             ['Lance Vincent',    'lance@email.com',     '+63 912 3456', 'Active'  ], // active lease → 101
             ['Christian Salang', 'christian@email.com', '+63 923 4567', 'Active'  ], // active lease → 102
             ['Iesha Katriel',    'iesha@email.com',      '+63 934 5678', 'Pending' ], // no lease at all
-            ['Min Martinez',     'min@email.com',        '+63 945 6789', 'Pending' ], // no lease at all
+            ['Minh Martinez',     'minh@email.com',        '+63 945 6789', 'Pending' ], // no lease at all
         ];
         for (const [name, email, phone, leaseStatus] of sampleTenants) {
             const [result] = await db.execute(
