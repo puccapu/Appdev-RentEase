@@ -276,9 +276,13 @@
             </div>
             <form id="leaseForm" autocomplete="off">
                 <input type="hidden" id="leaseFormId" value="" />
-                <div class="form-group">
+                <div class="form-group combobox" id="leaseTenantCombobox">
                     <label for="leaseTenant">Tenant Name</label>
-                    <input type="text" id="leaseTenant" placeholder="Full name" required />
+                    <input type="text" id="leaseTenant" placeholder="Start typing a tenant name…" autocomplete="off" required />
+                    <div class="combobox-list" id="leaseTenantList"></div>
+                    <small style="color:#8a94a6; display:block; margin-top:4px;">
+                        Pick an existing tenant, or type a new name to register them automatically.
+                    </small>
                 </div>
                 <div class="form-group">
                     <label for="leaseUnit">Unit</label>
@@ -362,9 +366,10 @@
                     <input type="text" id="paymentTenant" placeholder="Start typing a tenant name…" autocomplete="off" required />
                     <div class="combobox-list" id="paymentTenantList"></div>
                 </div>
-                <div class="form-group">
+                <div class="form-group" id="paymentUnitGroup">
                     <label for="paymentUnit">Unit</label>
                     <input type="text" id="paymentUnit" placeholder="Auto-filled from tenant" required />
+                    <select id="paymentUnitSelect" style="display:none;"></select>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
@@ -373,7 +378,7 @@
                     </div>
                     <div class="form-group">
                         <label for="paymentAmount">Amount (₱)</label>
-                        <input type="number" id="paymentAmount" placeholder="7500" required min="0" step="100" />
+                        <input type="number" id="paymentAmount" placeholder="Auto-filled from unit" required min="0" step="100" />
                     </div>
                 </div>
                 <div class="form-group">

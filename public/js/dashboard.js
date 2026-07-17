@@ -567,11 +567,66 @@
             if (occ) sel.innerHTML += `<option value="${occ.id}" selected>${occ.number} (${occ.type}) — ${formatCurrency(occ.rent)}</option>`;
         }
     }
+    // ---------- Tenant Name combobox (New Lease) ----------
+    // Same filtering/autocomplete behavior as the Record Payment combobox:
+    // typing filters a dropdown of existing tenants. Unlike Record Payment,
+    // though, a name that doesn't match any registered tenant is NOT rejected
+    // on submit — the server auto-registers a new tenant for it (see
+    // syncTenantToUnit in server.js), so free text is intentionally allowed.
+    function renderLeaseTenantSuggestions(query) {
+        const list = document.getElementById('leaseTenantList');
+        const q = (query || '').trim().toLowerCase();
+        const matches = (tenants || [])
+            .filter(t => !q || t.name.toLowerCase().includes(q))
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .slice(0, 8);
+
+        if (!tenants || tenants.length === 0) {
+            list.innerHTML = `<div class="combobox-empty">No registered tenants yet. Typing a name here will register them.</div>`;
+        } else if (matches.length === 0) {
+            list.innerHTML = `<div class="combobox-empty">No matching tenants — typing a new name will register them.</div>`;
+        } else {
+            list.innerHTML = matches.map(t => {
+                const { unitNumbers } = getTenantLeaseInfo(t.name);
+                const unitHint = unitNumbers.length ? `Unit ${unitNumbers.join(', ')}` : 'No unit assigned';
+                return `<div class="combobox-item" data-tenant-id="${t.id}">${t.name}<small>${unitHint}</small></div>`;
+            }).join('');
+        }
+        list.classList.add('open');
+        list.querySelectorAll('.combobox-item[data-tenant-id]').forEach(item => {
+            // mousedown (not click) fires before the input's blur, so the selection
+            // registers before the dropdown gets hidden by the blur handler.
+            item.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                selectLeaseTenant(this.dataset.tenantId);
+            });
+        });
+    }
+    function selectLeaseTenant(tenantId) {
+        const tenant = tenants.find(t => String(t.id) === String(tenantId));
+        if (!tenant) return;
+        const input = document.getElementById('leaseTenant');
+        input.value = tenant.name;
+        closeLeaseTenantList();
+    }
+    function closeLeaseTenantList() {
+        document.getElementById('leaseTenantList').classList.remove('open');
+    }
+    (function initLeaseTenantCombobox() {
+        const input = document.getElementById('leaseTenant');
+        input.addEventListener('input', function () { renderLeaseTenantSuggestions(this.value); });
+        input.addEventListener('focus', function () { renderLeaseTenantSuggestions(this.value); });
+        document.addEventListener('click', function (e) {
+            if (!document.getElementById('leaseTenantCombobox').contains(e.target)) closeLeaseTenantList();
+        });
+    })();
+
     function openAddLeaseModal() {
         document.getElementById('leaseModalTitle').textContent = 'New Lease';
         document.getElementById('leaseSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Save Lease';
         document.getElementById('leaseFormId').value = '';
         document.getElementById('leaseForm').reset();
+        closeLeaseTenantList();
         populateLeaseUnitSelect(null);
         const today = new Date();
         document.getElementById('leaseStart').value = today.toISOString().slice(0, 10);
@@ -588,6 +643,7 @@
         document.getElementById('leaseSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Update Lease';
         document.getElementById('leaseFormId').value    = id;
         document.getElementById('leaseTenant').value    = lease.tenant;
+        closeLeaseTenantList();
         document.getElementById('leaseStart').value     = lease.start;
         document.getElementById('leaseEnd').value       = lease.end;
         document.getElementById('leaseRent').value      = lease.rent;
@@ -699,6 +755,50 @@
             });
         });
     }
+    // Looks up a unit's monthly rent by its unit number (as shown in the Unit
+    // field), for auto-filling the Amount field.
+    function getUnitRentByNumber(unitNumber) {
+        const u = units.find(u => u.number === unitNumber);
+        return u ? u.rent : null;
+    }
+    // Auto-fills the Amount field from the given unit's rent. Clears it if the
+    // unit doesn't resolve to a known rent (e.g. no unit chosen yet).
+    function applyRentForUnit(unitNumber) {
+        const rent = getUnitRentByNumber(unitNumber);
+        document.getElementById('paymentAmount').value = (rent !== null && rent !== undefined) ? rent : '';
+    }
+    // Switches the Unit field between a plain auto-fill text input (single or no
+    // lease) and a dropdown (multiple active leases for the tenant). `selectedUnit`
+    // pre-fills/pre-selects whichever field ends up shown; if it isn't among
+    // unitNumbers it's still included so existing data is never silently lost.
+    // `autoFillAmount` (default true) also syncs the Amount field to the
+    // resolved unit's rent; pass false to leave an existing amount untouched
+    // (e.g. when opening Edit Payment on an already-recorded amount).
+    function setPaymentUnitField(unitNumbers, selectedUnit, autoFillAmount) {
+        const input  = document.getElementById('paymentUnit');
+        const select = document.getElementById('paymentUnitSelect');
+        const units_ = unitNumbers || [];
+        if (units_.length > 1) {
+            const options = units_.includes(selectedUnit) || !selectedUnit
+                ? units_
+                : units_.concat([selectedUnit]);
+            select.innerHTML = options.map(u => `<option value="${u}" ${u === selectedUnit ? 'selected' : ''}>${u}</option>`).join('');
+            if (!selectedUnit) select.value = options[0] || '';
+            select.style.display = '';
+            select.required = true;
+            input.style.display = 'none';
+            input.required = false;
+            input.value = select.value;
+        } else {
+            input.style.display = '';
+            input.required = true;
+            select.style.display = 'none';
+            select.required = false;
+            select.innerHTML = '';
+            input.value = selectedUnit || units_[0] || '';
+        }
+        if (autoFillAmount !== false) applyRentForUnit(input.style.display === 'none' ? select.value : input.value);
+    }
     function selectPaymentTenant(tenantId) {
         const tenant = tenants.find(t => String(t.id) === String(tenantId));
         if (!tenant) return;
@@ -707,7 +807,7 @@
         input.dataset.confirmedTenant = tenant.name;
         document.getElementById('paymentTenantList').classList.remove('open');
         const { unitNumbers } = getTenantLeaseInfo(tenant.name);
-        document.getElementById('paymentUnit').value = unitNumbers.length ? unitNumbers[0] : '';
+        setPaymentUnitField(unitNumbers, unitNumbers.length ? unitNumbers[0] : '');
     }
     function closePaymentTenantList() {
         document.getElementById('paymentTenantList').classList.remove('open');
@@ -717,10 +817,22 @@
         input.addEventListener('input', function () {
             this.dataset.confirmedTenant = '';
             renderPaymentTenantSuggestions(this.value);
+            setPaymentUnitField([], '');
         });
         input.addEventListener('focus', function () { renderPaymentTenantSuggestions(this.value); });
         document.addEventListener('click', function (e) {
             if (!document.getElementById('paymentTenantCombobox').contains(e.target)) closePaymentTenantList();
+        });
+        // Multi-lease dropdown: re-sync Amount whenever the chosen unit changes.
+        document.getElementById('paymentUnitSelect').addEventListener('change', function () {
+            applyRentForUnit(this.value);
+        });
+        // Single-lease/free-typed unit field: if what's typed exactly matches a
+        // known unit number, sync Amount to it. No match yet (still typing) is
+        // left alone so we don't blank out the field mid-keystroke.
+        document.getElementById('paymentUnit').addEventListener('input', function () {
+            const rent = getUnitRentByNumber(this.value.trim());
+            if (rent !== null && rent !== undefined) document.getElementById('paymentAmount').value = rent;
         });
     })();
 
@@ -731,6 +843,7 @@
         document.getElementById('paymentForm').reset();
         document.getElementById('paymentTenant').dataset.confirmedTenant = '';
         closePaymentTenantList();
+        setPaymentUnitField([], '');
         document.getElementById('paymentDate').value = new Date().toISOString().slice(0, 10);
         openModal('paymentModal');
     }
@@ -742,7 +855,8 @@
         document.getElementById('paymentTenant').value   = payment.tenant;
         document.getElementById('paymentTenant').dataset.confirmedTenant = payment.tenant;
         closePaymentTenantList();
-        document.getElementById('paymentUnit').value     = payment.unit;
+        const { unitNumbers } = getTenantLeaseInfo(payment.tenant);
+        setPaymentUnitField(unitNumbers, payment.unit, false);
         document.getElementById('paymentDate').value     = payment.date;
         document.getElementById('paymentAmount').value   = payment.amount;
         document.getElementById('paymentStatus').value   = payment.status;
@@ -751,8 +865,9 @@
     async function handlePaymentFormSubmit(e) {
         e.preventDefault();
         const id         = document.getElementById('paymentFormId').value;
-        const tenantText = document.getElementById('paymentTenant').value.trim();
-        const unit       = document.getElementById('paymentUnit').value.trim();
+        const tenantText   = document.getElementById('paymentTenant').value.trim();
+        const paymentUnitSelect = document.getElementById('paymentUnitSelect');
+        const unit = (paymentUnitSelect.style.display !== 'none' ? paymentUnitSelect.value : document.getElementById('paymentUnit').value).trim();
         const date       = document.getElementById('paymentDate').value;
         const amount     = parseFloat(document.getElementById('paymentAmount').value);
         const status     = document.getElementById('paymentStatus').value;
