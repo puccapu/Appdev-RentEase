@@ -10,7 +10,11 @@
 </head>
 <body>
     
-    <!-- ========== SESSION CHECK ========== -->
+    <!--
+        SECTION: Session Check
+        Purpose: Redirects to the login page if there's no valid, unexpired
+        session before the dashboard renders any account or property data.
+    -->
     <script>
         (function () {
             const sessionData = sessionStorage.getItem('rentease_session');
@@ -29,7 +33,11 @@
 
     <div class="app-container">
 
-        <!-- ========== NAVIGATION ========== -->
+        <!--
+            SECTION: Navigation
+            Purpose: Top navbar with the logo, section links, and the
+            profile dropdown menu (profile page / logout).
+        -->
         <nav class="navbar">
             <div class="logo">
                 <img src="https://raw.githubusercontent.com/CHROMAPSTR/GRAPHIC-DESIGNS/refs/heads/main/Copy%20of%20rreeeeeeeee%20(16).png" alt="RentEase" />
@@ -57,7 +65,11 @@
             </div>
         </nav>
 
-        <!-- ========== HERO ========== -->
+        <!--
+            SECTION: Hero
+            Purpose: Page heading/greeting plus the primary action buttons
+            (add/new for the active section, export report, refresh).
+        -->
         <div class="hero">
             <h1 id="pageTitle">
                 Welcome back, <span id="greetingName">Admin</span>
@@ -70,9 +82,17 @@
             </div>
         </div>
 
-        <!-- ========== PAGE SECTIONS ========== -->
+        <!--
+            SECTION: Page Sections
+            Purpose: Holds every main content view (Dashboard, Units, Tenants,
+            Leases, Payments, Employees, Reports). Only one is shown at a time,
+            toggled by the "active" class from dashboard.js's switchSection().
+        -->
 
-        <!-- DASHBOARD -->
+        <!--
+            SUB-SECTION: Dashboard
+            Purpose: Overview stat cards, recent activity feed, and quick-action shortcuts.
+        -->
         <div id="section-dashboard" class="page-section active">
             <div class="stats-grid" id="statsGrid"></div>
             <div class="bottom-section">
@@ -107,7 +127,10 @@
             </div>
         </div>
 
-        <!-- UNITS -->
+        <!--
+            SUB-SECTION: Units
+            Purpose: Table of apartment units with their type, rent, status, and tenant.
+        -->
         <div id="section-units" class="page-section">
             <div class="section-header">
                 <h2><i class="fas fa-door-open"></i> Apartment Units <span class="sub" id="unitCount">· 0 total</span></h2>
@@ -124,7 +147,10 @@
             </div>
         </div>
 
-        <!-- TENANTS -->
+        <!--
+            SUB-SECTION: Tenants
+            Purpose: Table of registered tenants with their contact info, unit, and lease status.
+        -->
         <div id="section-tenants" class="page-section">
             <div class="section-header">
                 <h2><i class="fas fa-users"></i> Tenants <span class="sub" id="tenantCount">· 0 active</span></h2>
@@ -141,7 +167,10 @@
             </div>
         </div>
 
-        <!-- LEASES -->
+        <!--
+            SUB-SECTION: Leases
+            Purpose: Table of lease contracts with tenant, unit, term dates, and monthly rent.
+        -->
         <div id="section-leases" class="page-section">
             <div class="section-header">
                 <h2><i class="fas fa-file-signature"></i> Lease Contracts <span class="sub" id="leaseCount">· 0 active</span></h2>
@@ -158,7 +187,10 @@
             </div>
         </div>
 
-        <!-- PAYMENTS -->
+        <!--
+            SUB-SECTION: Payments
+            Purpose: Table of rent payment records with tenant, unit, amount, and status.
+        -->
         <div id="section-payments" class="page-section">
             <div class="section-header">
                 <h2><i class="fas fa-coins"></i> Payment Records <span class="sub" id="paymentCount">· 0 records</span></h2>
@@ -175,7 +207,10 @@
             </div>
         </div>
 
-        <!-- EMPLOYEES -->
+        <!--
+            SUB-SECTION: Employees
+            Purpose: Table of staff records with contact info and role.
+        -->
         <div id="section-employees" class="page-section">
             <div class="section-header">
                 <h2>
@@ -203,7 +238,10 @@
             </div>
         </div>
 
-        <!-- REPORTS -->
+        <!--
+            SUB-SECTION: Reports
+            Purpose: Property performance stat cards and a recent-transactions table for the Reports & Analytics view.
+        -->
         <div id="section-reports" class="page-section">
             <div class="section-header">
                 <h2><i class="fas fa-chart-pie"></i> Reports &amp; Analytics</h2>
@@ -227,9 +265,16 @@
         <div class="footer-note">RentEase v1.0 · Apartment Rental Management System</div>
     </div>
 
-    <!-- ========== MODALS ========== -->
+    <!--
+        SECTION: Modals
+        Purpose: All Add/Edit forms and the shared delete-confirmation dialog,
+        each hidden by default and opened by dashboard.js's openModal().
+    -->
 
-    <!-- Add / Edit Unit -->
+    <!--
+        SUB-SECTION: Add / Edit Unit
+        Purpose: Form for creating or editing an apartment unit (number, type, rent, status).
+    -->
     <div class="modal-overlay" id="unitModal">
         <div class="modal">
             <div class="modal-header">
@@ -267,7 +312,10 @@
         </div>
     </div>
 
-    <!-- New / Edit Lease -->
+    <!--
+        SUB-SECTION: New / Edit Lease
+        Purpose: Form for creating or editing a lease contract (tenant name combobox, unit, term dates, rent).
+    -->
     <div class="modal-overlay" id="leaseModal">
         <div class="modal">
             <div class="modal-header">
@@ -310,7 +358,10 @@
         </div>
     </div>
 
-    <!-- Add / Edit Tenant -->
+    <!--
+        SUB-SECTION: Add / Edit Tenant
+        Purpose: Form for registering or editing a tenant (contact info, assigned unit, initial lease status).
+    -->
     <div class="modal-overlay" id="tenantModal">
         <div class="modal">
             <div class="modal-header">
@@ -352,7 +403,10 @@
         </div>
     </div>
 
-    <!-- Add / Edit Payment -->
+    <!--
+        SUB-SECTION: Add / Edit Payment
+        Purpose: Form for recording or editing a rent payment (tenant name combobox, unit, date, amount, status).
+    -->
     <div class="modal-overlay" id="paymentModal">
         <div class="modal">
             <div class="modal-header">
@@ -395,7 +449,10 @@
         </div>
     </div>
 
-    <!-- Add / Edit Employee -->
+    <!--
+        SUB-SECTION: Add / Edit Employee
+        Purpose: Form for adding or editing a staff member (contact info and role).
+    -->
     <div class="modal-overlay" id="employeeModal">
         <div class="modal">
             <div class="modal-header">
@@ -432,7 +489,10 @@
         </div>
     </div>
 
-    <!-- Confirm Delete -->
+    <!--
+        SUB-SECTION: Confirm Delete
+        Purpose: Shared confirmation dialog shown before deleting any unit, lease, tenant, payment, or employee.
+    -->
     <div class="modal-overlay" id="confirmModal">
         <div class="modal" style="max-width:400px;">
             <div class="modal-header">
@@ -447,7 +507,10 @@
         </div>
     </div>
 
-    <!-- ========== TOAST ========== -->
+    <!--
+        SECTION: Toast
+        Purpose: Temporary notification shown after any create/update/delete/refresh/export action.
+    -->
     <div class="toast" id="toast">
         <i class="fas fa-check-circle"></i>
         <span id="toastMessage">Success!</span>

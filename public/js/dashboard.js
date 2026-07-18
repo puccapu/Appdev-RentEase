@@ -1,13 +1,21 @@
 (function () {
     'use strict';
 
-    // ============================================================
-    //  REST API CONFIGURATION
-    // ============================================================
-    const API_BASE_URL = '/api'; // ← Update with your API base URL
+    /*
+        SECTION: REST API Configuration
+        Purpose: Defines the base API URL and a thin ApiService wrapper around
+        fetch for every CRUD endpoint the dashboard talks to.
+    */
+    const API_BASE_URL = '/api';
 
-    // --- API Service ---
     const ApiService = {
+        /*
+            Name: _fetch
+            Purpose: Shared fetch wrapper that adds JSON headers and throws with the
+            server's error message when a request fails.
+            Used by: dashboard.js (every ApiService.* method below)
+            Found in: Line 15-27 in dashboard.js
+        */
         async _fetch(endpoint, options = {}) {
             const url = `${API_BASE_URL}${endpoint}`;
             const headers = {
@@ -44,9 +52,12 @@
         getRecentActivity: ()      => ApiService._fetch('/recent-activity'),
     };
 
-    // ============================================================
-    //  DATA LAYER
-    // ============================================================
+    /*
+        SECTION: Data Layer
+        Purpose: Holds the in-memory copies of every entity (units, leases,
+        tenants, payments, employees, recent activity) loaded from the API,
+        plus small formatting helpers used throughout the render functions.
+    */
     let units     = [];
     let leases    = [];
     let tenants   = [];
@@ -54,17 +65,34 @@
     let employees = [];
     let recentActivity = [];
 
-    // ---------- Helpers ----------
+    /*
+        Name: formatCurrency
+        Purpose: Formats a number as a Philippine peso amount (e.g. ₱7,500).
+        Used by: dashboard.js (all render* and pdf* functions)
+        Found in: Line 58-60 in dashboard.js
+    */
     function formatCurrency(amount) {
         return '₱' + Number(amount).toLocaleString('en-PH', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
     }
 
+    /*
+        Name: formatDate
+        Purpose: Formats an ISO date string into a short readable date (e.g. Jan 5, 2026), or an em dash if empty.
+        Used by: dashboard.js (all render* and pdf* functions)
+        Found in: Line 68-72 in dashboard.js
+    */
     function formatDate(dateStr) {
         if (!dateStr) return '—';
         const d = new Date(dateStr + 'T00:00:00');
         return d.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
     }
 
+    /*
+        Name: timeAgo
+        Purpose: Converts a timestamp into a relative "time ago" string (e.g. "5m ago") for the activity feed.
+        Used by: dashboard.js (renderDashboard, buildDashboardPDF)
+        Found in: Line 80-92 in dashboard.js
+    */
     function timeAgo(timestamp) {
         if (!timestamp) return '';
         const then = new Date(timestamp);
@@ -80,6 +108,12 @@
         return then.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
     }
 
+    /*
+        Name: getStatusBadge
+        Purpose: Renders a colored status badge (e.g. Available, Overdue, Active) as an HTML span.
+        Used by: dashboard.js (all render* table functions)
+        Found in: Line 111-121 in dashboard.js
+    */
     function getStatusBadge(status) {
         const map = {
             'Available':  'available',
@@ -97,14 +131,15 @@
         return `<span class="badge ${cls}">${status}</span>`;
     }
 
-    // ============================================================
-    //  DATA MANAGER
-    // ============================================================
-    // IDs coming from the MySQL API are numbers, but every id read back out of the
-    // DOM (data-edit-unit="...", hidden form fields, etc.) is always a string. Strict
-    // === comparisons between the two silently fail (e.g. "Edit" buttons doing
-    // nothing, "Tenant not found"). Normalize every id / foreign-key id to a string
-    // right after loading so comparisons work consistently everywhere.
+    /*
+        Name: normalizeIds
+        Purpose: Converts every id/foreign-key id in the loaded data to a string.
+        IDs from the MySQL API are numbers, but ids read back out of the DOM
+        (data-edit-unit="...", hidden form fields, etc.) are always strings,
+        so strict === comparisons between the two would otherwise silently fail.
+        Used by: dashboard.js (DataManager.loadAll)
+        Found in: Line 142-149 in dashboard.js
+    */
     function normalizeIds() {
         const toStr = v => (v === null || v === undefined || v === '') ? null : String(v);
         units     = (units     || []).map(u => ({ ...u, id: toStr(u.id) }));
@@ -114,6 +149,12 @@
         employees = (employees || []).map(e => ({ ...e, id: toStr(e.id) }));
     }
 
+    /*
+        SECTION: Data Manager
+        Purpose: Wraps ApiService calls with local cache updates, so the UI's
+        in-memory arrays (units, leases, tenants, payments, employees) stay in
+        sync with the server after every create/update/delete.
+    */
     const DataManager = {
         async loadAll() {
             const [u, l, t, p, e, ra] = await Promise.all([
@@ -202,9 +243,12 @@
         },
     };
 
-    // ============================================================
-    //  TOAST
-    // ============================================================
+    /*
+        Name: showToast
+        Purpose: Shows a temporary toast notification (success, warning, or error) at the bottom of the dashboard.
+        Used by: dashboard.js (every CRUD handler, refresh, and generatePDF)
+        Found in: Line 251-263 in dashboard.js
+    */
     let toastTimeout = null;
 
     function showToast(message, type = 'success') {
@@ -221,9 +265,12 @@
         toastTimeout = setTimeout(() => toast.classList.remove('show'), 3500);
     }
 
-    // ============================================================
-    //  MODAL HELPERS
-    // ============================================================
+    /*
+        Name: openModal / closeModal
+        Purpose: Shows or hides a modal dialog by its element id.
+        Used by: dashboard.js (every openAdd/openEdit modal function and closeModal call in this file)
+        Found in: Line 279-280 in dashboard.js
+    */
     function openModal(id)  { document.getElementById(id).classList.add('open'); }
     function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
@@ -234,18 +281,31 @@
         el.addEventListener('click', function () { closeModal(this.dataset.close); });
     });
 
-    // ============================================================
-    //  RENDER FUNCTIONS
-    // ============================================================
+    /*
+        SECTION: Render Functions
+        Purpose: Builds the HTML for each dashboard table/section from the
+        in-memory data arrays, and wires up the edit/delete buttons they render.
+    */
+    /*
+        Name: getTenantForUnit
+        Purpose: Looks up the tenant name currently leasing a given unit, if any.
+        Used by: dashboard.js (renderUnits, buildUnitsPDF)
+        Found in: Line 316-319 in dashboard.js
+    */
     function getTenantForUnit(unitId) {
         const lease = leases.find(l => l.unitId === unitId);
         return lease ? lease.tenant : null;
     }
 
-    // Derives a tenant's currently-leased unit(s) and lease status directly from the
-    // leases table (matched by tenant name), instead of relying on the tenant's
-    // stored unit_id / lease_status fields, which can go stale as leases are
-    // created, renewed, or expire. This keeps the Tenants tab always in sync.
+    /*
+        Name: getTenantLeaseInfo
+        Purpose: Derives a tenant's currently-leased unit(s) and lease status
+        directly from the leases table (matched by tenant name), instead of
+        relying on the tenant's stored unit_id / lease_status fields, which
+        can go stale as leases are created, renewed, or expire.
+        Used by: dashboard.js (renderTenants, renderDashboard, buildTenantsPDF, buildDashboardPDF, payment/lease tenant comboboxes)
+        Found in: Line 304-321 in dashboard.js
+    */
     function getTenantLeaseInfo(tenantName) {
         const today = new Date(); today.setHours(0, 0, 0, 0);
         const tenantLeases = leases.filter(l => l.tenant === tenantName);
@@ -265,6 +325,12 @@
         return { status, unitNumbers };
     }
 
+    /*
+        Name: renderUnits
+        Purpose: Renders the Units table body from the units array and wires up its edit/delete buttons.
+        Used by: dashboard.js (renderAll)
+        Found in: Line 340-361 in dashboard.js
+    */
     function renderUnits() {
         const tbody = document.getElementById('unitsTableBody');
         const count = document.getElementById('unitCount');
@@ -293,6 +359,12 @@
         tbody.querySelectorAll('[data-delete-unit]').forEach(btn => btn.addEventListener('click', function () { confirmDelete('unit', this.dataset.deleteUnit); }));
     }
 
+    /*
+        Name: renderLeases
+        Purpose: Renders the Leases table body from the leases array and wires up its edit/delete buttons.
+        Used by: dashboard.js (renderAll)
+        Found in: Line 372-397 in dashboard.js
+    */
     function renderLeases() {
         const tbody = document.getElementById('leasesTableBody');
         const count = document.getElementById('leaseCount');
@@ -323,6 +395,12 @@
         tbody.querySelectorAll('[data-delete-lease]').forEach(btn => btn.addEventListener('click', function () { confirmDelete('lease', this.dataset.deleteLease); }));
     }
 
+    /*
+        Name: renderTenants
+        Purpose: Renders the Tenants table body from the tenants array (with live lease status) and wires up its edit/delete buttons.
+        Used by: dashboard.js (renderAll)
+        Found in: Line 407-432 in dashboard.js
+    */
     function renderTenants() {
         const tbody = document.getElementById('tenantsTableBody');
         const count = document.getElementById('tenantCount');
@@ -353,6 +431,12 @@
         tbody.querySelectorAll('[data-delete-tenant]').forEach(btn => btn.addEventListener('click', function () { confirmDelete('tenant', this.dataset.deleteTenant); }));
     }
 
+    /*
+        Name: renderPayments
+        Purpose: Renders the Payments table body from the payments array and wires up its edit/delete buttons.
+        Used by: dashboard.js (renderAll)
+        Found in: Line 443-465 in dashboard.js
+    */
     function renderPayments() {
         const tbody = document.getElementById('paymentsTableBody');
         const count = document.getElementById('paymentCount');
@@ -381,6 +465,12 @@
         tbody.querySelectorAll('[data-delete-payment]').forEach(btn => btn.addEventListener('click', function () { confirmDelete('payment', this.dataset.deletePayment); }));
     }
 
+    /*
+        Name: renderEmployees
+        Purpose: Renders the Employees table body from the employees array and wires up its edit/delete buttons.
+        Used by: dashboard.js (renderAll)
+        Found in: Line 468-511 in dashboard.js
+    */
     function renderEmployees() {
         const tbody = document.getElementById('employeesTableBody');
         const count = document.getElementById('employeeCount');
@@ -425,6 +515,12 @@
         });
     }
 
+    /*
+        Name: renderDashboard
+        Purpose: Renders the dashboard overview: stat cards, recent activity feed, report cards, and recent transactions.
+        Used by: dashboard.js (renderAll)
+        Found in: Line 518-607 in dashboard.js
+    */
     function renderDashboard() {
         const totalUnits    = units?.length || 0;
         const occupied      = units?.filter(u => u.status === 'Occupied').length || 0;
@@ -516,9 +612,16 @@
             `).join('');
     }
 
-    // ============================================================
-    //  CRUD — Units
-    // ============================================================
+    /*
+        SECTION: CRUD - Units
+        Purpose: Opens the Add/Edit Unit modal and handles its form submission.
+    */
+    /*
+        Name: openAddUnitModal
+        Purpose: Resets and opens the unit modal in "Add" mode.
+        Used by: dashboard.js (heroActionBtn/quick-action handlers for the units section)
+        Found in: Line 622-629 in dashboard.js
+    */
     function openAddUnitModal() {
         document.getElementById('unitModalTitle').textContent = 'Add Unit';
         document.getElementById('unitSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Save Unit';
@@ -527,6 +630,12 @@
         document.getElementById('unitStatus').value = 'Available';
         openModal('unitModal');
     }
+    /*
+        Name: openEditUnitModal
+        Purpose: Populates and opens the unit modal in "Edit" mode for the given unit id.
+        Used by: dashboard.js (renderUnits edit button)
+        Found in: Line 639-648 in dashboard.js
+    */
     function openEditUnitModal(id) {
         const unit = units.find(u => u.id === id); if (!unit) return;
         document.getElementById('unitModalTitle').textContent = 'Edit Unit';
@@ -538,6 +647,12 @@
         document.getElementById('unitStatus').value = unit.status;
         openModal('unitModal');
     }
+    /*
+        Name: handleUnitFormSubmit
+        Purpose: Validates the unit form and saves the unit (create or update), then refreshes the dashboard.
+        Used by: dashboard.js (unitForm submit listener)
+        Found in: Line 656-670 in dashboard.js
+    */
     async function handleUnitFormSubmit(e) {
         e.preventDefault();
         const id     = document.getElementById('unitFormId').value;
@@ -554,9 +669,17 @@
         } catch (err) { showToast('Error: ' + err.message, 'error'); }
     }
 
-    // ============================================================
-    //  CRUD — Leases
-    // ============================================================
+    /*
+        SECTION: CRUD - Leases
+        Purpose: Manages the lease unit dropdown, the tenant-name autocomplete
+        combobox, and the Add/Edit Lease modal and its form submission.
+    */
+    /*
+        Name: populateLeaseUnitSelect
+        Purpose: Fills the lease unit dropdown with available units, keeping the currently-selected unit visible even if occupied.
+        Used by: dashboard.js (openAddLeaseModal, openEditLeaseModal)
+        Found in: Line 680-689 in dashboard.js
+    */
     function populateLeaseUnitSelect(selectedId) {
         const sel = document.getElementById('leaseUnit');
         const available = units.filter(u => u.status === 'Available' || String(u.id) === String(selectedId));
@@ -567,12 +690,16 @@
             if (occ) sel.innerHTML += `<option value="${occ.id}" selected>${occ.number} (${occ.type}) — ${formatCurrency(occ.rent)}</option>`;
         }
     }
-    // ---------- Tenant Name combobox (New Lease) ----------
-    // Same filtering/autocomplete behavior as the Record Payment combobox:
-    // typing filters a dropdown of existing tenants. Unlike Record Payment,
-    // though, a name that doesn't match any registered tenant is NOT rejected
-    // on submit — the server auto-registers a new tenant for it (see
-    // syncTenantToUnit in server.js), so free text is intentionally allowed.
+    /*
+        Name: renderLeaseTenantSuggestions
+        Purpose: Renders the tenant-name autocomplete dropdown for the New Lease
+        form. Unlike the Record Payment combobox, a name that doesn't match any
+        registered tenant is not rejected on submit — the server auto-registers
+        a new tenant for it (see syncTenantToUnit in server.js), so free text is
+        intentionally allowed.
+        Used by: dashboard.js (initLeaseTenantCombobox input/focus listeners)
+        Found in: Line 701-729 in dashboard.js
+    */
     function renderLeaseTenantSuggestions(query) {
         const list = document.getElementById('leaseTenantList');
         const q = (query || '').trim().toLowerCase();
@@ -594,14 +721,18 @@
         }
         list.classList.add('open');
         list.querySelectorAll('.combobox-item[data-tenant-id]').forEach(item => {
-            // mousedown (not click) fires before the input's blur, so the selection
-            // registers before the dropdown gets hidden by the blur handler.
             item.addEventListener('mousedown', function (e) {
                 e.preventDefault();
                 selectLeaseTenant(this.dataset.tenantId);
             });
         });
     }
+    /*
+        Name: selectLeaseTenant
+        Purpose: Fills the lease tenant field with the chosen tenant's name and closes the suggestion list.
+        Used by: dashboard.js (renderLeaseTenantSuggestions mousedown handler)
+        Found in: Line 750-755 in dashboard.js
+    */
     function selectLeaseTenant(tenantId) {
         const tenant = tenants.find(t => String(t.id) === String(tenantId));
         if (!tenant) return;
@@ -609,6 +740,12 @@
         input.value = tenant.name;
         closeLeaseTenantList();
     }
+    /*
+        Name: closeLeaseTenantList
+        Purpose: Hides the lease tenant-name suggestion dropdown.
+        Used by: dashboard.js (selectLeaseTenant, openAddLeaseModal, openEditLeaseModal, initLeaseTenantCombobox)
+        Found in: Line 757-759 in dashboard.js
+    */
     function closeLeaseTenantList() {
         document.getElementById('leaseTenantList').classList.remove('open');
     }
@@ -621,6 +758,12 @@
         });
     })();
 
+    /*
+        Name: openAddLeaseModal
+        Purpose: Resets and opens the lease modal in "New" mode with sensible default dates.
+        Used by: dashboard.js (heroActionBtn/quick-action handlers for leases and dashboard)
+        Found in: Line 768-782 in dashboard.js
+    */
     function openAddLeaseModal() {
         document.getElementById('leaseModalTitle').textContent = 'New Lease';
         document.getElementById('leaseSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Save Lease';
@@ -637,6 +780,12 @@
         };
         openModal('leaseModal');
     }
+    /*
+        Name: openEditLeaseModal
+        Purpose: Populates and opens the lease modal in "Edit" mode for the given lease id.
+        Used by: dashboard.js (renderLeases edit button)
+        Found in: Line 784-795 in dashboard.js
+    */
     function openEditLeaseModal(id) {
         const lease = leases.find(l => l.id === id); if (!lease) return;
         document.getElementById('leaseModalTitle').textContent = 'Edit Lease';
@@ -650,6 +799,12 @@
         populateLeaseUnitSelect(lease.unitId);
         openModal('leaseModal');
     }
+    /*
+        Name: handleLeaseFormSubmit
+        Purpose: Validates the lease form and saves the lease (create or update), then refreshes the dashboard.
+        Used by: dashboard.js (leaseForm submit listener)
+        Found in: Line 797-813 in dashboard.js
+    */
     async function handleLeaseFormSubmit(e) {
         e.preventDefault();
         const id     = document.getElementById('leaseFormId').value;
@@ -672,14 +827,27 @@
         } catch (err) { showToast('Error: ' + err.message, 'error'); }
     }
 
-    // ============================================================
-    //  CRUD — Tenants
-    // ============================================================
+    /*
+        SECTION: CRUD - Tenants
+        Purpose: Opens the Add/Edit Tenant modal and handles its form submission.
+    */
+    /*
+        Name: populateTenantUnitSelect
+        Purpose: Fills the tenant modal's unit dropdown with all units, pre-selecting the given unit if provided.
+        Used by: dashboard.js (openAddTenantModal, openEditTenantModal)
+        Found in: Line 834-838 in dashboard.js
+    */
     function populateTenantUnitSelect(selectedId) {
         const sel = document.getElementById('tenantUnit');
         sel.innerHTML = '<option value="">— None —</option>' +
             units.map(u => `<option value="${u.id}" ${u.id === selectedId ? 'selected' : ''}>${u.number} (${u.type})</option>`).join('');
     }
+    /*
+        Name: openAddTenantModal
+        Purpose: Resets and opens the tenant modal in "Add" mode.
+        Used by: dashboard.js (heroActionBtn/quick-action handlers for tenants)
+        Found in: Line 844-851 in dashboard.js
+    */
     function openAddTenantModal() {
         document.getElementById('tenantModalTitle').textContent = 'Add Tenant';
         document.getElementById('tenantSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Save Tenant';
@@ -689,6 +857,12 @@
         document.getElementById('tenantLeaseStatus').value = 'Pending';
         openModal('tenantModal');
     }
+    /*
+        Name: openEditTenantModal
+        Purpose: Populates and opens the tenant modal in "Edit" mode for the given tenant id.
+        Used by: dashboard.js (renderTenants edit button)
+        Found in: Line 853-864 in dashboard.js
+    */
     function openEditTenantModal(id) {
         const tenant = tenants.find(t => t.id === id); if (!tenant) { showToast('Tenant not found.', 'error'); return; }
         document.getElementById('tenantModalTitle').textContent = `Edit ${tenant.name}`;
@@ -701,6 +875,12 @@
         populateTenantUnitSelect(tenant.unitId);
         openModal('tenantModal');
     }
+    /*
+        Name: handleTenantFormSubmit
+        Purpose: Validates the tenant form and saves the tenant (create or update), keeping any leases' tenant name in sync on rename, then refreshes the dashboard.
+        Used by: dashboard.js (tenantForm submit listener)
+        Found in: Line 866-881 in dashboard.js
+    */
     async function handleTenantFormSubmit(e) {
         e.preventDefault();
         const id          = document.getElementById('tenantFormId').value;
@@ -718,14 +898,22 @@
         } catch (err) { showToast('Error: ' + err.message, 'error'); }
     }
 
-    // ============================================================
-    //  CRUD — Payments
-    // ============================================================
-    // ---------- Tenant Name combobox (Record Payment) ----------
-    // Restricts the "Tenant Name" field to registered tenants: typing filters a
-    // dropdown of existing tenants, and picking one auto-fills the Unit field
-    // from that tenant's currently-leased unit. Free text that doesn't match a
-    // registered tenant is rejected on submit (see handlePaymentFormSubmit).
+    /*
+        SECTION: CRUD - Payments
+        Purpose: Manages the tenant-name autocomplete combobox, the unit
+        field (plain input vs. dropdown for tenants with multiple leases),
+        and the Add/Edit Payment modal and its form submission.
+    */
+    /*
+        Name: renderPaymentTenantSuggestions
+        Purpose: Restricts the "Tenant Name" field to registered tenants: typing
+        filters a dropdown of existing tenants, and picking one auto-fills the
+        Unit field from that tenant's currently-leased unit. Free text that
+        doesn't match a registered tenant is rejected on submit (see
+        handlePaymentFormSubmit).
+        Used by: dashboard.js (initPaymentTenantCombobox input/focus listeners)
+        Found in: Line 911-939 in dashboard.js
+    */
     function renderPaymentTenantSuggestions(query) {
         const list = document.getElementById('paymentTenantList');
         const q = (query || '').trim().toLowerCase();
@@ -747,33 +935,45 @@
         }
         list.classList.add('open');
         list.querySelectorAll('.combobox-item[data-tenant-id]').forEach(item => {
-            // mousedown (not click) fires before the input's blur, so the selection
-            // registers before the dropdown gets hidden by the blur handler.
             item.addEventListener('mousedown', function (e) {
                 e.preventDefault();
                 selectPaymentTenant(this.dataset.tenantId);
             });
         });
     }
-    // Looks up a unit's monthly rent by its unit number (as shown in the Unit
-    // field), for auto-filling the Amount field.
+    /*
+        Name: getUnitRentByNumber
+        Purpose: Looks up a unit's monthly rent by its unit number, for auto-filling the Amount field.
+        Used by: dashboard.js (applyRentForUnit, initPaymentTenantCombobox)
+        Found in: Line 946-949 in dashboard.js
+    */
     function getUnitRentByNumber(unitNumber) {
         const u = units.find(u => u.number === unitNumber);
         return u ? u.rent : null;
     }
-    // Auto-fills the Amount field from the given unit's rent. Clears it if the
-    // unit doesn't resolve to a known rent (e.g. no unit chosen yet).
+    /*
+        Name: applyRentForUnit
+        Purpose: Auto-fills the Amount field from the given unit's rent, clearing it if the unit doesn't resolve to a known rent.
+        Used by: dashboard.js (setPaymentUnitField, initPaymentTenantCombobox)
+        Found in: Line 957-960 in dashboard.js
+    */
     function applyRentForUnit(unitNumber) {
         const rent = getUnitRentByNumber(unitNumber);
         document.getElementById('paymentAmount').value = (rent !== null && rent !== undefined) ? rent : '';
     }
-    // Switches the Unit field between a plain auto-fill text input (single or no
-    // lease) and a dropdown (multiple active leases for the tenant). `selectedUnit`
-    // pre-fills/pre-selects whichever field ends up shown; if it isn't among
-    // unitNumbers it's still included so existing data is never silently lost.
-    // `autoFillAmount` (default true) also syncs the Amount field to the
-    // resolved unit's rent; pass false to leave an existing amount untouched
-    // (e.g. when opening Edit Payment on an already-recorded amount).
+    /*
+        Name: setPaymentUnitField
+        Purpose: Switches the Unit field between a plain auto-fill text input
+        (single or no lease) and a dropdown (multiple active leases for the
+        tenant). `selectedUnit` pre-fills/pre-selects whichever field ends up
+        shown; if it isn't among unitNumbers it's still included so existing
+        data is never silently lost. `autoFillAmount` (default true) also syncs
+        the Amount field to the resolved unit's rent; pass false to leave an
+        existing amount untouched (e.g. when opening Edit Payment on an
+        already-recorded amount).
+        Used by: dashboard.js (selectPaymentTenant, openAddPaymentModal, openEditPaymentModal, initPaymentTenantCombobox)
+        Found in: Line 973-1000 in dashboard.js
+    */
     function setPaymentUnitField(unitNumbers, selectedUnit, autoFillAmount) {
         const input  = document.getElementById('paymentUnit');
         const select = document.getElementById('paymentUnitSelect');
@@ -799,6 +999,12 @@
         }
         if (autoFillAmount !== false) applyRentForUnit(input.style.display === 'none' ? select.value : input.value);
     }
+    /*
+        Name: selectPaymentTenant
+        Purpose: Fills the payment tenant field with the chosen tenant's name and auto-fills their unit/amount.
+        Used by: dashboard.js (renderPaymentTenantSuggestions mousedown handler)
+        Found in: Line 1042-1050 in dashboard.js
+    */
     function selectPaymentTenant(tenantId) {
         const tenant = tenants.find(t => String(t.id) === String(tenantId));
         if (!tenant) return;
@@ -809,6 +1015,12 @@
         const { unitNumbers } = getTenantLeaseInfo(tenant.name);
         setPaymentUnitField(unitNumbers, unitNumbers.length ? unitNumbers[0] : '');
     }
+    /*
+        Name: closePaymentTenantList
+        Purpose: Hides the payment tenant-name suggestion dropdown.
+        Used by: dashboard.js (selectPaymentTenant, openAddPaymentModal, openEditPaymentModal, initPaymentTenantCombobox)
+        Found in: Line 1052-1054 in dashboard.js
+    */
     function closePaymentTenantList() {
         document.getElementById('paymentTenantList').classList.remove('open');
     }
@@ -823,19 +1035,21 @@
         document.addEventListener('click', function (e) {
             if (!document.getElementById('paymentTenantCombobox').contains(e.target)) closePaymentTenantList();
         });
-        // Multi-lease dropdown: re-sync Amount whenever the chosen unit changes.
         document.getElementById('paymentUnitSelect').addEventListener('change', function () {
             applyRentForUnit(this.value);
         });
-        // Single-lease/free-typed unit field: if what's typed exactly matches a
-        // known unit number, sync Amount to it. No match yet (still typing) is
-        // left alone so we don't blank out the field mid-keystroke.
         document.getElementById('paymentUnit').addEventListener('input', function () {
             const rent = getUnitRentByNumber(this.value.trim());
             if (rent !== null && rent !== undefined) document.getElementById('paymentAmount').value = rent;
         });
     })();
 
+    /*
+        Name: openAddPaymentModal
+        Purpose: Resets and opens the payment modal in "Record Payment" mode.
+        Used by: dashboard.js (heroActionBtn/quick-action handlers for payments)
+        Found in: Line 1081-1090 in dashboard.js
+    */
     function openAddPaymentModal() {
         document.getElementById('paymentModalTitle').textContent = 'Record Payment';
         document.getElementById('paymentSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Save Payment';
@@ -847,6 +1061,12 @@
         document.getElementById('paymentDate').value = new Date().toISOString().slice(0, 10);
         openModal('paymentModal');
     }
+    /*
+        Name: openEditPaymentModal
+        Purpose: Populates and opens the payment modal in "Edit" mode for the given payment id.
+        Used by: dashboard.js (renderPayments edit button)
+        Found in: Line 1092-1106 in dashboard.js
+    */
     function openEditPaymentModal(id) {
         const payment = payments.find(p => String(p.id) === String(id)); if (!payment) { showToast('Payment not found.', 'error'); return; }
         document.getElementById('paymentModalTitle').textContent = 'Edit Payment';
@@ -862,6 +1082,13 @@
         document.getElementById('paymentStatus').value   = payment.status;
         openModal('paymentModal');
     }
+    /*
+        Name: handlePaymentFormSubmit
+        Purpose: Validates the payment form (rejecting any tenant name that
+        isn't already registered) and saves the payment, then refreshes the dashboard.
+        Used by: dashboard.js (paymentForm submit listener)
+        Found in: Line 1108-1124 in dashboard.js
+    */
     async function handlePaymentFormSubmit(e) {
         e.preventDefault();
         const id         = document.getElementById('paymentFormId').value;
@@ -885,9 +1112,16 @@
         } catch (err) { showToast('Error: ' + err.message, 'error'); }
     }
 
-    // ============================================================
-    //  CRUD — Employees
-    // ============================================================
+    /*
+        SECTION: CRUD - Employees
+        Purpose: Opens the Add/Edit Employee modal and handles its form submission.
+    */
+    /*
+        Name: openAddEmployeeModal
+        Purpose: Resets and opens the employee modal in "Add" mode.
+        Used by: dashboard.js (heroActionBtn/quick-action handlers for employees)
+        Found in: Line 1119-1126 in dashboard.js
+    */
     function openAddEmployeeModal() {
         document.getElementById('employeeModalTitle').textContent = 'Add Employee';
         document.getElementById('employeeSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Save Employee';
@@ -896,6 +1130,12 @@
         document.getElementById('employeeRole').value = 'Staff';
         openModal('employeeModal');
     }
+    /*
+        Name: openEditEmployeeModal
+        Purpose: Populates and opens the employee modal in "Edit" mode for the given employee id.
+        Used by: dashboard.js (renderEmployees edit button)
+        Found in: Line 1128-1138 in dashboard.js
+    */
     function openEditEmployeeModal(id) {
         const emp = employees.find(e => e.id === id);
         if (!emp) { showToast('Employee not found.', 'error'); return; }
@@ -908,6 +1148,12 @@
         document.getElementById('employeeRole').value    = emp.role   || 'Staff';
         openModal('employeeModal');
     }
+    /*
+        Name: handleEmployeeFormSubmit
+        Purpose: Validates the employee form and saves the employee (create or update), then refreshes the dashboard.
+        Used by: dashboard.js (employeeForm submit listener)
+        Found in: Line 1140-1153 in dashboard.js
+    */
     async function handleEmployeeFormSubmit(e) {
         e.preventDefault();
         const id    = document.getElementById('employeeFormId').value;
@@ -923,11 +1169,20 @@
         } catch (err) { showToast('Error: ' + err.message, 'error'); }
     }
 
-    // ============================================================
-    //  DELETE CONFIRM
-    // ============================================================
+    /*
+        SECTION: Delete Confirm
+        Purpose: Shared confirmation modal for deleting a unit, lease, tenant,
+        payment, or employee, including a dependency check that blocks deleting
+        a unit/tenant that still has an active lease.
+    */
     let deleteTarget = null;
 
+    /*
+        Name: confirmDelete
+        Purpose: Opens the shared delete-confirmation modal for the given entity type/id, blocking the delete if it has an active lease dependency.
+        Used by: dashboard.js (every render* table's delete button)
+        Found in: Line 1195-1214 in dashboard.js
+    */
     function confirmDelete(type, id) {
         deleteTarget = { type, id };
         let name = '';
@@ -964,9 +1219,12 @@
         deleteTarget = null;
     });
 
-    // ============================================================
-    //  REFRESH (current section)
-    // ============================================================
+    /*
+        Name: refresh
+        Purpose: Reloads all data from the API and re-renders the currently active section.
+        Used by: dashboard.js (refreshBtn click listener)
+        Found in: Line 1263-1271 in dashboard.js
+    */
     async function refresh() {
         showToast('Refreshing...', 'warning');
         try {
@@ -979,17 +1237,22 @@
         }
     }
 
-    // ============================================================
-    //  PDF GENERATION
-    // ============================================================
-    // The live dashboard uses a dark, translucent "glass" theme (backdrop-filter
-    // blur, near-transparent panel backgrounds) designed for screen viewing.
-    // html2canvas can't render backdrop-filter, and the panels lose the dark
-    // gradient they're meant to blend into once captured in isolation — so a
-    // straight screenshot of the dashboard comes out low-contrast and hard to
-    // read. Instead, build a dedicated light, print-friendly layout from the
-    // underlying data for whichever page is currently active, and capture that.
+    /*
+        SECTION: PDF Generation
+        Purpose: The live dashboard uses a dark, translucent "glass" theme that
+        html2canvas can't capture cleanly (it doesn't support backdrop-filter,
+        and panels lose the gradient they're meant to blend into). Instead of
+        screenshotting the dashboard, this section builds a dedicated light,
+        print-friendly HTML layout from the underlying data for whichever page
+        is active, then captures that layout as a PDF.
+    */
 
+    /*
+        Name: pdfHeader
+        Purpose: Builds the RentEase title/section-name header shown at the top of every generated PDF.
+        Used by: dashboard.js (every buildXPDF function)
+        Found in: Line 1259-1272 in dashboard.js
+    */
     function pdfHeader(sectionTitle) {
         const generatedOn = new Date().toLocaleString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         return `
@@ -1005,6 +1268,12 @@
             </div>`;
     }
 
+    /*
+        Name: pdfFooter
+        Purpose: Builds the standard footer line shown at the bottom of every generated PDF.
+        Used by: dashboard.js (every buildXPDF function)
+        Found in: Line 1279-1284 in dashboard.js
+    */
     function pdfFooter() {
         return `
             <div style="margin-top:32px; padding-top:14px; border-top:1px solid #cccccc; font-size:11px; color:#666666; text-align:center;">
@@ -1012,10 +1281,22 @@
             </div>`;
     }
 
+    /*
+        Name: pdfWrap
+        Purpose: Wraps a PDF page's inner HTML in the shared white page container (size, padding, font).
+        Used by: dashboard.js (every buildXPDF function)
+        Found in: Line 1286-1288 in dashboard.js
+    */
     function pdfWrap(innerHtml) {
         return `<div style="width:1000px; padding:40px 48px; background:#ffffff; color:#000000; font-family: Helvetica, Arial, sans-serif;">${innerHtml}</div>`;
     }
 
+    /*
+        Name: pdfStatCard
+        Purpose: Renders a single label/value stat card used on the dashboard PDF summary.
+        Used by: dashboard.js (buildDashboardPDF)
+        Found in: Line 1290-1296 in dashboard.js
+    */
     function pdfStatCard(label, value) {
         return `
             <div style="flex:1; min-width:180px; background:#f5f5f5; border:1px solid #cccccc; border-radius:10px; padding:16px 18px;">
@@ -1024,8 +1305,13 @@
             </div>`;
     }
 
-    // Grayscale-only badge styling — distinguished by fill weight/outline rather
-    // than color, so status is still clear on a B&W printout.
+    /*
+        Name: pdfBadge
+        Purpose: Renders a status badge using grayscale fill/outline (instead of
+        color) so status is still distinguishable on a black & white printout.
+        Used by: dashboard.js (every buildXPDF function)
+        Found in: Line 1301-1309 in dashboard.js
+    */
     function pdfBadge(status) {
         const solid   = ['Paid', 'Occupied', 'Active'];
         const outline = ['Overdue', 'Expired'];
@@ -1037,6 +1323,12 @@
         return `<span style="display:inline-block; padding:2px 10px; border-radius:20px; font-size:11px; font-weight:600; ${style}">${status}</span>`;
     }
 
+    /*
+        Name: pdfTable
+        Purpose: Renders a full PDF table (header row + body rows, or an empty-state message) from column definitions and row HTML.
+        Used by: dashboard.js (every buildXPDF function)
+        Found in: Line 1311-1320 in dashboard.js
+    */
     function pdfTable(columns, bodyRowsHtml, emptyMessage) {
         return `
             <table style="width:100%; border-collapse:collapse; font-size:13px;">
@@ -1049,10 +1341,22 @@
             </table>`;
     }
 
+    /*
+        Name: pdfRow
+        Purpose: Renders a single zebra-striped PDF table row from an array of cell values.
+        Used by: dashboard.js (every buildXPDF function)
+        Found in: Line 1322-1324 in dashboard.js
+    */
     function pdfRow(cellsHtml, zebraIndex) {
         return `<tr style="background:${zebraIndex % 2 === 0 ? '#ffffff' : '#f2f2f2'};">${cellsHtml.map(c => `<td style="padding:10px 12px; border-bottom:1px solid #cccccc;${c.align ? ' text-align:' + c.align + ';' : ''}">${c.value}</td>`).join('')}</tr>`;
     }
 
+    /*
+        Name: buildUnitsPDF
+        Purpose: Builds the print-friendly HTML page for the Units report.
+        Used by: dashboard.js (generatePDF)
+        Found in: Line 1326-1339 in dashboard.js
+    */
     function buildUnitsPDF() {
         const rows = (units || []).map((u, i) => pdfRow([
             { value: `<strong>${u.number}</strong>` },
@@ -1068,6 +1372,12 @@
         return pdfWrap(pdfHeader('Unit Management') + pdfTable(columns, rows, 'No units yet.') + pdfFooter());
     }
 
+    /*
+        Name: buildTenantsPDF
+        Purpose: Builds the print-friendly HTML page for the Tenants report.
+        Used by: dashboard.js (generatePDF)
+        Found in: Line 1375-1391 in dashboard.js
+    */
     function buildTenantsPDF() {
         const rows = (tenants || []).map((t, i) => {
             const { status, unitNumbers } = getTenantLeaseInfo(t.name);
@@ -1086,6 +1396,12 @@
         return pdfWrap(pdfHeader('Tenant Management') + pdfTable(columns, rows, 'No tenants yet.') + pdfFooter());
     }
 
+    /*
+        Name: buildLeasesPDF
+        Purpose: Builds the print-friendly HTML page for the Leases report.
+        Used by: dashboard.js (generatePDF)
+        Found in: Line 1399-1417 in dashboard.js
+    */
     function buildLeasesPDF() {
         const rows = (leases || []).map((l, i) => {
             const unit = units.find(u => u.id === l.unitId);
@@ -1105,6 +1421,12 @@
         return pdfWrap(pdfHeader('Lease Contracts') + pdfTable(columns, rows, 'No leases yet.') + pdfFooter());
     }
 
+    /*
+        Name: buildPaymentsPDF
+        Purpose: Builds the print-friendly HTML page for the Payments report.
+        Used by: dashboard.js (generatePDF)
+        Found in: Line 1424-1439 in dashboard.js
+    */
     function buildPaymentsPDF() {
         const rows = (payments || []).map((p, i) => pdfRow([
             { value: `<strong>${p.id}</strong>` },
@@ -1121,6 +1443,12 @@
         return pdfWrap(pdfHeader('Payment Records') + pdfTable(columns, rows, 'No payment records yet.') + pdfFooter());
     }
 
+    /*
+        Name: buildEmployeesPDF
+        Purpose: Builds the print-friendly HTML page for the Employees report.
+        Used by: dashboard.js (generatePDF)
+        Found in: Line 1445-1457 in dashboard.js
+    */
     function buildEmployeesPDF() {
         const rows = (employees || []).map((e, i) => pdfRow([
             { value: `<strong>${e.name}</strong>` },
@@ -1134,6 +1462,12 @@
         return pdfWrap(pdfHeader('Employee Management') + pdfTable(columns, rows, 'No employees yet.') + pdfFooter());
     }
 
+    /*
+        Name: buildDashboardPDF
+        Purpose: Builds the print-friendly HTML page for the Dashboard overview report (stat cards, occupancy, recent activity, revenue).
+        Used by: dashboard.js (generatePDF)
+        Found in: Line 1463-1548 in dashboard.js
+    */
     function buildDashboardPDF() {
         const totalUnits     = units?.length || 0;
         const occupied       = units?.filter(u => u.status === 'Occupied').length || 0;
@@ -1170,6 +1504,12 @@
         );
     }
 
+    /*
+        Name: buildReportsPDF
+        Purpose: Builds the print-friendly HTML page for the Reports & Analytics report.
+        Used by: dashboard.js (buildPrintableReportHTML)
+        Found in: Line 1507-1544 in dashboard.js
+    */
     function buildReportsPDF() {
         const totalUnits     = units?.length || 0;
         const occupied       = units?.filter(u => u.status === 'Occupied').length || 0;
@@ -1209,6 +1549,12 @@
         );
     }
 
+    /*
+        Name: buildPrintableReportHTML
+        Purpose: Picks the right buildXPDF function for the currently active dashboard section.
+        Used by: dashboard.js (generatePDF)
+        Found in: Line 1552-1563 in dashboard.js
+    */
     function buildPrintableReportHTML(section) {
         switch (section) {
             case 'units':     return buildUnitsPDF();
@@ -1222,10 +1568,15 @@
         }
     }
 
+    /*
+        Name: generatePDF
+        Purpose: Renders the printable report for the current section off-screen and exports it as a downloadable PDF via html2pdf.
+        Used by: dashboard.js (generatePdfBtn click listener)
+        Found in: Line 1565-1589 in dashboard.js
+    */
     function generatePDF() {
         showToast('Generating PDF...', 'warning');
 
-        // Render the printable layout off-screen so it never appears in the live UI.
         const wrapper = document.createElement('div');
         wrapper.style.position = 'fixed';
         wrapper.style.top = '0';
@@ -1248,9 +1599,11 @@
             .finally(() => wrapper.remove());
     }
 
-    // ============================================================
-    //  NAVIGATION
-    // ============================================================
+    /*
+        SECTION: Navigation
+        Purpose: Maps each nav link/section id to its DOM element and page
+        title/subtitle/action-button copy, and tracks which section is active.
+    */
     const navLinks = document.querySelectorAll('#navLinks a');
     const sections = {
         dashboard: document.getElementById('section-dashboard'),
@@ -1273,6 +1626,12 @@
 
     let currentSection = 'dashboard';
 
+    /*
+        Name: switchSection
+        Purpose: Activates the given section (nav highlight, page title, and hero action button), wiring the hero button to the right "Add" modal for that section.
+        Used by: dashboard.js (navLinks click listener)
+        Found in: Line 1653-1676 in dashboard.js
+    */
     function switchSection(sectionId) {
         currentSection = sectionId;
         Object.values(sections).forEach(el => el.classList.remove('active'));
@@ -1282,7 +1641,6 @@
         document.getElementById('pageTitle').innerHTML = `${d.title} <small>${d.sub}</small>`;
         const heroActionBtn = document.getElementById('heroActionBtn');
         if (sectionId === 'reports') {
-            // The global "Export Report" button already exports PDFs; no need for a duplicate here.
             heroActionBtn.style.display = 'none';
         } else {
             heroActionBtn.style.display = '';
@@ -1302,9 +1660,10 @@
         e.preventDefault(); if (this.dataset.section) switchSection(this.dataset.section);
     }));
 
-    // ============================================================
-    //  QUICK ACTIONS & BUTTONS
-    // ============================================================
+    /*
+        SECTION: Quick Actions & Buttons
+        Purpose: Wires up the dashboard's quick-action shortcuts and top-level buttons (export PDF, refresh, etc).
+    */
     document.querySelectorAll('[data-quick]').forEach(el => el.addEventListener('click', function (e) {
         e.preventDefault();
         const a = this.dataset.quick;
@@ -1318,18 +1677,20 @@
     document.getElementById('exportBtn').addEventListener('click', generatePDF);
     document.getElementById('refreshBtn').addEventListener('click', refresh);
 
-    // ============================================================
-    //  FORM SUBMITS
-    // ============================================================
+    /*
+        SECTION: Form Submits
+        Purpose: Wires each modal's form submit event to its handler function.
+    */
     document.getElementById('unitForm').addEventListener('submit', handleUnitFormSubmit);
     document.getElementById('leaseForm').addEventListener('submit', handleLeaseFormSubmit);
     document.getElementById('tenantForm').addEventListener('submit', handleTenantFormSubmit);
     document.getElementById('paymentForm').addEventListener('submit', handlePaymentFormSubmit);
     document.getElementById('employeeForm').addEventListener('submit', handleEmployeeFormSubmit);
 
-    // ============================================================
-    //  PROFILE DROPDOWN
-    // ============================================================
+    /*
+        SECTION: Profile Dropdown
+        Purpose: Opens/closes the top-right profile menu and handles its logout and profile-link actions.
+    */
     const profileBtn = document.getElementById('profileBtn');
     const dropdown   = document.getElementById('profileDropdown');
     let dropdownOpen = false;
@@ -1354,11 +1715,14 @@
         }
     }));
 
-    // ============================================================
-    //  RENDER ALL
-    // ============================================================
+    /*
+        Name: renderAll
+        Purpose: Re-renders every section of the dashboard (units, leases, tenants, payments, employees, overview) and syncs the API badge and hero action button label.
+        Used by: dashboard.js (init, refresh, and every CRUD save/delete handler)
+        Found in: Line 1751-1764 in dashboard.js
+    */
     function renderAll() {
-        renderUnits(); renderLeases(); renderTenants(); renderPayments(); renderEmployees(); renderDashboard(); 
+        renderUnits(); renderLeases(); renderTenants(); renderPayments(); renderEmployees(); renderDashboard();
         const badge = document.getElementById('apiBadge');
         if (badge) {
             badge.innerHTML = '<i class="fas fa-cloud"></i> API';
@@ -1372,11 +1736,13 @@
         }
     }
 
-    // ============================================================
-    //  INIT
-    // ============================================================
+    /*
+        SECTION: Init
+        Purpose: Bootstraps the dashboard on page load: verifies the session
+        (redirecting to login if invalid), applies the logged-in user's name
+        to the header/greeting, loads all data, and switches to the dashboard section.
+    */
     (async function init() {
-        // Auth guard — redirect to login if session is invalid
         const authRes = await fetch('/api/profile');
         if (authRes.status === 401) {
             window.location.href = '/index.html';
@@ -1384,18 +1750,11 @@
         }
         const profileData = await authRes.json();
 
-        // Set username from the real profile (falls back to sessionStorage)
         const session = JSON.parse(sessionStorage.getItem('rentease_session') || '{}');
         const username = profileData.first_name || session.user || 'Admin';
 
         document.getElementById('profileUsername').textContent = username;
         document.getElementById('greetingName').textContent   = username;
-        // Keep the cached hero title in sync too — switchSection() rebuilds
-        // #pageTitle's innerHTML from meta.dashboard.title on every render
-        // (including the switchSection('dashboard') call below), which would
-        // otherwise wipe out the #greetingName span with the stale, login-time
-        // name from window.__loggedUser and make edits on the profile page
-        // appear to have no effect.
         meta.dashboard.title = 'Welcome back, ' + username;
 
         const avatarImg = document.querySelector('.user-profile img');

@@ -1,13 +1,13 @@
-/* ═══════════════════════════════════════════
-    RENTEASE — LOGIN (admin only)
-    ═══════════════════════════════════════════ */
-
-// ─── DOM REFS ───
 const loginForm = document.getElementById('loginForm');
 const loginMsg = document.getElementById('loginMessage');
 const loginBtn = document.getElementById('loginBtn');
 
-// ─── PIN DOT HELPERS ───
+/*
+    Name: updateDots
+    Purpose: Fills in the PIN dot indicators to match how many digits have been typed.
+    Used by: index.js (loginPin input listener)
+    Found in: Line 11-21 in index.js
+*/
 function updateDots(inputId, dotPrefix) {
     const input = document.getElementById(inputId);
     const val = input ? input.value : '';
@@ -20,6 +20,12 @@ function updateDots(inputId, dotPrefix) {
     }
 }
 
+/*
+    Name: markDotsError
+    Purpose: Briefly flashes the PIN dots red to signal an invalid PIN entry.
+    Used by: index.js (login form submit handler)
+    Found in: Line 29-42 in index.js
+*/
 function markDotsError(dotPrefix) {
     for (let i = 0; i < 4; i++) {
         const dot = document.getElementById(dotPrefix + i);
@@ -35,7 +41,12 @@ function markDotsError(dotPrefix) {
     }, 700);
 }
 
-// ─── TOGGLE PIN VISIBILITY ───
+/*
+    Name: togglePinVisibility
+    Purpose: Switches a PIN input between masked and plain-text display.
+    Used by: index.html (eye icon button next to the PIN field)
+    Found in: Line 42-45 in index.html
+*/
 window.togglePinVisibility = function(inputId, btn) {
     const input = document.getElementById(inputId);
     if (!input) return;
@@ -49,29 +60,44 @@ window.togglePinVisibility = function(inputId, btn) {
     }
 };
 
-// ─── PIN INPUT SYNC ───
 document.getElementById('loginPin').addEventListener('input', function() {
     updateDots('loginPin', 'ld');
     this.value = this.value.replace(/\D/g, '').slice(0, 4);
 });
 
-// ─── SHOW MESSAGE ───
+/*
+    Name: showMessage
+    Purpose: Displays a status message (error or success) under the login form.
+    Used by: index.js (login form submit handler)
+    Found in: Line 74-77 in index.js
+*/
 function showMessage(el, text, type = 'error') {
     el.textContent = text;
     el.className = 'form-message show ' + type;
 }
 
+/*
+    Name: clearMessage
+    Purpose: Hides and resets the login form's status message.
+    Used by: index.js (login form submit handler)
+    Found in: Line 85-88 in index.js
+*/
 function clearMessage(el) {
     el.className = 'form-message';
     el.textContent = '';
 }
 
+/*
+    Name: setLoading
+    Purpose: Toggles the login button's loading spinner state and disabled flag.
+    Used by: index.js (login form submit handler)
+    Found in: Line 96-99 in index.js
+*/
 function setLoading(btn, loading) {
     btn.classList.toggle('loading', loading);
     btn.disabled = loading;
 }
 
-// ─── LOGIN ───
 loginForm.addEventListener('submit', async function(e) {
     e.preventDefault();
     clearMessage(loginMsg);
@@ -122,20 +148,17 @@ loginForm.addEventListener('submit', async function(e) {
     }
 });
 
-// ─── ENTER KEY ON PIN FIELD ───
 document.getElementById('loginPin').addEventListener('keydown', function(e) {
     if (e.key === 'Enter' && this.value.length === 4) {
         loginForm.dispatchEvent(new Event('submit'));
     }
 });
 
-// ─── CHECK EXISTING SESSION ───
 const session = sessionStorage.getItem('rentease_session');
 if (session) {
     try {
         const data = JSON.parse(session);
         if (data.user && (Date.now() - data.loginTime) < 3600000) {
-            // Already logged in – redirect to dashboard
             window.location.href = '/dashboard.html';
         }
     } catch {}

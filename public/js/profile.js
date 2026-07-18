@@ -8,12 +8,24 @@
     };
     let profile = {};
 
+    /*
+        Name: fullName
+        Purpose: Combines the profile's first and last name into a display name, falling back to 'Admin'.
+        Used by: profile.js (renderView)
+        Found in: Line 17-21 in profile.js
+    */
     function fullName() {
         const f = profile.firstName || '';
         const l = profile.lastName  || '';
         return (f + ' ' + l).trim() || 'Admin';
     }
 
+    /*
+        Name: load
+        Purpose: Fetches the logged-in user's profile from the server and stores it locally, redirecting to login if the session is invalid.
+        Used by: profile.js (called on script init)
+        Found in: Line 29-43 in profile.js
+    */
     async function load() {
         try {
             const res = await fetch('/api/profile');
@@ -30,6 +42,12 @@
         } catch(e) { profile = { ...defaultProfile }; }
     }
 
+    /*
+        Name: save
+        Purpose: Sends the edited profile fields to the server to persist them.
+        Used by: profile.js (profileForm submit handler)
+        Found in: Line 51-62 in profile.js
+    */
     async function save() {
         await fetch('/api/profile', {
             method: 'POST',
@@ -43,6 +61,12 @@
         });
     }
 
+    /*
+        Name: renderView
+        Purpose: Populates the read-only profile view (name, role, avatar, and field values) from the current profile data.
+        Used by: profile.js (after load(), and after saving an edit)
+        Found in: Line 70-92 in profile.js
+    */
     function renderView() {
         const v = (val) => val && val.trim() ? val : null;
         const name = fullName();
@@ -65,10 +89,14 @@
         set('vLastName',  profile.lastName);
         set('vEmail',     profile.email);
         set('vPhone',     profile.phone);
-
-
     }
 
+    /*
+        Name: populateForm
+        Purpose: Fills the edit form's input fields with the current profile values.
+        Used by: profile.js (enterEdit)
+        Found in: Line 100-105 in profile.js
+    */
     function populateForm() {
         document.getElementById('eFirstName').value = profile.firstName || '';
         document.getElementById('eLastName').value  = profile.lastName  || '';
@@ -76,17 +104,35 @@
         document.getElementById('ePhone').value     = profile.phone     || '';
     }
 
+    /*
+        Name: enterEdit
+        Purpose: Switches the profile page into edit mode.
+        Used by: profile.js (editToggleBtn click handler)
+        Found in: Line 113-117 in profile.js
+    */
     function enterEdit() {
         populateForm();
         document.getElementById('viewMode').classList.add('hidden');
         document.getElementById('editForm').classList.add('active');
     }
 
+    /*
+        Name: exitEdit
+        Purpose: Switches the profile page back to read-only view mode.
+        Used by: profile.js (cancelEditBtn click handler, and after a successful save)
+        Found in: Line 125-128 in profile.js
+    */
     function exitEdit() {
         document.getElementById('viewMode').classList.remove('hidden');
         document.getElementById('editForm').classList.remove('active');
     }
 
+    /*
+        Name: showToast
+        Purpose: Shows a temporary toast notification confirming an action succeeded or failed.
+        Used by: profile.js (profileForm submit handler)
+        Found in: Line 136-147 in profile.js
+    */
     let toastTimer = null;
     function showToast(msg, type = 'success') {
         const el = document.getElementById('toast');

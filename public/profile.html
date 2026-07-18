@@ -10,7 +10,11 @@
 </head>
 <body>
 
-    <!-- SESSION CHECK -->
+    <!--
+        SECTION: Session Check
+        Purpose: Redirects to the login page if there's no valid, unexpired
+        session before the profile page renders any account data.
+    -->
     <script>
         (function() {
             const sd = sessionStorage.getItem('rentease_session');
@@ -30,7 +34,11 @@
     <div class="card">
         <div class="card-inner">
 
-            <!-- ── LEFT SIDEBAR ── -->
+            <!--
+                SECTION: Left Sidebar
+                Purpose: Shows the user's avatar, display name, and role badge,
+                plus navigation buttons back to the dashboard and to log out.
+            -->
             <div class="sidebar">
                 <div class="sidebar-spacer"></div>
                 <div class="avatar-ring">
@@ -53,12 +61,19 @@
                 </div>
             </div>
 
-            <!-- ── RIGHT PANEL ── -->
+            <!--
+                SECTION: Right Panel
+                Purpose: Displays the account profile heading plus the
+                read-only view and editable form for the user's personal info.
+            -->
             <div class="main-panel">
                 <div class="panel-title">Account Profile</div>
                 <div class="panel-subtitle">Your personal details and contact information.</div>
 
-                <!-- VIEW MODE -->
+                <!--
+                    SUB-SECTION: View Mode
+                    Purpose: Read-only display of the user's first/last name, email, and phone.
+                -->
                 <div class="view-mode" id="viewMode">
                     <div class="section-label">Personal Info</div>
                     <div class="field-grid">
@@ -97,7 +112,10 @@
                     </button>
                 </div>
 
-                <!-- EDIT MODE -->
+                <!--
+                    SUB-SECTION: Edit Mode
+                    Purpose: Editable form for updating the user's first/last name, email, and phone.
+                -->
                 <div class="edit-form" id="editForm">
                     <div class="section-label">Edit Info</div>
                     <form id="profileForm" autocomplete="off">
@@ -136,7 +154,10 @@
         <div class="card-footer">RentEase v1.0 · Apartment Rental Management System</div>
     </div>
 
-    <!-- TOAST -->
+    <!--
+        SECTION: Toast
+        Purpose: Temporary notification shown after saving profile changes.
+    -->
     <div class="toast" id="toast">
         <i class="fas fa-check-circle"></i>
         <span id="toastMsg">Saved!</span>

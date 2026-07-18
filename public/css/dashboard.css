@@ -1,4 +1,8 @@
-/* ---------- Dark Mode CSS Variables ---------- */
+/*
+    SECTION: Dark Mode CSS Variables
+    Purpose: Defines the shared dark "glass" color palette, radii, and shadow
+    tokens used throughout the dashboard.
+*/
 :root {
     --primary-light: #003d47;
     --secondary: #ED254E;
@@ -15,7 +19,10 @@
     --refresh-green-border: rgba(16, 185, 129, 0.2);
 }
 
-/* ---------- Reset & Base ---------- */
+/*
+    SECTION: Reset & Base
+    Purpose: Global box-sizing/margin reset, base font, page background, and the main glass app container.
+*/
 * {
     margin: 0;
     padding: 0;
@@ -46,7 +53,10 @@ body {
     transition: all 0.2s ease;
 }
 
-/* ---------- Navigation ---------- */
+/*
+    SECTION: Navigation
+    Purpose: Styles the top navbar, including the logo and nav link layout.
+*/
 .navbar {
     display: flex;
     justify-content: space-between;
@@ -78,7 +88,10 @@ body {
     color: #fff;
 }
 
-/* API Badge */
+/*
+    SECTION: API Badge
+    Purpose: Styles the small "API" status pill shown next to the logo.
+*/
 .api-badge {
     display: inline-flex;
     align-items: center;
@@ -130,7 +143,10 @@ body {
     box-shadow: 0 0 20px rgba(0, 61, 71, 0.3);
 }
 
-/* Profile Dropdown */
+/*
+    SECTION: Profile Dropdown
+    Purpose: Styles the user's profile menu button and its dropdown (profile/logout links).
+*/
 .user-profile {
     display: flex;
     align-items: center;
@@ -207,7 +223,10 @@ body {
     margin: 6px 12px;
 }
 
-/* ---------- Hero ---------- */
+/*
+    SECTION: Hero
+    Purpose: Styles the page greeting/title area and its primary action buttons.
+*/
 .hero {
     display: flex;
     justify-content: space-between;
@@ -235,7 +254,10 @@ body {
     flex-wrap: wrap;
 }
 
-/* ---------- Buttons ---------- */
+/*
+    SECTION: Buttons
+    Purpose: Shared button styles (primary, secondary, refresh, edit, danger, etc.) used across the dashboard.
+*/
 .btn-primary {
     background: var(--primary-light);
     color: #ffffff;
@@ -345,7 +367,10 @@ body {
     flex-wrap: wrap;
 }
 
-/* ---------- Page Sections ---------- */
+/*
+    SECTION: Page Sections
+    Purpose: Base layout for each main content view, only one of which is visible ("active") at a time.
+*/
 .page-section {
     display: none;
     animation: fadeIn 0.3s ease;
@@ -357,7 +382,10 @@ body {
     100% { opacity: 1; transform: translateY(0); }
 }
 
-/* ---------- Dashboard ---------- */
+/*
+    SECTION: Dashboard
+    Purpose: Styles the stat cards and the two-column layout of the dashboard overview (activity feed + quick actions).
+*/
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -445,7 +473,10 @@ body {
 }
 .glass-panel h3 i { color: var(--secondary); }
 
-/* ---------- Activity ---------- */
+/*
+    SECTION: Activity
+    Purpose: Styles each row in the recent activity feed on the dashboard overview.
+*/
 .activity-item {
     display: flex;
     align-items: center;
@@ -485,7 +516,10 @@ body {
     font-weight: 600;
 }
 
-/* ---------- Quick Actions ---------- */
+/*
+    SECTION: Quick Actions
+    Purpose: Styles the shortcut buttons in the dashboard's Quick Actions panel.
+*/
 .quick-actions {
     display: flex;
     flex-direction: column;
@@ -519,7 +553,10 @@ body {
     filter: drop-shadow(0 0 4px rgba(237, 37, 78, 0.2));
 }
 
-/* ---------- Tables ---------- */
+/*
+    SECTION: Tables
+    Purpose: Shared styling for every data table (units, tenants, leases, payments, employees) across the dashboard.
+*/
 .table-responsive {
     overflow-x: auto;
     margin-top: 4px;
@@ -552,7 +589,10 @@ table.sim-table .badge {
     font-weight: 600;
 }
 
-/* ---------- Badges ---------- */
+/*
+    SECTION: Badges
+    Purpose: Styles the colored status badges (Available, Occupied, Paid, Overdue, etc.) shown in tables.
+*/
 .badge.available   { background: rgba(16, 185, 129, 0.15); color: #10b981; }
 .badge.occupied    { background: rgba(59, 130, 246, 0.15);  color: #60a5fa; }
 .badge.paid        { background: rgba(16, 185, 129, 0.15);  color: #10b981; }
@@ -560,12 +600,18 @@ table.sim-table .badge {
 .badge.pending     { background: rgba(245, 158, 11, 0.15);  color: #f59e0b; }
 .badge.active-lease{ background: rgba(16, 185, 129, 0.15);  color: #10b981; }
 .badge.expired     { background: rgba(244, 63, 94, 0.15);   color: #f43f5e; }
-/* Employee role badges */
+/*
+    SECTION: Employee Role Badges
+    Purpose: Styles the Admin/Manager/Staff role badges shown in the Employees table.
+*/
 .badge.admin       { background: rgba(237, 37, 78, 0.15);   color: #f43f5e; }
 .badge.manager     { background: rgba(59, 130, 246, 0.15);  color: #60a5fa; }
 .badge.staff       { background: rgba(16, 185, 129, 0.15);  color: #10b981; }
 
-/* ---------- Section Header ---------- */
+/*
+    SECTION: Section Header
+    Purpose: Styles the heading and item-count label shown at the top of each page section.
+*/
 .section-header {
     display: flex;
     justify-content: space-between;
@@ -589,7 +635,10 @@ table.sim-table .badge {
     font-weight: 400;
 }
 
-/* ---------- Reports ---------- */
+/*
+    SECTION: Reports
+    Purpose: Styles the stat-card grid on the Reports & Analytics page.
+*/
 .report-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -614,7 +663,10 @@ table.sim-table .badge {
     margin-top: 4px;
 }
 
-/* ---------- Footer ---------- */
+/*
+    SECTION: Footer
+    Purpose: Styles the version/name note at the bottom of the dashboard.
+*/
 .footer-note {
     margin-top: 32px;
     font-size: 0.75rem;
@@ -625,7 +677,10 @@ table.sim-table .badge {
     letter-spacing: 0.3px;
 }
 
-/* ---------- Modals ---------- */
+/*
+    SECTION: Modals
+    Purpose: Styles every Add/Edit modal overlay, its form fields, and the shared delete-confirmation dialog.
+*/
 .modal-overlay {
     display: none;
     position: fixed;
@@ -767,7 +822,10 @@ table.sim-table .badge {
     gap: 14px;
 }
 
-/* ---------- Combobox (tenant name autocomplete) ---------- */
+/*
+    SECTION: Combobox
+    Purpose: Styles the tenant-name autocomplete dropdown used in the Lease and Payment forms.
+*/
 .modal .form-group.combobox { position: relative; }
 .combobox-list {
     display: none;
@@ -808,7 +866,10 @@ table.sim-table .badge {
     font-style: italic;
 }
 
-/* ---------- Toast ---------- */
+/*
+    SECTION: Toast
+    Purpose: Styles the temporary notification shown after create/update/delete/refresh/export actions.
+*/
 .toast {
     position: fixed;
     bottom: 30px;
@@ -839,7 +900,10 @@ table.sim-table .badge {
 .toast.error i  { color: #f43f5e; }
 .toast.warning i { color: #f59e0b; }
 
-/* ---------- Empty State ---------- */
+/*
+    SECTION: Empty State
+    Purpose: Styles the "no records yet" placeholder shown in empty tables.
+*/
 .empty-state {
     text-align: center;
     padding: 30px 20px;
@@ -853,7 +917,10 @@ table.sim-table .badge {
 }
 .empty-state p { font-size: 0.95rem; }
 
-/* ---------- Responsive ---------- */
+/*
+    SECTION: Responsive
+    Purpose: Adjusts the dashboard's layout, navigation, and tables for narrower (tablet/mobile) viewports.
+*/
 @media (max-width: 800px) {
     .bottom-section { grid-template-columns: 1fr; }
 }

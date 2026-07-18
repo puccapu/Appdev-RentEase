@@ -7,21 +7,25 @@ const path     = require('path');
 
 const app = express();
 
-// ============================================================
-//  MIDDLEWARE
-// ============================================================
+/*
+    SECTION: Middleware
+    Purpose: Configures Express to parse JSON request bodies, serve the static
+    frontend from /public, and manage login sessions via cookies.
+*/
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
     secret:            process.env.SESSION_SECRET,
     resave:            false,
     saveUninitialized: false,
-    cookie: { secure: false, maxAge: 3_600_000 }, // 1 hour
+    cookie: { secure: false, maxAge: 3_600_000 },
 }));
 
-// ============================================================
-//  DATABASE POOL
-// ============================================================
+/*
+    SECTION: Database Pool
+    Purpose: Creates the shared MySQL connection pool used by every route
+    in this file to read and write application data.
+*/
 const db = mysql.createPool({
     host:            process.env.DB_HOST,
     user:            process.env.DB_USER,
@@ -29,12 +33,16 @@ const db = mysql.createPool({
     database:        process.env.DB_NAME,
     waitForConnections: true,
     connectionLimit: 10,
-    dateStrings:     true, // return DATE/DATETIME columns as 'YYYY-MM-DD' strings, not JS Date objects
+    dateStrings:     true,
 });
 
-// ============================================================
-//  AUTH MIDDLEWARE
-// ============================================================
+/*
+    Name: requireAuth
+    Purpose: Express middleware that blocks a request with 401 Unauthorized
+    unless the session has a logged-in user.
+    Used by: server.js (every protected route in this file)
+    Found in: Line 46-51 in server.js
+*/
 function requireAuth(req, res, next) {
     if (!req.session.userId) {
         return res.status(401).json({ error: 'Unauthorized' });
@@ -42,9 +50,13 @@ function requireAuth(req, res, next) {
     next();
 }
 
-// ============================================================
-//  ACTIVITY LOGGING
-// ============================================================
+/*
+    Name: logActivity
+    Purpose: Records an entry in the recent_activity table for the dashboard's
+    activity feed; failures here are swallowed so logging never breaks a request.
+    Used by: server.js (every ADD/EDIT/DELETE route in this file)
+    Found in: Line 60-69 in server.js
+*/
 async function logActivity(req, actionType, entityType, entityId, description) {
     try {
         await db.execute(
@@ -52,12 +64,10 @@ async function logActivity(req, actionType, entityType, entityId, description) {
             [req.session.userId ?? null, actionType, entityType, entityId ?? null, description, req.session.username || 'Admin']
         );
     } catch (err) {
-        // Never let activity logging break the actual request
         console.error('Activity log error:', err);
     }
 }
 
-// GET /api/recent-activity
 app.get('/api/recent-activity', requireAuth, async (req, res) => {
     try {
         const [rows] = await db.execute(
@@ -70,11 +80,11 @@ app.get('/api/recent-activity', requireAuth, async (req, res) => {
     }
 });
 
-// ============================================================
-//  AUTH ROUTES
-// ============================================================
-
-// POST /api/login
+/*
+    SECTION: Auth Routes
+    Purpose: Handles admin login (PIN-based), profile read/update, and logout.
+    These routes establish and tear down the session used by requireAuth.
+*/
 app.post('/api/login', async (req, res) => {
     const { username, pin } = req.body;
 
@@ -102,7 +112,6 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// GET /api/profile
 app.get('/api/profile', requireAuth, async (req, res) => {
     try {
         const [rows] = await db.execute(
@@ -116,7 +125,6 @@ app.get('/api/profile', requireAuth, async (req, res) => {
     }
 });
 
-// POST /api/profile
 app.post('/api/profile', requireAuth, async (req, res) => {
     const { firstName, lastName, email, phone } = req.body;
     try {
@@ -131,16 +139,17 @@ app.post('/api/profile', requireAuth, async (req, res) => {
     }
 });
 
-// POST /api/logout
 app.post('/api/logout', (req, res) => {
     req.session.destroy(() => {
         res.json({ success: true });
     });
 });
 
-// ============================================================
-//  UNITS  /api/units
-// ============================================================
+/*
+    SECTION: Units (/api/units)
+    Purpose: CRUD routes for apartment units. Every response is shaped by
+    UNIT_SELECT so the API always returns the same unit fields to the client.
+*/
 const UNIT_SELECT = 'SELECT unit_id AS id, number, type, rent, status FROM units';
 
 app.get('/api/units', requireAuth, async (req, res) => {
@@ -177,9 +186,11 @@ app.delete('/api/units/:id', requireAuth, async (req, res) => {
     res.json({ success: true });
 });
 
-// ============================================================
-//  TENANTS  /api/tenants
-// ============================================================
+/*
+    SECTION: Tenants (/api/tenants)
+    Purpose: CRUD routes for tenants. Every response is shaped by
+    TENANT_SELECT so the API always returns the same tenant fields to the client.
+*/
 const TENANT_SELECT = 'SELECT tenant_id AS id, name, email, phone, unit_id AS unitId, lease_status AS leaseStatus FROM tenants';
 
 app.get('/api/tenants', requireAuth, async (req, res) => {
@@ -216,12 +227,12 @@ app.delete('/api/tenants/:id', requireAuth, async (req, res) => {
     res.json({ success: true });
 });
 
-// ============================================================
-//  LEASES  /api/leases
-// ============================================================
-// Joins to tenants so the API keeps returning the tenant's name under
-// `tenant` (what the dashboard expects), while the leases table itself
-// stores a real tenant_id foreign key rather than a name string.
+/*
+    SECTION: Leases (/api/leases)
+    Purpose: CRUD routes for lease contracts. LEASE_SELECT joins to tenants so
+    the API returns the tenant's name under `tenant`, while the leases table
+    itself stores a real tenant_id foreign key rather than a name string.
+*/
 const LEASE_SELECT = `
     SELECT leases.lease_id AS id, tenants.name AS tenant, leases.unit_id AS unitId,
            leases.start_date AS start, leases.end_date AS end, leases.rent AS rent
@@ -234,9 +245,13 @@ app.get('/api/leases', requireAuth, async (req, res) => {
     res.json(rows);
 });
 
-// Finds a tenant by name (creating one if it doesn't exist yet), and keeps
-// that tenant's unit_id/lease_status in sync with the lease being saved.
-// Returns the tenant_id so the caller can store a proper foreign key.
+/*
+    Name: syncTenantToUnit
+    Purpose: Finds a tenant by name (creating one if it doesn't exist yet) and
+    keeps that tenant's unit_id/lease_status in sync with the lease being saved.
+    Used by: server.js (POST /api/leases and PUT /api/leases/:id)
+    Found in: Line 255-264 in server.js
+*/
 async function syncTenantToUnit(conn, tenantName, unitId, leaseStatus) {
     const [existing] = await conn.execute('SELECT tenant_id FROM tenants WHERE name = ? LIMIT 1', [tenantName]);
     if (existing[0]) {
@@ -268,10 +283,8 @@ app.post('/api/leases', requireAuth, async (req, res) => {
             [tenantId, unitId, start, end, rent]
         );
 
-        // Occupying the unit
         await conn.execute('UPDATE units SET status = ? WHERE unit_id = ?', ['Occupied', unitId]);
 
-        // First payment record for this lease: overdue if the start date has already passed
         const today = new Date().toISOString().slice(0, 10);
         const paymentStatus = start < today ? 'Overdue' : 'Pending';
         await conn.execute(
@@ -310,7 +323,6 @@ app.put('/api/leases/:id', requireAuth, async (req, res) => {
             }
         }
 
-        // Resolve/keep the tenant_id foreign key
         let tenantId = existing ? existing.tenant_id : null;
         if (tenant) {
             const effectiveUnitId = unitId || (existing && existing.unit_id) || null;
@@ -322,7 +334,6 @@ app.put('/api/leases/:id', requireAuth, async (req, res) => {
             [tenantId, unitId || null, start || null, end || null, rent || null, req.params.id]
         );
 
-        // Move occupancy from the old unit to the new one when it changed
         if (existing && unitId && String(existing.unit_id) !== String(unitId)) {
             if (existing.unit_id) await conn.execute('UPDATE units SET status = ? WHERE unit_id = ?', ['Available', existing.unit_id]);
             await conn.execute('UPDATE units SET status = ? WHERE unit_id = ?', ['Occupied', unitId]);
@@ -352,12 +363,12 @@ app.delete('/api/leases/:id', requireAuth, async (req, res) => {
     res.json({ success: true });
 });
 
-// ============================================================
-//  PAYMENTS  /api/payments
-// ============================================================
-// Joins back to tenants/units so the API keeps returning tenant name and
-// unit number (what the dashboard expects), while payments itself stores
-// real tenant_id / unit_id / lease_id foreign keys.
+/*
+    SECTION: Payments (/api/payments)
+    Purpose: CRUD routes for rent payments. PAYMENT_SELECT joins back to
+    tenants/units so the API returns tenant name and unit number, while
+    payments itself stores real tenant_id / unit_id / lease_id foreign keys.
+*/
 const PAYMENT_SELECT = `
     SELECT payments.payment_id AS id, tenants.name AS tenant, units.number AS unit,
            payments.payment_date AS date, payments.amount AS amount, payments.status AS status
@@ -366,9 +377,13 @@ const PAYMENT_SELECT = `
     JOIN units   ON payments.unit_id   = units.unit_id
 `;
 
-// Finds a tenant by name, creating a bare tenant record if none exists yet.
-// Unlike syncTenantToUnit, this never touches unit_id/lease_status — a
-// payment shouldn't silently reassign what unit a tenant is leasing.
+/*
+    Name: resolveTenantId
+    Purpose: Finds a tenant by name, creating a bare tenant record if none
+    exists yet. Unlike syncTenantToUnit, this never touches unit_id/lease_status.
+    Used by: server.js (POST /api/payments and PUT /api/payments/:id)
+    Found in: Line 387-392 in server.js
+*/
 async function resolveTenantId(conn, tenantName) {
     const [existing] = await conn.execute('SELECT tenant_id FROM tenants WHERE name = ? LIMIT 1', [tenantName]);
     if (existing[0]) return existing[0].tenant_id;
@@ -376,8 +391,13 @@ async function resolveTenantId(conn, tenantName) {
     return result.insertId;
 }
 
-// Best-effort match to the lease this payment is settling, so payments stay
-// traceable to a specific contract when one exists.
+/*
+    Name: findLeaseId
+    Purpose: Best-effort match to the lease this payment is settling, so
+    payments stay traceable to a specific contract when one exists.
+    Used by: server.js (POST /api/payments and PUT /api/payments/:id)
+    Found in: Line 401-407 in server.js
+*/
 async function findLeaseId(conn, tenantId, unitId) {
     const [rows] = await conn.execute(
         'SELECT lease_id FROM leases WHERE tenant_id = ? AND unit_id = ? ORDER BY start_date DESC LIMIT 1',
@@ -387,7 +407,6 @@ async function findLeaseId(conn, tenantId, unitId) {
 }
 
 app.get('/api/payments', requireAuth, async (req, res) => {
-    // Any payment still marked Pending whose due date has passed is now Overdue
     await db.execute(
         "UPDATE payments SET status = 'Overdue' WHERE status = 'Pending' AND payment_date < CURDATE()"
     );
@@ -470,9 +489,11 @@ app.delete('/api/payments/:id', requireAuth, async (req, res) => {
     res.json({ success: true });
 });
 
-// ============================================================
-//  EMPLOYEES  /api/employees
-// ============================================================
+/*
+    SECTION: Employees (/api/employees)
+    Purpose: CRUD routes for staff records. Every response is shaped by
+    EMPLOYEE_SELECT so the API always returns the same employee fields.
+*/
 const EMPLOYEE_SELECT = 'SELECT employee_id AS id, name, email, phone, role FROM employees';
 
 app.get('/api/employees', requireAuth, async (req, res) => {
@@ -509,9 +530,10 @@ app.delete('/api/employees/:id', requireAuth, async (req, res) => {
     res.json({ success: true });
 });
 
-// ============================================================
-//  START
-// ============================================================
+/*
+    SECTION: Start
+    Purpose: Boots the HTTP server on the configured port.
+*/
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`RentEase running on http://localhost:${PORT}`);

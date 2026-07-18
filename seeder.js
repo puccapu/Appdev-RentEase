@@ -2,6 +2,13 @@ require('dotenv').config();
 const mysql  = require('mysql2/promise');
 const bcrypt = require('bcrypt');
 
+/*
+    Name: seed
+    Purpose: Creates all database tables if missing and populates them with
+    demo data (admin user, units, tenants, leases, payments, employees) so a
+    fresh install of RentEase has something to look at immediately.
+    Found in: Line 12-316 in seeder.js
+*/
 async function seed() {
     const db = await mysql.createConnection({
         host:     process.env.DB_HOST,
@@ -12,23 +19,13 @@ async function seed() {
 
     console.log('Connected to database...');
 
-    // ============================================================
-    //  TABLES
-    //  Full annotated schema (with the ERD relationship notes) lives
-    //  in database/schema.sql — this mirrors it, but uses
-    //  CREATE TABLE IF NOT EXISTS so re-running the seeder is safe.
-    //
-    //  Every primary key is named <table_name>_id, and every foreign
-    //  key column reuses that exact name, so the relationships below
-    //  are unambiguous:
-    //    users     1─<recent_activity   (user_id)
-    //    units     1─<tenants           (unit_id)
-    //    units     1─<leases            (unit_id)
-    //    units     1─<payments          (unit_id)
-    //    tenants   1─<leases            (tenant_id)
-    //    tenants   1─<payments          (tenant_id)
-    //    leases    1─<payments          (lease_id)
-    // ============================================================
+    /*
+        SECTION: Tables
+        Purpose: Creates all application tables if they don't already exist, so
+        re-running the seeder is always safe. Mirrors the annotated schema in
+        database/schema.sql, including the foreign-key relationships between
+        users, units, tenants, leases, and payments.
+    */
     await db.execute(`
         CREATE TABLE IF NOT EXISTS users (
             user_id    INT AUTO_INCREMENT PRIMARY KEY,
@@ -138,9 +135,11 @@ async function seed() {
     `);
     console.log('✔ Table: recent_activity');
 
-    // ============================================================
-    //  SEED: Admin user  (PIN: 2121)
-    // ============================================================
+    /*
+        SECTION: Seed - Admin User
+        Purpose: Ensures a default admin login (username: admin, PIN: 2121)
+        always exists, without duplicating it on repeat runs.
+    */
     const pin_hash = await bcrypt.hash('2121', 10);
     await db.execute(`
         INSERT INTO users (username, pin_hash, first_name, role)
@@ -149,20 +148,21 @@ async function seed() {
     `, ['admin', pin_hash]);
     console.log('✔ Admin user seeded  →  username: admin  |  PIN: 2121');
 
-    // ============================================================
-    //  SEED: Sample units
-    // ============================================================
-    // NOTE: 'status' here should agree with the leases seeded below —
-    // a unit is 'Occupied' if a lease currently covers it, 'Available' otherwise.
+    /*
+        SECTION: Seed - Sample Units
+        Purpose: Inserts demo units only if the table is empty. `status` here
+        must agree with the leases seeded below — a unit is 'Occupied' only
+        if a lease currently covers it, 'Available' otherwise.
+    */
     const unitIdByNumber = {};
     const unitCount = (await db.execute('SELECT COUNT(*) AS n FROM units'))[0][0].n;
     if (unitCount === 0) {
         const sampleUnits = [
-            ['101', 'Studio',    7500,  'Occupied' ],  // Lance Vincent      — active lease
-            ['102', 'Studio',    7500,  'Occupied' ],  // Christian Salang   — active lease
-            ['103', '1-Bedroom', 10200, 'Available'],  // no lease
-            ['104', '1-Bedroom', 10200, 'Available'],  // no lease
-            ['105', '2-Bedroom', 14500, 'Available'],  // no lease
+            ['101', 'Studio',    7500,  'Occupied' ],
+            ['102', 'Studio',    7500,  'Occupied' ],
+            ['103', '1-Bedroom', 10200, 'Available'],
+            ['104', '1-Bedroom', 10200, 'Available'],
+            ['105', '2-Bedroom', 14500, 'Available'],
         ];
         for (const [number, type, rent, status] of sampleUnits) {
             const [result] = await db.execute(
@@ -176,21 +176,21 @@ async function seed() {
         console.log('⏭  Units already exist — skipping sample data');
     }
 
-    // ============================================================
-    //  SEED: Sample tenants
-    // ============================================================
-    // NOTE: lease_status here is just the initial/fallback value stored on the
-    // tenant row. The dashboard now computes the *displayed* lease status (and
-    // leased unit list) live from the leases table below, so these values are
-    // chosen to match what that computation will actually produce.
+    /*
+        SECTION: Seed - Sample Tenants
+        Purpose: Inserts demo tenants only if the table is empty. lease_status
+        here is just the initial/fallback value; the dashboard computes the
+        displayed lease status live from the leases table seeded next, so
+        these values are chosen to match what that computation will produce.
+    */
     const tenantIdByName = {};
     const tenantCount = (await db.execute('SELECT COUNT(*) AS n FROM tenants'))[0][0].n;
     if (tenantCount === 0) {
         const sampleTenants = [
-            ['Lance Vincent',    'lance@email.com',     '+63 912 3456', 'Active'  ], // active lease → 101
-            ['Christian Salang', 'christian@email.com', '+63 923 4567', 'Active'  ], // active lease → 102
-            ['Iesha Katriel',    'iesha@email.com',      '+63 934 5678', 'Pending' ], // no lease at all
-            ['Minh Martinez',     'minh@email.com',        '+63 945 6789', 'Pending' ], // no lease at all
+            ['Lance Vincent',    'lance@email.com',     '+63 912 3456', 'Active'  ],
+            ['Christian Salang', 'christian@email.com', '+63 923 4567', 'Active'  ],
+            ['Iesha Katriel',    'iesha@email.com',      '+63 934 5678', 'Pending' ],
+            ['Minh Martinez',     'minh@email.com',        '+63 945 6789', 'Pending' ],
         ];
         for (const [name, email, phone, leaseStatus] of sampleTenants) {
             const [result] = await db.execute(
@@ -204,13 +204,13 @@ async function seed() {
         console.log('⏭  Tenants already exist — skipping sample data');
     }
 
-    // ============================================================
-    //  SEED: Sample leases
-    // ============================================================
-    // Drives the live-computed "Unit" and "Lease Status" columns on the Tenants
-    // tab. Dates are chosen relative to today so the demo shows all three
-    // statuses: Active (today falls within the lease), Expired (lease ended),
-    // and Pending (tenant has no lease row at all — see Eduardo Tan above).
+    /*
+        SECTION: Seed - Sample Leases
+        Purpose: Inserts demo leases only if the table is empty. Drives the
+        live-computed "Unit" and "Lease Status" columns on the Tenants tab.
+        Dates are chosen relative to today so the demo shows all three
+        statuses: Active, Expired, and Pending (a tenant with no lease row).
+    */
     const leaseIdByTenantUnit = {};
     const leaseCount = (await db.execute('SELECT COUNT(*) AS n FROM leases'))[0][0].n;
     if (leaseCount === 0) {
@@ -230,10 +230,8 @@ async function seed() {
         const thisYear = today.getFullYear();
 
         const sampleLeases = [
-            // tenant,              unit,   start                    end                       rent
-            ['Lance Vincent',      '101',  iso(thisYear - 1, 6, 1),  iso(thisYear + 1, 5, 31),  7500 ], // Active
-            ['Christian Salang',   '102',  iso(thisYear - 1, 8, 1),  iso(thisYear + 1, 7, 31),  7500 ], // Active
-            // Iesha Katriel and Min Martinez intentionally have no lease → stay 'Pending'
+            ['Lance Vincent',      '101',  iso(thisYear - 1, 6, 1),  iso(thisYear + 1, 5, 31),  7500 ],
+            ['Christian Salang',   '102',  iso(thisYear - 1, 8, 1),  iso(thisYear + 1, 7, 31),  7500 ],
         ];
         for (const [tenant, unitNumber, start, end, rent] of sampleLeases) {
             const tenantId = await tenantIdFor(tenant);
@@ -249,11 +247,12 @@ async function seed() {
         console.log('⏭  Leases already exist — skipping sample data');
     }
 
-    // ============================================================
-    //  SEED: Sample payments
-    // ============================================================
-    // Each payment links back to the tenant, unit, and (when known) the
-    // originating lease, instead of storing tenant/unit as loose text.
+    /*
+        SECTION: Seed - Sample Payments
+        Purpose: Inserts demo payments only if the table is empty. Each
+        payment links back to the tenant, unit, and (when known) the
+        originating lease, instead of storing tenant/unit as loose text.
+    */
     const paymentCount = (await db.execute('SELECT COUNT(*) AS n FROM payments'))[0][0].n;
     if (paymentCount === 0) {
         async function unitIdFor(number) {
@@ -273,7 +272,6 @@ async function seed() {
         const thisMonth = today.getMonth() + 1;
 
         const samplePayments = [
-            // tenant,              unit,  date,                         amount, status
             ['Lance Vincent',      '101', iso(thisYear, thisMonth, 1), 7500, 'Paid'   ],
             ['Christian Salang',   '102', iso(thisYear, thisMonth, 3), 7500, 'Pending'],
         ];
@@ -291,9 +289,10 @@ async function seed() {
         console.log('⏭  Payments already exist — skipping sample data');
     }
 
-    // ============================================================
-    //  SEED: Sample employees
-    // ============================================================
+    /*
+        SECTION: Seed - Sample Employees
+        Purpose: Inserts demo employee records only if the table is empty.
+    */
     const empCount = (await db.execute('SELECT COUNT(*) AS n FROM employees'))[0][0].n;
     if (empCount === 0) {
         const sampleEmployees = [

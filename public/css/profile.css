@@ -29,7 +29,10 @@ body {
     padding: 28px 16px;
 }
 
-/* ── OUTER CARD ── */
+/*
+    SECTION: Outer Card
+    Purpose: The frosted glass card container that holds the sidebar and main panel.
+*/
 .card {
     width: 100%;
     max-width: 860px;
@@ -43,14 +46,20 @@ body {
     overflow: hidden;
 }
 
-/* ── TWO-COLUMN LAYOUT ── */
+/*
+    SECTION: Two-Column Layout
+    Purpose: Splits the card into a fixed-width sidebar and a flexible main panel.
+*/
 .card-inner {
     display: grid;
     grid-template-columns: 260px 1fr;
     min-height: 520px;
 }
 
-/* ── LEFT SIDEBAR ── */
+/*
+    SECTION: Left Sidebar
+    Purpose: Styles the sidebar background, its decorative glow, and layout for the avatar/name/actions.
+*/
 .sidebar {
     background: linear-gradient(160deg, var(--primary-light) 0%, #001a22 100%);
     border-right: 1px solid rgba(255,255,255,0.05);
@@ -75,7 +84,10 @@ body {
     pointer-events: none;
 }
 
-/* avatar */
+/*
+    SECTION: Avatar
+    Purpose: Styles the circular profile avatar and its gradient ring.
+*/
 .avatar-ring {
     width: 96px;
     height: 96px;
@@ -121,7 +133,10 @@ body {
 
 
 
-/* sidebar bottom actions */
+/*
+    SECTION: Sidebar Bottom Actions
+    Purpose: Styles the Dashboard and Log Out buttons at the bottom of the sidebar.
+*/
 .sidebar-actions {
     width: 100%;
     display: flex;
@@ -157,7 +172,10 @@ body {
 }
 .btn-logout:hover { background: rgba(237,37,78,0.22); transform: translateY(-1px); }
 
-/* ── RIGHT PANEL ── */
+/*
+    SECTION: Right Panel
+    Purpose: Styles the main content area holding the profile title, view, and edit form.
+*/
 .main-panel {
     padding: 36px 36px 36px 32px;
     display: flex;
@@ -177,7 +195,10 @@ body {
     margin-bottom: 28px;
 }
 
-/* section label */
+/*
+    SECTION: Section Label
+    Purpose: Styles the small uppercase heading (e.g. "Personal Info") with its trailing rule line.
+*/
 .section-label {
     font-size: 0.67rem;
     font-weight: 700;
@@ -196,7 +217,10 @@ body {
     background: rgba(255,255,255,0.05);
 }
 
-/* ── FIELD GRID (2-col inside right panel) ── */
+/*
+    SECTION: Field Grid
+    Purpose: Lays out the read-only profile fields in a two-column grid, each with an icon, label, and value.
+*/
 .field-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -245,12 +269,18 @@ body {
 }
 .field-value.muted { color: var(--text-muted); font-style: italic; font-weight: 400; }
 
-/* ── VIEW / EDIT TOGGLE ── */
+/*
+    SECTION: View / Edit Toggle
+    Purpose: Shows/hides the read-only view and the editable form based on their active state.
+*/
 .view-mode.hidden { display: none; }
 .edit-form { display: none; }
 .edit-form.active { display: block; }
 
-/* edit form fields */
+/*
+    SECTION: Edit Form Fields
+    Purpose: Styles the editable profile form's labels and inputs.
+*/
 .form-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -285,7 +315,10 @@ body {
 }
 .form-group input::placeholder { color: var(--text-muted); font-weight: 400; }
 
-/* edit action buttons */
+/*
+    SECTION: Edit Action Buttons
+    Purpose: Styles the Edit Profile, Save, and Cancel buttons and their hover states.
+*/
 .edit-actions {
     display: flex;
     gap: 10px;
@@ -328,7 +361,10 @@ body {
 }
 .btn-cancel-edit:hover { background: rgba(255,255,255,0.1); color: #fff; }
 
-/* ── TOAST ── */
+/*
+    SECTION: Toast
+    Purpose: Styles the temporary notification shown after saving profile changes.
+*/
 .toast {
     position: fixed;
     bottom: 26px;
@@ -356,7 +392,10 @@ body {
 .toast i { font-size: 1.05rem; color: #10b981; }
 .toast.error i { color: #f43f5e; }
 
-/* ── FOOTER ── */
+/*
+    SECTION: Footer
+    Purpose: Styles the version/name note at the bottom of the card.
+*/
 .card-footer {
     text-align: center;
     font-size: 0.68rem;
@@ -366,7 +405,10 @@ body {
     letter-spacing: 0.3px;
 }
 
-/* ── RESPONSIVE ── */
+/*
+    SECTION: Responsive
+    Purpose: Switches the two-column layout to a single column and adjusts spacing for narrow (mobile) viewports.
+*/
 @media (max-width: 680px) {
     .card-inner { grid-template-columns: 1fr; }
     .sidebar {

@@ -1,4 +1,8 @@
-/* ─── ROOT ─── */
+/*
+    SECTION: Root
+    Purpose: Defines the shared color palette, glass-effect tokens, and
+    border-radius variables used throughout the login page.
+*/
 :root {
     --primary: #002A32;
     --primary-light: #003d47;
@@ -37,7 +41,11 @@ body {
     margin: 0;
 }
 
-/* ─── MAIN CARD — Apple‑style glass ─── */
+/*
+    SECTION: Main Card
+    Purpose: The frosted "Apple-style glass" auth card that holds the
+    branding and login form, including its subtle highlight/edge effects.
+*/
 .auth-container {
     width: 100%;
     max-width: 460px;
@@ -79,7 +87,10 @@ body {
     background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
 }
 
-/* ─── BRANDING ─── */
+/*
+    SECTION: Branding
+    Purpose: Styles the logo icon, app name, and tagline shown above the login form.
+*/
 .brand {
     text-align: center;
     margin-bottom: 32px;
@@ -142,7 +153,11 @@ body {
     font-weight: 700;
 }
 
-/* ─── FORM ─── */
+/*
+    SECTION: Form
+    Purpose: Styles the login form's fields, inputs, PIN visibility toggle,
+    and the error-shake animation for invalid input.
+*/
 .form-panel {
     animation: fadeSlide 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
     position: relative;
@@ -259,7 +274,10 @@ body {
     color: var(--text);
 }
 
-/* PIN dots */
+/*
+    SECTION: PIN Dots
+    Purpose: Styles the four progress dots that fill in as the PIN is typed, and flash on error.
+*/
 .pin-dots-wrap {
     display: flex;
     justify-content: center;
@@ -289,7 +307,11 @@ body {
     animation: shake 0.4s ease;
 }
 
-/* ─── SUBMIT ─── */
+/*
+    SECTION: Submit
+    Purpose: Styles the login submit button, including its hover/disabled
+    states and the loading spinner shown while the request is in flight.
+*/
 .submit-btn {
     width: 100%;
     padding: 15px;
@@ -347,7 +369,10 @@ body {
     to { transform: rotate(360deg); }
 }
 
-/* ─── MESSAGES ─── */
+/*
+    SECTION: Messages
+    Purpose: Styles the success/error status message shown below the login form.
+*/
 .form-message {
     font-size: 12px;
     font-weight: 600;
@@ -376,7 +401,10 @@ body {
     color: #2ecdcc;
 }
 
-/* ─── FOOTER ─── */
+/*
+    SECTION: Footer
+    Purpose: Styles the "Admin access only" note beneath the login form.
+*/
 .auth-footer {
     text-align: center;
     margin-top: 22px;
@@ -392,7 +420,10 @@ body {
     font-weight: 600;
 }
 
-/* ─── DEMO BADGE ─── */
+/*
+    SECTION: Demo Badge
+    Purpose: Styles the "Secure" badge shown in the top-right corner of the auth card.
+*/
 .demo-badge {
     position: absolute;
     top: 16px;
@@ -410,7 +441,10 @@ body {
     z-index: 2;
 }
 
-/* ─── RESPONSIVE ─── */
+/*
+    SECTION: Responsive
+    Purpose: Shrinks the auth card, branding, and inputs down for narrow (mobile) viewports.
+*/
 @media (max-width: 480px) {
     .auth-container {
         padding: 32px 20px 28px;
