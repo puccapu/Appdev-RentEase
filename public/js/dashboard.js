@@ -1390,6 +1390,14 @@
 
         document.getElementById('profileUsername').textContent = username;
         document.getElementById('greetingName').textContent   = username;
+        // Keep the cached hero title in sync too — switchSection() rebuilds
+        // #pageTitle's innerHTML from meta.dashboard.title on every render
+        // (including the switchSection('dashboard') call below), which would
+        // otherwise wipe out the #greetingName span with the stale, login-time
+        // name from window.__loggedUser and make edits on the profile page
+        // appear to have no effect.
+        meta.dashboard.title = 'Welcome back, ' + username;
+
         const avatarImg = document.querySelector('.user-profile img');
         if (avatarImg) avatarImg.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(username) + '&background=003d47&color=fff&size=36';
 
