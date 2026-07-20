@@ -833,14 +833,17 @@
     */
     /*
         Name: populateTenantUnitSelect
-        Purpose: Fills the tenant modal's unit dropdown with all units, pre-selecting the given unit if provided.
+        Purpose: Fills the tenant modal's unit dropdown with available (non-occupied) units,
+        pre-selecting the given unit if provided. The currently-selected unit is always kept
+        in the list even if occupied, so editing a tenant doesn't hide their own unit.
         Used by: dashboard.js (openAddTenantModal, openEditTenantModal)
         Found in: Line 834-838 in dashboard.js
     */
     function populateTenantUnitSelect(selectedId) {
         const sel = document.getElementById('tenantUnit');
+        const available = units.filter(u => u.status !== 'Occupied' || u.id === selectedId);
         sel.innerHTML = '<option value="">— None —</option>' +
-            units.map(u => `<option value="${u.id}" ${u.id === selectedId ? 'selected' : ''}>${u.number} (${u.type})</option>`).join('');
+            available.map(u => `<option value="${u.id}" ${u.id === selectedId ? 'selected' : ''}>${u.number} (${u.type})</option>`).join('');
     }
     /*
         Name: openAddTenantModal
@@ -891,9 +894,26 @@
         const leaseStatus = document.getElementById('tenantLeaseStatus').value;
         if (!name) { showToast('Please enter a name.', 'error'); return; }
         try {
+            const isNew = !id;
+            let unit = null;
+            if (unitId) {
+                unit = units.find(u => String(u.id) === String(unitId));
+                if (!unit) { showToast('Unit not found.', 'error'); return; }
+                if (isNew && unit.status === 'Occupied') { showToast('This unit is already occupied.', 'warning'); return; }
+            }
+
             const data = { name, email, phone, unitId, leaseStatus }; if (id) data.id = id;
             if (id) { const old = tenants.find(t => t.id === id); if (old && old.name !== name) leases.forEach(l => { if (l.tenant === old.name) l.tenant = name; }); }
-            await DataManager.saveTenant(data); await DataManager.loadAll(); renderAll();
+            await DataManager.saveTenant(data);
+
+            if (isNew && unitId && unit) {
+                const today = new Date();
+                const start = today.toISOString().slice(0, 10);
+                const end   = new Date(today.getFullYear() + 1, today.getMonth(), today.getDate()).toISOString().slice(0, 10);
+                await DataManager.saveLease({ tenant: name, unitId, start, end, rent: unit.rent });
+            }
+
+            await DataManager.loadAll(); renderAll();
             closeModal('tenantModal'); showToast(`Tenant "${name}" ${id ? 'updated' : 'registered'} successfully.`);
         } catch (err) { showToast('Error: ' + err.message, 'error'); }
     }
