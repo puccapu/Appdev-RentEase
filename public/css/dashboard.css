@@ -768,6 +768,17 @@ table.sim-table .badge {
     background: #0f1e26;
     color: var(--text-primary);
 }
+.modal .form-group input:disabled,
+.modal .form-group select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: rgba(255, 255, 255, 0.02);
+}
+.modal .form-group input.field-error,
+.modal .form-group select.field-error {
+    border-color: #f43f5e !important;
+    box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.18) !important;
+}
 
 .modal .form-actions {
     display: flex;

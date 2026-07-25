@@ -8,6 +8,19 @@ const path     = require('path');
 const app = express();
 
 /*
+    Name: isValidPhone
+    Purpose: Validates a phone number string. Empty/undefined is allowed since
+    phone is optional everywhere it's collected; if a value is given, it must
+    contain exactly 11 digits once formatting characters are stripped.
+    Used by: server.js (POST/PUT /api/profile, /api/tenants, /api/employees)
+    Found in: Line 8-12 in server.js
+*/
+function isValidPhone(phone) {
+    const digits = String(phone || '').replace(/\D/g, '');
+    return digits.length === 0 || digits.length === 11;
+}
+
+/*
     SECTION: Middleware
     Purpose: Configures Express to parse JSON request bodies, serve the static
     frontend from /public, and manage login sessions via cookies.
@@ -127,6 +140,9 @@ app.get('/api/profile', requireAuth, async (req, res) => {
 
 app.post('/api/profile', requireAuth, async (req, res) => {
     const { firstName, lastName, email, phone } = req.body;
+    if (!isValidPhone(phone)) {
+        return res.status(400).json({ success: false, message: 'Phone number must be exactly 11 digits.' });
+    }
     try {
         await db.execute(
             'UPDATE users SET first_name = ?, last_name = ?, email = ?, phone = ? WHERE user_id = ?',
@@ -200,6 +216,9 @@ app.get('/api/tenants', requireAuth, async (req, res) => {
 
 app.post('/api/tenants', requireAuth, async (req, res) => {
     const { name, email, phone, unitId, leaseStatus } = req.body;
+    if (!isValidPhone(phone)) {
+        return res.status(400).json({ message: 'Phone number must be exactly 11 digits.' });
+    }
     const [result] = await db.execute(
         'INSERT INTO tenants (name, email, phone, unit_id, lease_status) VALUES (?, ?, ?, ?, ?)',
         [name, email, phone, unitId || null, leaseStatus || 'Pending']
@@ -210,10 +229,19 @@ app.post('/api/tenants', requireAuth, async (req, res) => {
 });
 
 app.put('/api/tenants/:id', requireAuth, async (req, res) => {
-    const { name, email, phone, unitId, leaseStatus } = req.body;
+    const { name, email, phone } = req.body;
+    if (!isValidPhone(phone)) {
+        return res.status(400).json({ message: 'Phone number must be exactly 11 digits.' });
+    }
+    // Assigned Unit and Lease Status can only be set during registration; they're
+    // managed automatically afterward through the Leases tab, so edits always keep
+    // the tenant's existing values regardless of what the request body sends.
+    const [existing] = await db.execute('SELECT unit_id, lease_status FROM tenants WHERE tenant_id = ?', [req.params.id]);
+    const unitId      = existing[0]?.unit_id ?? null;
+    const leaseStatus = existing[0]?.lease_status ?? null;
     await db.execute(
         'UPDATE tenants SET name = ?, email = ?, phone = ?, unit_id = ?, lease_status = ? WHERE tenant_id = ?',
-        [name || null, email || null, phone || null, unitId || null, leaseStatus || null, req.params.id]
+        [name || null, email || null, phone || null, unitId, leaseStatus, req.params.id]
     );
     const [rows] = await db.execute(`${TENANT_SELECT} WHERE tenant_id = ?`, [req.params.id]);
     await logActivity(req, 'EDIT', 'tenant', req.params.id, `Updated tenant ${name || rows[0]?.name}`);
@@ -503,6 +531,9 @@ app.get('/api/employees', requireAuth, async (req, res) => {
 
 app.post('/api/employees', requireAuth, async (req, res) => {
     const { name, email, phone, role } = req.body;
+    if (!isValidPhone(phone)) {
+        return res.status(400).json({ message: 'Phone number must be exactly 11 digits.' });
+    }
     const [result] = await db.execute(
         'INSERT INTO employees (name, email, phone, role) VALUES (?, ?, ?, ?)',
         [name, email, phone, role || 'Staff']
@@ -514,6 +545,9 @@ app.post('/api/employees', requireAuth, async (req, res) => {
 
 app.put('/api/employees/:id', requireAuth, async (req, res) => {
     const { name, email, phone, role } = req.body;
+    if (!isValidPhone(phone)) {
+        return res.status(400).json({ message: 'Phone number must be exactly 11 digits.' });
+    }
     await db.execute(
         'UPDATE employees SET name = ?, email = ?, phone = ?, role = ? WHERE employee_id = ?',
         [name || null, email || null, phone || null, role || null, req.params.id]

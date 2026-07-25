@@ -187,10 +187,10 @@ async function seed() {
     const tenantCount = (await db.execute('SELECT COUNT(*) AS n FROM tenants'))[0][0].n;
     if (tenantCount === 0) {
         const sampleTenants = [
-            ['Lance Vincent',    'lance@email.com',     '+63 912 3456', 'Active'  ],
-            ['Christian Salang', 'christian@email.com', '+63 923 4567', 'Active'  ],
-            ['Iesha Katriel',    'iesha@email.com',      '+63 934 5678', 'Pending' ],
-            ['Minh Martinez',     'minh@email.com',        '+63 945 6789', 'Pending' ],
+            ['Lance Vincent',    'lance@email.com',     '0917 123 4561', 'Active'  ],
+            ['Christian Salang', 'christian@email.com', '0917 123 4562', 'Active'  ],
+            ['Iesha Katriel',    'iesha@email.com',      '0917 123 4563', 'Pending' ],
+            ['Minh Martinez',     'minh@email.com',        '0917 123 4564', 'Pending' ],
         ];
         for (const [name, email, phone, leaseStatus] of sampleTenants) {
             const [result] = await db.execute(
@@ -296,9 +296,9 @@ async function seed() {
     const empCount = (await db.execute('SELECT COUNT(*) AS n FROM employees'))[0][0].n;
     if (empCount === 0) {
         const sampleEmployees = [
-            ['Hatsune Miku', 'miku@rentease.com',  '+63 999 1111', 'Admin'  ],
-            ['Kasane Teto',  'teto@rentease.com',  '+63 999 2222', 'Manager'],
-            ['Dong Matteo',  'matteo@rentease.com','+63 999 3333', 'Staff'  ],
+            ['Hatsune Miku', 'miku@rentease.com',  '0999 111 1111', 'Admin'  ],
+            ['Kasane Teto',  'teto@rentease.com',  '0999 222 2222', 'Manager'],
+            ['Dong Matteo',  'matteo@rentease.com','0999 333 3333', 'Staff'  ],
         ];
         for (const [name, email, phone, role] of sampleEmployees) {
             await db.execute(

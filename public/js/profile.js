@@ -146,15 +146,34 @@
         toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
     }
 
+    /*
+        Name: isValidPhone
+        Purpose: Validates a phone number string. Empty is allowed since phone is
+        optional; if a value is given, it must contain exactly 11 digits once
+        formatting characters (spaces, dashes, parentheses, "+") are stripped.
+        Used by: profile.js (profileForm submit handler)
+        Found in: Line 150-158 in profile.js
+    */
+    function isValidPhone(phone) {
+        const digits = (phone || '').replace(/\D/g, '');
+        return digits.length === 0 || digits.length === 11;
+    }
+
     document.getElementById('editToggleBtn').addEventListener('click', enterEdit);
     document.getElementById('cancelEditBtn').addEventListener('click', exitEdit);
 
     document.getElementById('profileForm').addEventListener('submit', async function(e) {
         e.preventDefault();
+        const phone = document.getElementById('ePhone').value.trim();
+        if (!isValidPhone(phone)) {
+            showToast('Phone number must be exactly 11 digits.', 'error');
+            document.getElementById('ePhone').focus();
+            return;
+        }
         profile.firstName = document.getElementById('eFirstName').value.trim() || profile.firstName;
         profile.lastName  = document.getElementById('eLastName').value.trim();
         profile.email     = document.getElementById('eEmail').value.trim();
-        profile.phone     = document.getElementById('ePhone').value.trim();
+        profile.phone     = phone;
         await save();
         renderView();
         exitEdit();

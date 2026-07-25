@@ -266,6 +266,19 @@
     }
 
     /*
+        Name: isValidPhone
+        Purpose: Validates a phone number string. Empty is allowed (phone is optional
+        everywhere it's collected); if a value is given, it must contain exactly 11
+        digits once formatting characters (spaces, dashes, parentheses, "+") are stripped.
+        Used by: dashboard.js (handleTenantFormSubmit, handleEmployeeFormSubmit)
+        Found in: Line 267-271 in dashboard.js
+    */
+    function isValidPhone(phone) {
+        const digits = (phone || '').replace(/\D/g, '');
+        return digits.length === 0 || digits.length === 11;
+    }
+
+    /*
         Name: openModal / closeModal
         Purpose: Shows or hides a modal dialog by its element id.
         Used by: dashboard.js (every openAdd/openEdit modal function and closeModal call in this file)
@@ -857,8 +870,21 @@
         document.getElementById('tenantFormId').value = '';
         document.getElementById('tenantForm').reset();
         populateTenantUnitSelect(null);
-        document.getElementById('tenantLeaseStatus').value = 'Pending';
+        setTenantUnitFieldLocked(false);
         openModal('tenantModal');
+    }
+    /*
+        Name: setTenantUnitFieldLocked
+        Purpose: Locks (edit mode) or unlocks (add mode) the Assigned Unit field on
+        the tenant modal. It only changes automatically once a lease is created,
+        renewed, or ended, so it's only editable during registration.
+        Used by: dashboard.js (openAddTenantModal, openEditTenantModal)
+        Found in: Line 878-883 in dashboard.js
+    */
+    function setTenantUnitFieldLocked(locked) {
+        document.getElementById('tenantUnit').disabled         = locked;
+        document.getElementById('tenantUnitLabel').textContent = locked ? 'Assigned Unit' : 'Assigned Unit (optional)';
+        document.getElementById('tenantUnitLockedNote').style.display = locked ? 'block' : 'none';
     }
     /*
         Name: openEditTenantModal
@@ -874,8 +900,8 @@
         document.getElementById('tenantName').value          = tenant.name;
         document.getElementById('tenantEmail').value         = tenant.email || '';
         document.getElementById('tenantPhone').value         = tenant.phone || '';
-        document.getElementById('tenantLeaseStatus').value   = tenant.leaseStatus;
         populateTenantUnitSelect(tenant.unitId);
+        setTenantUnitFieldLocked(true);
         openModal('tenantModal');
     }
     /*
@@ -890,11 +916,22 @@
         const name        = document.getElementById('tenantName').value.trim();
         const email       = document.getElementById('tenantEmail').value.trim();
         const phone       = document.getElementById('tenantPhone').value.trim();
-        const unitId      = document.getElementById('tenantUnit').value || null;
-        const leaseStatus = document.getElementById('tenantLeaseStatus').value;
+        let   unitId      = document.getElementById('tenantUnit').value || null;
         if (!name) { showToast('Please enter a name.', 'error'); return; }
+        if (!isValidPhone(phone)) { showToast('Phone number must be exactly 11 digits.', 'error'); document.getElementById('tenantPhone').focus(); return; }
         try {
             const isNew = !id;
+
+            // Assigned Unit can only be set during registration; once a tenant exists,
+            // it's managed automatically through the Leases tab, so an edit always keeps
+            // the tenant's existing unit regardless of the (disabled) form field. Lease
+            // status is never sent from here at all — it's derived from lease dates
+            // (see getTenantLeaseInfo) and kept in sync server-side whenever a lease changes.
+            if (!isNew) {
+                const old = tenants.find(t => t.id === id);
+                if (old) { unitId = old.unitId || null; }
+            }
+
             let unit = null;
             if (unitId) {
                 unit = units.find(u => String(u.id) === String(unitId));
@@ -902,7 +939,7 @@
                 if (isNew && unit.status === 'Occupied') { showToast('This unit is already occupied.', 'warning'); return; }
             }
 
-            const data = { name, email, phone, unitId, leaseStatus }; if (id) data.id = id;
+            const data = { name, email, phone, unitId }; if (id) data.id = id;
             if (id) { const old = tenants.find(t => t.id === id); if (old && old.name !== name) leases.forEach(l => { if (l.tenant === old.name) l.tenant = name; }); }
             await DataManager.saveTenant(data);
 
@@ -1182,6 +1219,7 @@
         const phone = document.getElementById('employeePhone').value.trim();
         const role  = document.getElementById('employeeRole').value;
         if (!name) { showToast('Please enter a name.', 'error'); return; }
+        if (!isValidPhone(phone)) { showToast('Phone number must be exactly 11 digits.', 'error'); document.getElementById('employeePhone').focus(); return; }
         try {
             const data = { name, email, phone, role }; if (id) data.id = id;
             await DataManager.saveEmployee(data); await DataManager.loadAll(); renderAll();

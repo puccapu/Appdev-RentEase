@@ -380,19 +380,13 @@
                 </div>
                 <div class="form-group">
                     <label for="tenantPhone">Phone Number</label>
-                    <input type="text" id="tenantPhone" placeholder="+63 912 345 6789" />
+                    <input type="text" id="tenantPhone" placeholder="0917 123 4567" />
                 </div>
                 <div class="form-group">
-                    <label for="tenantUnit">Assigned Unit (optional)</label>
+                    <label for="tenantUnit" id="tenantUnitLabel">Assigned Unit (optional)</label>
                     <select id="tenantUnit"><option value="">— None —</option></select>
-                </div>
-                <div class="form-group">
-                    <label for="tenantLeaseStatus">Lease Status (initial value)</label>
-                    <select id="tenantLeaseStatus">
-                        <option>Active</option><option>Expired</option><option>Pending</option>
-                    </select>
-                    <small style="color:#8a94a6; display:block; margin-top:4px;">
-                        Once a lease is created for this tenant, the status shown in the Tenants table updates automatically based on the lease dates.
+                    <small id="tenantUnitLockedNote" style="color:#8a94a6; display:none; margin-top:4px;">
+                        The assigned unit can only be set during registration. To change it, end the current lease and create a new one for this tenant.
                     </small>
                 </div>
                 <div class="form-actions">
@@ -471,7 +465,7 @@
                 </div>
                 <div class="form-group">
                     <label for="employeePhone">Phone Number</label>
-                    <input type="text" id="employeePhone" placeholder="+63 912 345 6789" />
+                    <input type="text" id="employeePhone" placeholder="0917 123 4567" />
                 </div>
                 <div class="form-group">
                     <label for="employeeRole">Role</label>
