@@ -402,6 +402,28 @@ body {
 }
 
 /*
+    SECTION: Forgot Password Link
+    Purpose: Styles the link below the login form that redirects to the
+    contact page so the user can reach a developer about a lost PIN.
+*/
+.forgot-link {
+    display: block;
+    text-align: center;
+    margin-top: 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    text-decoration: none;
+    letter-spacing: 0.2px;
+    transition: color 0.2s ease;
+}
+
+.forgot-link:hover {
+    color: var(--secondary);
+    text-decoration: underline;
+}
+
+/*
     SECTION: Footer
     Purpose: Styles the "Admin access only" note beneath the login form.
 */

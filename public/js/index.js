@@ -112,7 +112,7 @@ loginForm.addEventListener('submit', async function(e) {
     }
 
     if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
-        showMessage(loginMsg, 'PIN must be exactly 4 digits.', 'error');
+        showMessage(loginMsg, 'Invalid username or PIN', 'error');
         markDotsError('ld');
         document.getElementById('loginPin').focus();
         return;
@@ -135,7 +135,7 @@ loginForm.addEventListener('submit', async function(e) {
             }));
             setTimeout(() => { window.location.href = '/dashboard.html'; }, 800);
         } else {
-            showMessage(loginMsg, data.message || 'Invalid username or PIN. Please try again.', 'error');
+            showMessage(loginMsg, data.message || 'Invalid username or PIN', 'error');
             markDotsError('ld');
             document.getElementById('loginPin').value = '';
             updateDots('loginPin', 'ld');
