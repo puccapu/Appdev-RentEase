@@ -603,6 +603,8 @@
             `;
             }).join('');
 
+        renderInbox();
+
         const totalRevenue  = payments?.reduce((s, p) => s + Number(p.amount), 0) || 0;
         const overdueTotal  = payments?.filter(p => p.status === 'Overdue').reduce((s, p) => s + Number(p.amount), 0) || 0;
         const expiringLeases= leases?.filter(l => { const diff = (new Date(l.end + 'T00:00:00') - new Date()) / 86400000; return diff > 0 && diff <= 30; }).length || 0;
@@ -623,6 +625,93 @@
                     <td>${formatCurrency(p.amount)}</td><td>Rent</td>
                 </tr>
             `).join('');
+    }
+
+    /*
+        SECTION: Inbox Notifications
+        Purpose: Tracks which upcoming-due-payment notifications the admin has
+        cleared, persisted in localStorage so a "Clear all" survives refreshes
+        without permanently hiding a payment that becomes newly relevant later
+        (e.g. its due date having passed and a new payment record appearing).
+    */
+    const INBOX_CLEARED_KEY = 'rentease_inbox_cleared';
+
+    /*
+        Name: getClearedInboxIds
+        Purpose: Reads the set of payment ids the admin has dismissed via "Clear all".
+        Used by: dashboard.js (renderInbox)
+        Found in: Line 609-616 in dashboard.js
+    */
+    function getClearedInboxIds() {
+        try {
+            return new Set(JSON.parse(localStorage.getItem(INBOX_CLEARED_KEY) || '[]'));
+        } catch (e) {
+            return new Set();
+        }
+    }
+
+    /*
+        Name: getInboxItems
+        Purpose: Computes the list of rent payments still Pending but due
+        within the next 3 days (the window before they'd auto-flip to
+        Overdue), minus any the admin has already cleared.
+        Used by: dashboard.js (renderInbox, clear-all handler)
+        Found in: Line 618-634 in dashboard.js
+    */
+    function getInboxItems() {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const cleared = getClearedInboxIds();
+
+        return (payments || [])
+            .filter(p => p.status === 'Pending' && p.date && !cleared.has(String(p.id)))
+            .map(p => {
+                const due = new Date(p.date + 'T00:00:00');
+                const diffDays = Math.round((due - today) / 86400000);
+                return { ...p, diffDays };
+            })
+            // Anything from "due today" up to "due in 3 days" — the window
+            // before an unpaid Pending payment is auto-flipped to Overdue.
+            .filter(p => p.diffDays >= 0 && p.diffDays <= 3)
+            .sort((a, b) => a.diffDays - b.diffDays);
+    }
+
+    /*
+        Name: renderInbox
+        Purpose: Renders the Inbox dropdown — an early-warning list of leases
+        whose rent payment is still Pending but due within the next 3 days,
+        so the admin can follow up before the payment (and the lease behind
+        it) actually flips to Overdue.
+        Used by: dashboard.js (renderDashboard)
+        Found in: Line 636-660 in dashboard.js
+    */
+    function renderInbox() {
+        const list  = document.getElementById('inboxList');
+        const badge = document.getElementById('inboxBadge');
+        if (!list) return;
+
+        const upcoming = getInboxItems();
+
+        if (badge) {
+            badge.textContent = upcoming.length;
+            badge.style.display = upcoming.length ? 'inline-flex' : 'none';
+        }
+
+        list.innerHTML = upcoming.length === 0
+            ? `<div class="empty-state" style="padding:10px 0;"><p style="font-size:0.85rem;">No leases due soon. You're all caught up.</p></div>`
+            : upcoming.map(p => {
+                const dueLabel = p.diffDays === 0 ? 'Due today' : `Due in ${p.diffDays} day${p.diffDays === 1 ? '' : 's'}`;
+                return `
+                <div class="activity-item inbox-item">
+                    <div class="activity-icon inbox-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="activity-content">
+                        <div class="title">${p.tenant} · Unit ${p.unit}</div>
+                        <div class="desc">Rent payment of ${formatCurrency(p.amount)} will become overdue if unpaid by ${formatDate(p.date)}</div>
+                    </div>
+                    <div class="activity-time ${p.diffDays === 0 ? 'due-today' : ''}">${dueLabel}</div>
+                </div>
+            `;
+            }).join('');
     }
 
     /*
@@ -1744,6 +1833,33 @@
     document.getElementById('tenantForm').addEventListener('submit', handleTenantFormSubmit);
     document.getElementById('paymentForm').addEventListener('submit', handlePaymentFormSubmit);
     document.getElementById('employeeForm').addEventListener('submit', handleEmployeeFormSubmit);
+
+    /*
+        SECTION: Inbox Dropdown
+        Purpose: Opens/closes the Inbox pill's dropdown and handles its
+        "Clear all" button, which dismisses the currently-shown notifications.
+    */
+    const inboxBtn      = document.getElementById('inboxBtn');
+    const inboxDropdown = document.getElementById('inboxDropdown');
+    let inboxOpen = false;
+
+    inboxBtn.addEventListener('click', function (e) {
+        e.stopPropagation(); inboxOpen = !inboxOpen; inboxDropdown.classList.toggle('open', inboxOpen);
+    });
+    document.addEventListener('click', function (e) {
+        if (!document.getElementById('inboxWrap').contains(e.target)) {
+            inboxDropdown.classList.remove('open'); inboxOpen = false;
+        }
+    });
+    document.getElementById('inboxClearBtn').addEventListener('click', function (e) {
+        e.stopPropagation();
+        const idsToClear = getInboxItems().map(p => String(p.id));
+        if (idsToClear.length === 0) return;
+        const cleared = getClearedInboxIds();
+        idsToClear.forEach(id => cleared.add(id));
+        localStorage.setItem(INBOX_CLEARED_KEY, JSON.stringify([...cleared]));
+        renderInbox();
+    });
 
     /*
         SECTION: Profile Dropdown

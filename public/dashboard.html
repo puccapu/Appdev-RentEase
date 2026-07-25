@@ -94,7 +94,32 @@
             Purpose: Overview stat cards, recent activity feed, and quick-action shortcuts.
         -->
         <div id="section-dashboard" class="page-section active">
+
+            <!--
+                SUB-SECTION: Inbox
+                Purpose: Compact bell-style pill that opens a dropdown listing
+                rent payments still Pending but due within the next 3 days, so
+                the admin can follow up before a lease actually flips to
+                Overdue. "Clear all" dismisses the current notifications.
+            -->
+            <div class="inbox-bar">
+                <div class="inbox-wrap" id="inboxWrap">
+                    <button class="inbox-pill" id="inboxBtn" type="button">
+                        <i class="fas fa-bell"></i>
+                        <span class="badge-count" id="inboxBadge" style="display:none;">0</span>
+                    </button>
+                    <div class="inbox-dropdown" id="inboxDropdown">
+                        <div class="inbox-dropdown-header">
+                            <h4><i class="fas fa-inbox"></i> Inbox</h4>
+                            <button class="inbox-clear-btn" id="inboxClearBtn" type="button">Clear all</button>
+                        </div>
+                        <div id="inboxList"></div>
+                    </div>
+                </div>
+            </div>
+
             <div class="stats-grid" id="statsGrid"></div>
+
             <div class="bottom-section">
                 <div class="glass-panel" id="recentActivity">
                     <h3><i class="fas fa-clock"></i> Recent Activity</h3>
