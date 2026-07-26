@@ -33,18 +33,21 @@
         createUnit:     (data)     => ApiService._fetch('/units',          { method: 'POST',   body: JSON.stringify(data) }),
         updateUnit:     (id, data) => ApiService._fetch(`/units/${id}`,    { method: 'PUT',    body: JSON.stringify(data) }),
         deleteUnit:     (id)       => ApiService._fetch(`/units/${id}`,    { method: 'DELETE' }),
-        getLeases:      ()         => ApiService._fetch('/leases'),
+        getLeases:      (archived) => ApiService._fetch(`/leases${archived ? '?archived=true' : ''}`),
         createLease:    (data)     => ApiService._fetch('/leases',         { method: 'POST',   body: JSON.stringify(data) }),
         updateLease:    (id, data) => ApiService._fetch(`/leases/${id}`,   { method: 'PUT',    body: JSON.stringify(data) }),
         deleteLease:    (id)       => ApiService._fetch(`/leases/${id}`,   { method: 'DELETE' }),
-        getTenants:     ()         => ApiService._fetch('/tenants'),
+        restoreLease:   (id)       => ApiService._fetch(`/leases/${id}/restore`,   { method: 'PUT' }),
+        getTenants:     (archived) => ApiService._fetch(`/tenants${archived ? '?archived=true' : ''}`),
         createTenant:   (data)     => ApiService._fetch('/tenants',        { method: 'POST',   body: JSON.stringify(data) }),
         updateTenant:   (id, data) => ApiService._fetch(`/tenants/${id}`,  { method: 'PUT',    body: JSON.stringify(data) }),
         deleteTenant:   (id)       => ApiService._fetch(`/tenants/${id}`,  { method: 'DELETE' }),
-        getPayments:    ()         => ApiService._fetch('/payments'),
+        restoreTenant:  (id)       => ApiService._fetch(`/tenants/${id}/restore`,  { method: 'PUT' }),
+        getPayments:    (archived) => ApiService._fetch(`/payments${archived ? '?archived=true' : ''}`),
         createPayment:  (data)     => ApiService._fetch('/payments',       { method: 'POST',   body: JSON.stringify(data) }),
         updatePayment:  (id, data) => ApiService._fetch(`/payments/${id}`, { method: 'PUT',    body: JSON.stringify(data) }),
         deletePayment:  (id)       => ApiService._fetch(`/payments/${id}`, { method: 'DELETE' }),
+        restorePayment: (id)       => ApiService._fetch(`/payments/${id}/restore`, { method: 'PUT' }),
         getEmployees:   ()         => ApiService._fetch('/employees'),
         createEmployee: (data)     => ApiService._fetch('/employees',         { method: 'POST',   body: JSON.stringify(data) }),
         updateEmployee: (id, data) => ApiService._fetch(`/employees/${id}`,   { method: 'PUT',    body: JSON.stringify(data) }),
@@ -64,6 +67,19 @@
     let payments  = [];
     let employees = [];
     let recentActivity = [];
+
+    /*
+        SECTION: Archive Mode
+        Purpose: Tracks whether Archive Mode is on for each of the Tenants,
+        Leases, and Payments pages, plus a separate archive-inclusive cache
+        for each (fetched with ?archived=true) so archived rows never leak
+        into the normal `tenants`/`leases`/`payments` arrays used elsewhere
+        (dashboard stats, reports, comboboxes, PDFs, etc).
+    */
+    const archiveMode = { tenants: false, leases: false, payments: false };
+    let tenantsAll  = [];
+    let leasesAll   = [];
+    let paymentsAll = [];
 
     /*
         Name: formatCurrency
@@ -140,14 +156,26 @@
         Used by: dashboard.js (DataManager.loadAll)
         Found in: Line 142-149 in dashboard.js
     */
+    const toStr = v => (v === null || v === undefined || v === '') ? null : String(v);
+
     function normalizeIds() {
-        const toStr = v => (v === null || v === undefined || v === '') ? null : String(v);
         units     = (units     || []).map(u => ({ ...u, id: toStr(u.id) }));
-        leases    = (leases    || []).map(l => ({ ...l, id: toStr(l.id), unitId: toStr(l.unitId) }));
-        tenants   = (tenants   || []).map(t => ({ ...t, id: toStr(t.id), unitId: toStr(t.unitId) }));
-        payments  = (payments  || []).map(p => ({ ...p, id: toStr(p.id) }));
+        leases    = normalizeLeaseList(leases);
+        tenants   = normalizeTenantList(tenants);
+        payments  = normalizePaymentList(payments);
         employees = (employees || []).map(e => ({ ...e, id: toStr(e.id) }));
     }
+
+    /*
+        Name: normalizeTenantList / normalizeLeaseList / normalizePaymentList
+        Purpose: Same id-stringifying normalization as normalizeIds, but
+        callable on any list (used for the archive-inclusive caches, which
+        are fetched separately from the main tenants/leases/payments arrays).
+        Used by: dashboard.js (normalizeIds, DataManager.loadAll)
+    */
+    function normalizeTenantList(list)  { return (list || []).map(t => ({ ...t, id: toStr(t.id), unitId: toStr(t.unitId) })); }
+    function normalizeLeaseList(list)   { return (list || []).map(l => ({ ...l, id: toStr(l.id), unitId: toStr(l.unitId) })); }
+    function normalizePaymentList(list) { return (list || []).map(p => ({ ...p, id: toStr(p.id) })); }
 
     /*
         SECTION: Data Manager
@@ -164,6 +192,12 @@
             units = u || []; leases = l || []; tenants = t || [];
             payments = p || []; employees = e || []; recentActivity = ra || [];
             normalizeIds();
+
+            const archiveTasks = [];
+            if (archiveMode.tenants)  archiveTasks.push(ApiService.getTenants(true).then(r => { tenantsAll = normalizeTenantList(r); }));
+            if (archiveMode.leases)   archiveTasks.push(ApiService.getLeases(true).then(r => { leasesAll = normalizeLeaseList(r); }));
+            if (archiveMode.payments) archiveTasks.push(ApiService.getPayments(true).then(r => { paymentsAll = normalizePaymentList(r); }));
+            if (archiveTasks.length) await Promise.all(archiveTasks);
         },
 
         async saveUnit(data) {
@@ -196,6 +230,9 @@
             await ApiService.deleteLease(id);
             leases = leases.filter(l => l.id !== id);
         },
+        async restoreLease(id) {
+            await ApiService.restoreLease(id);
+        },
 
         async saveTenant(data) {
             if (data.id) {
@@ -211,6 +248,9 @@
             await ApiService.deleteTenant(id);
             tenants = tenants.filter(t => t.id !== id);
         },
+        async restoreTenant(id) {
+            await ApiService.restoreTenant(id);
+        },
 
         async savePayment(data) {
             if (data.id) {
@@ -225,6 +265,9 @@
         async deletePayment(id) {
             await ApiService.deletePayment(id);
             payments = payments.filter(p => p.id !== id);
+        },
+        async restorePayment(id) {
+            await ApiService.restorePayment(id);
         },
 
         async saveEmployee(data) {
@@ -381,16 +424,23 @@
     function renderLeases() {
         const tbody = document.getElementById('leasesTableBody');
         const count = document.getElementById('leaseCount');
-        if (!leases || leases.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fas fa-file-signature"></i><p>No leases yet.</p></div></td></tr>`;
-            count.textContent = '· 0 active'; return;
+        const data  = archiveMode.leases ? leasesAll : leases;
+        if (!data || data.length === 0) {
+            const emptyMsg = archiveMode.leases ? 'No leases found.' : 'No leases yet.';
+            tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fas fa-file-signature"></i><p>${emptyMsg}</p></div></td></tr>`;
+            count.textContent = archiveMode.leases ? '· 0 total' : '· 0 active'; return;
         }
-        const active = leases.filter(l => new Date(l.end + 'T00:00:00') >= new Date()).length;
-        count.textContent = `· ${active} active`;
-        tbody.innerHTML = leases.map(l => {
+        if (archiveMode.leases) {
+            const archivedCount = data.filter(l => l.archived).length;
+            count.textContent = `· ${data.length} total (${archivedCount} archived)`;
+        } else {
+            const active = data.filter(l => new Date(l.end + 'T00:00:00') >= new Date()).length;
+            count.textContent = `· ${active} active`;
+        }
+        tbody.innerHTML = data.map(l => {
             const unit = units.find(u => u.id === l.unitId);
-            return `<tr>
-                <td><strong>${l.id}</strong></td>
+            return `<tr${l.archived ? ' class="archived-row"' : ''}>
+                <td><strong>${l.id}</strong>${l.archived ? ' <span class="badge archived-badge">Archived</span>' : ''}</td>
                 <td>${l.tenant}</td>
                 <td>${unit ? unit.number : '—'}</td>
                 <td>${formatDate(l.start)}</td>
@@ -399,13 +449,16 @@
                 <td style="text-align:center;">
                     <div class="action-group" style="justify-content:center;">
                         <button class="btn-edit" data-edit-lease="${l.id}"><i class="fas fa-pen"></i></button>
-                        <button class="btn-danger" data-delete-lease="${l.id}"><i class="fas fa-trash"></i></button>
+                        ${l.archived
+                            ? `<button class="btn-restore" data-restore-lease="${l.id}"><i class="fas fa-rotate-left"></i></button>`
+                            : `<button class="btn-danger" data-delete-lease="${l.id}"><i class="fas fa-trash"></i></button>`}
                     </div>
                 </td>
             </tr>`;
         }).join('');
         tbody.querySelectorAll('[data-edit-lease]').forEach(btn => btn.addEventListener('click', function () { openEditLeaseModal(this.dataset.editLease); }));
         tbody.querySelectorAll('[data-delete-lease]').forEach(btn => btn.addEventListener('click', function () { confirmDelete('lease', this.dataset.deleteLease); }));
+        tbody.querySelectorAll('[data-restore-lease]').forEach(btn => btn.addEventListener('click', function () { restoreItem('lease', this.dataset.restoreLease); }));
     }
 
     /*
@@ -417,17 +470,24 @@
     function renderTenants() {
         const tbody = document.getElementById('tenantsTableBody');
         const count = document.getElementById('tenantCount');
-        if (!tenants || tenants.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="fas fa-users"></i><p>No tenants yet.</p></div></td></tr>`;
-            count.textContent = '· 0 active'; return;
+        const data  = archiveMode.tenants ? tenantsAll : tenants;
+        if (!data || data.length === 0) {
+            const emptyMsg = archiveMode.tenants ? 'No tenants found.' : 'No tenants yet.';
+            tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="fas fa-users"></i><p>${emptyMsg}</p></div></td></tr>`;
+            count.textContent = archiveMode.tenants ? '· 0 total' : '· 0 active'; return;
         }
-        const active = tenants.filter(t => getTenantLeaseInfo(t.name).status === 'Active').length;
-        count.textContent = `· ${active} active`;
-        tbody.innerHTML = tenants.map(t => {
+        if (archiveMode.tenants) {
+            const archivedCount = data.filter(t => t.archived).length;
+            count.textContent = `· ${data.length} total (${archivedCount} archived)`;
+        } else {
+            const active = data.filter(t => getTenantLeaseInfo(t.name).status === 'Active').length;
+            count.textContent = `· ${active} active`;
+        }
+        tbody.innerHTML = data.map(t => {
             const { status, unitNumbers } = getTenantLeaseInfo(t.name);
             const unitDisplay = unitNumbers.length ? unitNumbers.join(', ') : '—';
-            return `<tr>
-                <td><strong>${t.name}</strong></td>
+            return `<tr${t.archived ? ' class="archived-row"' : ''}>
+                <td><strong>${t.name}</strong>${t.archived ? ' <span class="badge archived-badge">Archived</span>' : ''}</td>
                 <td>${t.email || '—'}</td>
                 <td>${t.phone || '—'}</td>
                 <td>${unitDisplay}</td>
@@ -435,13 +495,16 @@
                 <td style="text-align:center;">
                     <div class="action-group" style="justify-content:center;">
                         <button class="btn-edit" data-edit-tenant="${t.id}"><i class="fas fa-pen"></i></button>
-                        <button class="btn-danger" data-delete-tenant="${t.id}"><i class="fas fa-trash"></i></button>
+                        ${t.archived
+                            ? `<button class="btn-restore" data-restore-tenant="${t.id}"><i class="fas fa-rotate-left"></i></button>`
+                            : `<button class="btn-danger" data-delete-tenant="${t.id}"><i class="fas fa-trash"></i></button>`}
                     </div>
                 </td>
             </tr>`;
         }).join('');
         tbody.querySelectorAll('[data-edit-tenant]').forEach(btn => btn.addEventListener('click', function () { openEditTenantModal(this.dataset.editTenant); }));
         tbody.querySelectorAll('[data-delete-tenant]').forEach(btn => btn.addEventListener('click', function () { confirmDelete('tenant', this.dataset.deleteTenant); }));
+        tbody.querySelectorAll('[data-restore-tenant]').forEach(btn => btn.addEventListener('click', function () { restoreItem('tenant', this.dataset.restoreTenant); }));
     }
 
     /*
@@ -453,14 +516,21 @@
     function renderPayments() {
         const tbody = document.getElementById('paymentsTableBody');
         const count = document.getElementById('paymentCount');
-        if (!payments || payments.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fas fa-coins"></i><p>No payment records yet.</p></div></td></tr>`;
-            count.textContent = '· 0 records'; return;
+        const data  = archiveMode.payments ? paymentsAll : payments;
+        if (!data || data.length === 0) {
+            const emptyMsg = archiveMode.payments ? 'No payment records found.' : 'No payment records yet.';
+            tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fas fa-coins"></i><p>${emptyMsg}</p></div></td></tr>`;
+            count.textContent = archiveMode.payments ? '· 0 total' : '· 0 records'; return;
         }
-        count.textContent = `· ${payments.length} records`;
-        tbody.innerHTML = payments.map(p => `
-            <tr>
-                <td><strong>${p.id}</strong></td>
+        if (archiveMode.payments) {
+            const archivedCount = data.filter(p => p.archived).length;
+            count.textContent = `· ${data.length} total (${archivedCount} archived)`;
+        } else {
+            count.textContent = `· ${data.length} records`;
+        }
+        tbody.innerHTML = data.map(p => `
+            <tr${p.archived ? ' class="archived-row"' : ''}>
+                <td><strong>${p.id}</strong>${p.archived ? ' <span class="badge archived-badge">Archived</span>' : ''}</td>
                 <td>${formatDate(p.date)}</td>
                 <td>${p.tenant}</td>
                 <td>${p.unit}</td>
@@ -469,13 +539,16 @@
                 <td style="text-align:center;">
                     <div class="action-group" style="justify-content:center;">
                         <button class="btn-edit" data-edit-payment="${p.id}"><i class="fas fa-pen"></i></button>
-                        <button class="btn-danger" data-delete-payment="${p.id}"><i class="fas fa-trash"></i></button>
+                        ${p.archived
+                            ? `<button class="btn-restore" data-restore-payment="${p.id}"><i class="fas fa-rotate-left"></i></button>`
+                            : `<button class="btn-danger" data-delete-payment="${p.id}"><i class="fas fa-trash"></i></button>`}
                     </div>
                 </td>
             </tr>
         `).join('');
         tbody.querySelectorAll('[data-edit-payment]').forEach(btn => btn.addEventListener('click', function () { openEditPaymentModal(this.dataset.editPayment); }));
         tbody.querySelectorAll('[data-delete-payment]').forEach(btn => btn.addEventListener('click', function () { confirmDelete('payment', this.dataset.deletePayment); }));
+        tbody.querySelectorAll('[data-restore-payment]').forEach(btn => btn.addEventListener('click', function () { restoreItem('payment', this.dataset.restorePayment); }));
     }
 
     /*
@@ -1318,15 +1391,26 @@
 
     /*
         SECTION: Delete Confirm
-        Purpose: Shared confirmation modal for deleting a unit, lease, tenant,
-        payment, or employee, including a dependency check that blocks deleting
-        a unit/tenant that still has an active lease.
+        Purpose: Shared confirmation modal for deleting a unit or employee
+        (permanent) and archiving a tenant, lease, or payment (reversible via
+        Archive Mode), including a dependency check that blocks removing a
+        unit/tenant that still has an active lease.
     */
     let deleteTarget = null;
 
     /*
+        Name: ARCHIVABLE_TYPES
+        Purpose: Entity types whose "delete" button archives instead of
+        permanently deleting the row. Units and employees are unaffected.
+    */
+    const ARCHIVABLE_TYPES = ['tenant', 'lease', 'payment'];
+
+    /*
         Name: confirmDelete
-        Purpose: Opens the shared delete-confirmation modal for the given entity type/id, blocking the delete if it has an active lease dependency.
+        Purpose: Opens the shared confirmation modal for the given entity type/id.
+        For tenants/leases/payments this archives the record (reversible via
+        Archive Mode); for units/employees it permanently deletes it. Blocks
+        the action if it has an active lease dependency.
         Used by: dashboard.js (every render* table's delete button)
         Found in: Line 1195-1214 in dashboard.js
     */
@@ -1339,21 +1423,30 @@
         else if (type === 'payment')  { const i = payments.find(p => String(p.id) === String(id));  name = i ? i.tenant  : 'this payment'; }
         else if (type === 'employee') { const i = employees.find(e => e.id === id); name = i ? i.name    : 'this employee'; }
 
-        let msg = `Are you sure you want to delete "${name}"? This action cannot be undone.`;
+        const isArchivable = ARCHIVABLE_TYPES.includes(type);
+        let msg = isArchivable
+            ? `Are you sure you want to archive "${name}"? It will be hidden from view, but you can restore it later by turning on Archive Mode.`
+            : `Are you sure you want to delete "${name}"? This action cannot be undone.`;
         let hasDependency = false;
         if (type === 'unit' && leases.some(l => l.unitId === id)) {
             msg = `"${name}" has active leases. Please end the lease first before deleting.`; hasDependency = true;
         } else if (type === 'tenant' && leases.some(l => l.tenant === name)) {
-            msg = `"${name}" has an active lease. Please end the lease first before deleting.`; hasDependency = true;
+            msg = `"${name}" has an active lease. Please end the lease first before archiving.`; hasDependency = true;
         }
+        document.getElementById('confirmModalTitle').textContent = isArchivable ? 'Confirm Archive' : 'Confirm Delete';
         document.getElementById('confirmMessage').textContent = msg;
-        document.getElementById('confirmDeleteBtn').style.display = hasDependency ? 'none' : 'inline-flex';
+        const confirmBtn = document.getElementById('confirmDeleteBtn');
+        confirmBtn.style.display = hasDependency ? 'none' : 'inline-flex';
+        confirmBtn.innerHTML = isArchivable
+            ? '<i class="fas fa-box-archive"></i> Archive'
+            : '<i class="fas fa-trash"></i> Delete';
         openModal('confirmModal');
     }
 
     document.getElementById('confirmDeleteBtn').addEventListener('click', async function () {
         if (!deleteTarget) return;
         const { type, id } = deleteTarget;
+        const isArchivable = ARCHIVABLE_TYPES.includes(type);
         try {
             if      (type === 'unit')     await DataManager.deleteUnit(id);
             else if (type === 'lease')    await DataManager.deleteLease(id);
@@ -1361,10 +1454,59 @@
             else if (type === 'payment')  await DataManager.deletePayment(id);
             else if (type === 'employee') await DataManager.deleteEmployee(id);
             await DataManager.loadAll(); renderAll();
-            closeModal('confirmModal'); showToast('Deleted successfully.');
+            closeModal('confirmModal');
+            showToast(isArchivable ? 'Archived successfully.' : 'Deleted successfully.');
         } catch (err) { showToast('Error: ' + err.message, 'error'); }
         deleteTarget = null;
     });
+
+    /*
+        Name: restoreItem
+        Purpose: Restores a previously-archived tenant, lease, or payment
+        (clears its archived flag) and refreshes the affected table.
+        Used by: dashboard.js (renderTenants/renderLeases/renderPayments restore buttons)
+    */
+    async function restoreItem(type, id) {
+        try {
+            if      (type === 'tenant')  await DataManager.restoreTenant(id);
+            else if (type === 'lease')   await DataManager.restoreLease(id);
+            else if (type === 'payment') await DataManager.restorePayment(id);
+            await DataManager.loadAll();
+            renderAll();
+            showToast('Restored successfully.');
+        } catch (err) { showToast('Error: ' + err.message, 'error'); }
+    }
+
+    /*
+        Name: setArchiveMode
+        Purpose: Toggles Archive Mode for the Tenants, Leases, or Payments
+        page. When turning it on, fetches the archive-inclusive list (active
+        + archived) for that section before re-rendering.
+        Used by: dashboard.js (tenantsArchiveToggle/leasesArchiveToggle/paymentsArchiveToggle change listeners)
+    */
+    async function setArchiveMode(section, enabled) {
+        archiveMode[section] = enabled;
+        if (enabled) {
+            try {
+                if      (section === 'tenants')  tenantsAll  = normalizeTenantList(await ApiService.getTenants(true));
+                else if (section === 'leases')   leasesAll   = normalizeLeaseList(await ApiService.getLeases(true));
+                else if (section === 'payments') paymentsAll = normalizePaymentList(await ApiService.getPayments(true));
+            } catch (err) {
+                showToast('Error loading archive: ' + err.message, 'error');
+                archiveMode[section] = false;
+                const toggleIds = { tenants: 'tenantsArchiveToggle', leases: 'leasesArchiveToggle', payments: 'paymentsArchiveToggle' };
+                const toggleEl = document.getElementById(toggleIds[section]);
+                if (toggleEl) toggleEl.checked = false;
+            }
+        }
+        if      (section === 'tenants')  renderTenants();
+        else if (section === 'leases')   renderLeases();
+        else if (section === 'payments') renderPayments();
+    }
+
+    document.getElementById('tenantsArchiveToggle').addEventListener('change', function () { setArchiveMode('tenants', this.checked); });
+    document.getElementById('leasesArchiveToggle').addEventListener('change', function () { setArchiveMode('leases', this.checked); });
+    document.getElementById('paymentsArchiveToggle').addEventListener('change', function () { setArchiveMode('payments', this.checked); });
 
     /*
         Name: refresh

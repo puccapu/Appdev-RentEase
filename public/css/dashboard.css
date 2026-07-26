@@ -365,6 +365,24 @@ body {
     border-color: rgba(33, 150, 243, 0.3);
 }
 
+.btn-restore {
+    background: rgba(76, 175, 80, 0.15);
+    color: #4caf50;
+    border: 1px solid rgba(76, 175, 80, 0.15);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.btn-restore:hover {
+    background: rgba(76, 175, 80, 0.3);
+    border-color: rgba(76, 175, 80, 0.3);
+}
+
 .action-group {
     display: flex;
     gap: 6px;
@@ -751,6 +769,78 @@ table.sim-table .badge {
     color: var(--text-secondary);
     font-size: 0.9rem;
     font-weight: 400;
+}
+
+/*
+    SECTION: Archive Mode
+    Purpose: Styles the Archive Mode toggle switch on the Tenants, Leases,
+    and Payments section headers, plus the visual treatment of archived
+    rows and the "Archived" badge shown when Archive Mode is enabled.
+*/
+.archive-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+}
+.archive-toggle input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.archive-toggle-track {
+    width: 40px;
+    height: 22px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 20px;
+    position: relative;
+    transition: all 0.25s ease;
+    flex-shrink: 0;
+}
+.archive-toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: var(--text-secondary);
+    border-radius: 50%;
+    transition: all 0.25s ease;
+}
+.archive-toggle input:checked + .archive-toggle-track {
+    background: rgba(255, 247, 104, 0.2);
+    border-color: rgba(255, 247, 104, 0.4);
+}
+.archive-toggle input:checked + .archive-toggle-track .archive-toggle-thumb {
+    left: 20px;
+    background: var(--secondary);
+}
+.archive-toggle-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 0.25s ease;
+}
+.archive-toggle input:checked ~ .archive-toggle-label {
+    color: var(--secondary);
+}
+
+.archived-row {
+    opacity: 0.55;
+}
+.archived-row:hover {
+    opacity: 0.8;
+}
+.badge.archived-badge {
+    background: rgba(159, 168, 218, 0.15);
+    color: var(--text-secondary);
+    margin-left: 6px;
 }
 
 /*

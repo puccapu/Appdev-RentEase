@@ -71,6 +71,7 @@ async function seed() {
             phone        VARCHAR(30)  DEFAULT '',
             unit_id      INT          DEFAULT NULL,
             lease_status VARCHAR(30)  DEFAULT 'Pending',
+            archived     TINYINT(1)   NOT NULL DEFAULT 0,
             CONSTRAINT fk_tenants_unit
                 FOREIGN KEY (unit_id) REFERENCES units (unit_id)
                 ON DELETE SET NULL ON UPDATE CASCADE
@@ -86,6 +87,7 @@ async function seed() {
             start_date DATE          NOT NULL,
             end_date   DATE          NOT NULL,
             rent       DECIMAL(10,2) NOT NULL DEFAULT 0,
+            archived   TINYINT(1)    NOT NULL DEFAULT 0,
             CONSTRAINT fk_leases_tenant
                 FOREIGN KEY (tenant_id) REFERENCES tenants (tenant_id)
                 ON DELETE CASCADE ON UPDATE CASCADE,
@@ -105,6 +107,7 @@ async function seed() {
             payment_date DATE          NOT NULL,
             amount       DECIMAL(10,2) NOT NULL DEFAULT 0,
             status       VARCHAR(30)   NOT NULL DEFAULT 'Pending',
+            archived     TINYINT(1)    NOT NULL DEFAULT 0,
             CONSTRAINT fk_payments_tenant
                 FOREIGN KEY (tenant_id) REFERENCES tenants (tenant_id)
                 ON DELETE CASCADE ON UPDATE CASCADE,

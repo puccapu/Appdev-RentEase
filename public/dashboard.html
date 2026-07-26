@@ -179,6 +179,11 @@
         <div id="section-tenants" class="page-section">
             <div class="section-header">
                 <h2><i class="fas fa-users"></i> Tenants <span class="sub" id="tenantCount">· 0 active</span></h2>
+                <label class="archive-toggle" for="tenantsArchiveToggle">
+                    <input type="checkbox" id="tenantsArchiveToggle" />
+                    <span class="archive-toggle-track"><span class="archive-toggle-thumb"></span></span>
+                    <span class="archive-toggle-label"><i class="fas fa-box-archive"></i> Archive Mode</span>
+                </label>
             </div>
             <div class="glass-panel" style="padding:16px 18px;">
                 <div class="table-responsive">
@@ -199,6 +204,11 @@
         <div id="section-leases" class="page-section">
             <div class="section-header">
                 <h2><i class="fas fa-file-signature"></i> Lease Contracts <span class="sub" id="leaseCount">· 0 active</span></h2>
+                <label class="archive-toggle" for="leasesArchiveToggle">
+                    <input type="checkbox" id="leasesArchiveToggle" />
+                    <span class="archive-toggle-track"><span class="archive-toggle-thumb"></span></span>
+                    <span class="archive-toggle-label"><i class="fas fa-box-archive"></i> Archive Mode</span>
+                </label>
             </div>
             <div class="glass-panel" style="padding:16px 18px;">
                 <div class="table-responsive">
@@ -219,6 +229,11 @@
         <div id="section-payments" class="page-section">
             <div class="section-header">
                 <h2><i class="fas fa-coins"></i> Payment Records <span class="sub" id="paymentCount">· 0 records</span></h2>
+                <label class="archive-toggle" for="paymentsArchiveToggle">
+                    <input type="checkbox" id="paymentsArchiveToggle" />
+                    <span class="archive-toggle-track"><span class="archive-toggle-thumb"></span></span>
+                    <span class="archive-toggle-label"><i class="fas fa-box-archive"></i> Archive Mode</span>
+                </label>
             </div>
             <div class="glass-panel" style="padding:16px 18px;">
                 <div class="table-responsive">
@@ -515,7 +530,7 @@
     <div class="modal-overlay" id="confirmModal">
         <div class="modal" style="max-width:400px;">
             <div class="modal-header">
-                <h2><i class="fas fa-exclamation-triangle" style="color:#f43f5e;"></i> Confirm Delete</h2>
+                <h2><i class="fas fa-exclamation-triangle" style="color:#f43f5e;"></i> <span id="confirmModalTitle">Confirm Delete</span></h2>
                 <button class="modal-close" data-close="confirmModal">&times;</button>
             </div>
             <p style="color:var(--text-secondary); margin-bottom:20px; font-size:0.95rem;" id="confirmMessage">Are you sure you want to delete this item?</p>

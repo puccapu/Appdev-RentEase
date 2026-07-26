@@ -50,6 +50,39 @@ const db = mysql.createPool({
 });
 
 /*
+    Name: ensureColumn
+    Purpose: Adds a column to a table if it doesn't already exist, so
+    databases created before the Archive Mode feature was added get
+    migrated automatically instead of requiring a manual ALTER TABLE.
+    Used by: server.js (runMigrations, at startup)
+    Found in: Line 53-63 in server.js
+*/
+async function ensureColumn(table, column, definition) {
+    const [rows] = await db.execute(
+        `SELECT COUNT(*) AS cnt FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+        [table, column]
+    );
+    if (rows[0].cnt === 0) {
+        await db.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+        console.log(`✔ Migrated: added ${table}.${column}`);
+    }
+}
+
+/*
+    Name: runMigrations
+    Purpose: Ensures the `archived` flag used by Archive Mode exists on
+    tenants, leases, and payments before the server starts accepting requests.
+    Used by: server.js (startup, before app.listen)
+    Found in: Line 65-71 in server.js
+*/
+async function runMigrations() {
+    await ensureColumn('tenants',  'archived', 'TINYINT(1) NOT NULL DEFAULT 0');
+    await ensureColumn('leases',   'archived', 'TINYINT(1) NOT NULL DEFAULT 0');
+    await ensureColumn('payments', 'archived', 'TINYINT(1) NOT NULL DEFAULT 0');
+}
+
+/*
     Name: requireAuth
     Purpose: Express middleware that blocks a request with 401 Unauthorized
     unless the session has a logged-in user.
@@ -207,10 +240,17 @@ app.delete('/api/units/:id', requireAuth, async (req, res) => {
     Purpose: CRUD routes for tenants. Every response is shaped by
     TENANT_SELECT so the API always returns the same tenant fields to the client.
 */
-const TENANT_SELECT = 'SELECT tenant_id AS id, name, email, phone, unit_id AS unitId, lease_status AS leaseStatus FROM tenants';
+const TENANT_SELECT = 'SELECT tenant_id AS id, name, email, phone, unit_id AS unitId, lease_status AS leaseStatus, archived FROM tenants';
 
+/*
+    Name: GET /api/tenants
+    Purpose: Lists tenants. By default only non-archived tenants are
+    returned; pass ?archived=true (Archive Mode) to list every tenant,
+    including ones that have been archived via the delete button.
+*/
 app.get('/api/tenants', requireAuth, async (req, res) => {
-    const [rows] = await db.execute(`${TENANT_SELECT} ORDER BY name ASC`);
+    const where = req.query.archived === 'true' ? '' : 'WHERE archived = 0';
+    const [rows] = await db.execute(`${TENANT_SELECT} ${where} ORDER BY name ASC`);
     res.json(rows);
 });
 
@@ -250,9 +290,16 @@ app.put('/api/tenants/:id', requireAuth, async (req, res) => {
 
 app.delete('/api/tenants/:id', requireAuth, async (req, res) => {
     const [existing] = await db.execute('SELECT * FROM tenants WHERE tenant_id = ?', [req.params.id]);
-    await db.execute('DELETE FROM tenants WHERE tenant_id = ?', [req.params.id]);
-    await logActivity(req, 'DELETE', 'tenant', req.params.id, `Removed tenant ${existing[0]?.name || req.params.id}`);
+    await db.execute('UPDATE tenants SET archived = 1 WHERE tenant_id = ?', [req.params.id]);
+    await logActivity(req, 'DELETE', 'tenant', req.params.id, `Archived tenant ${existing[0]?.name || req.params.id}`);
     res.json({ success: true });
+});
+
+app.put('/api/tenants/:id/restore', requireAuth, async (req, res) => {
+    await db.execute('UPDATE tenants SET archived = 0 WHERE tenant_id = ?', [req.params.id]);
+    const [rows] = await db.execute(`${TENANT_SELECT} WHERE tenant_id = ?`, [req.params.id]);
+    await logActivity(req, 'EDIT', 'tenant', req.params.id, `Restored tenant ${rows[0]?.name || req.params.id}`);
+    res.json(rows[0]);
 });
 
 /*
@@ -263,13 +310,21 @@ app.delete('/api/tenants/:id', requireAuth, async (req, res) => {
 */
 const LEASE_SELECT = `
     SELECT leases.lease_id AS id, tenants.name AS tenant, leases.unit_id AS unitId,
-           leases.start_date AS start, leases.end_date AS end, leases.rent AS rent
+           leases.start_date AS start, leases.end_date AS end, leases.rent AS rent,
+           leases.archived AS archived
     FROM leases
     JOIN tenants ON leases.tenant_id = tenants.tenant_id
 `;
 
+/*
+    Name: GET /api/leases
+    Purpose: Lists leases. By default only non-archived leases are
+    returned; pass ?archived=true (Archive Mode) to list every lease,
+    including ones that have been archived via the delete button.
+*/
 app.get('/api/leases', requireAuth, async (req, res) => {
-    const [rows] = await db.execute(`${LEASE_SELECT} ORDER BY leases.start_date DESC`);
+    const where = req.query.archived === 'true' ? '' : 'WHERE leases.archived = 0';
+    const [rows] = await db.execute(`${LEASE_SELECT} ${where} ORDER BY leases.start_date DESC`);
     res.json(rows);
 });
 
@@ -283,7 +338,9 @@ app.get('/api/leases', requireAuth, async (req, res) => {
 async function syncTenantToUnit(conn, tenantName, unitId, leaseStatus) {
     const [existing] = await conn.execute('SELECT tenant_id FROM tenants WHERE name = ? LIMIT 1', [tenantName]);
     if (existing[0]) {
-        await conn.execute('UPDATE tenants SET unit_id = ?, lease_status = ? WHERE tenant_id = ?', [unitId, leaseStatus, existing[0].tenant_id]);
+        // Reassigning an existing tenant to a lease means they're active again,
+        // so un-archive them even if they'd previously been archived.
+        await conn.execute('UPDATE tenants SET unit_id = ?, lease_status = ?, archived = 0 WHERE tenant_id = ?', [unitId, leaseStatus, existing[0].tenant_id]);
         return existing[0].tenant_id;
     } else {
         const [result] = await conn.execute('INSERT INTO tenants (name, unit_id, lease_status) VALUES (?, ?, ?)', [tenantName, unitId, leaseStatus]);
@@ -383,12 +440,19 @@ app.put('/api/leases/:id', requireAuth, async (req, res) => {
 
 app.delete('/api/leases/:id', requireAuth, async (req, res) => {
     const [existing] = await db.execute(`${LEASE_SELECT} WHERE leases.lease_id = ?`, [req.params.id]);
-    await db.execute('DELETE FROM leases WHERE lease_id = ?', [req.params.id]);
+    await db.execute('UPDATE leases SET archived = 1 WHERE lease_id = ?', [req.params.id]);
     if (existing[0]?.unitId) {
         await db.execute('UPDATE units SET status = ? WHERE unit_id = ?', ['Available', existing[0].unitId]);
     }
-    await logActivity(req, 'DELETE', 'lease', req.params.id, `Deleted lease for ${existing[0]?.tenant || req.params.id}`);
+    await logActivity(req, 'DELETE', 'lease', req.params.id, `Archived lease for ${existing[0]?.tenant || req.params.id}`);
     res.json({ success: true });
+});
+
+app.put('/api/leases/:id/restore', requireAuth, async (req, res) => {
+    await db.execute('UPDATE leases SET archived = 0 WHERE lease_id = ?', [req.params.id]);
+    const [rows] = await db.execute(`${LEASE_SELECT} WHERE leases.lease_id = ?`, [req.params.id]);
+    await logActivity(req, 'EDIT', 'lease', req.params.id, `Restored lease for ${rows[0]?.tenant || req.params.id}`);
+    res.json(rows[0]);
 });
 
 /*
@@ -399,7 +463,8 @@ app.delete('/api/leases/:id', requireAuth, async (req, res) => {
 */
 const PAYMENT_SELECT = `
     SELECT payments.payment_id AS id, tenants.name AS tenant, units.number AS unit,
-           payments.payment_date AS date, payments.amount AS amount, payments.status AS status
+           payments.payment_date AS date, payments.amount AS amount, payments.status AS status,
+           payments.archived AS archived
     FROM payments
     JOIN tenants ON payments.tenant_id = tenants.tenant_id
     JOIN units   ON payments.unit_id   = units.unit_id
@@ -414,7 +479,12 @@ const PAYMENT_SELECT = `
 */
 async function resolveTenantId(conn, tenantName) {
     const [existing] = await conn.execute('SELECT tenant_id FROM tenants WHERE name = ? LIMIT 1', [tenantName]);
-    if (existing[0]) return existing[0].tenant_id;
+    if (existing[0]) {
+        // A new payment for this name means the tenant is active again,
+        // so un-archive them even if they'd previously been archived.
+        await conn.execute('UPDATE tenants SET archived = 0 WHERE tenant_id = ?', [existing[0].tenant_id]);
+        return existing[0].tenant_id;
+    }
     const [result] = await conn.execute('INSERT INTO tenants (name) VALUES (?)', [tenantName]);
     return result.insertId;
 }
@@ -438,7 +508,8 @@ app.get('/api/payments', requireAuth, async (req, res) => {
     await db.execute(
         "UPDATE payments SET status = 'Overdue' WHERE status = 'Pending' AND payment_date < CURDATE()"
     );
-    const [rows] = await db.execute(`${PAYMENT_SELECT} ORDER BY payments.payment_date DESC`);
+    const where = req.query.archived === 'true' ? '' : 'WHERE payments.archived = 0';
+    const [rows] = await db.execute(`${PAYMENT_SELECT} ${where} ORDER BY payments.payment_date DESC`);
     res.json(rows);
 });
 
@@ -512,9 +583,16 @@ app.put('/api/payments/:id', requireAuth, async (req, res) => {
 
 app.delete('/api/payments/:id', requireAuth, async (req, res) => {
     const [existing] = await db.execute(`${PAYMENT_SELECT} WHERE payments.payment_id = ?`, [req.params.id]);
-    await db.execute('DELETE FROM payments WHERE payment_id = ?', [req.params.id]);
-    await logActivity(req, 'DELETE', 'payment', req.params.id, `Deleted payment record for ${existing[0]?.tenant || req.params.id}`);
+    await db.execute('UPDATE payments SET archived = 1 WHERE payment_id = ?', [req.params.id]);
+    await logActivity(req, 'DELETE', 'payment', req.params.id, `Archived payment record for ${existing[0]?.tenant || req.params.id}`);
     res.json({ success: true });
+});
+
+app.put('/api/payments/:id/restore', requireAuth, async (req, res) => {
+    await db.execute('UPDATE payments SET archived = 0 WHERE payment_id = ?', [req.params.id]);
+    const [rows] = await db.execute(`${PAYMENT_SELECT} WHERE payments.payment_id = ?`, [req.params.id]);
+    await logActivity(req, 'EDIT', 'payment', req.params.id, `Restored payment record for ${rows[0]?.tenant || req.params.id}`);
+    res.json(rows[0]);
 });
 
 /*
@@ -569,7 +647,11 @@ app.delete('/api/employees/:id', requireAuth, async (req, res) => {
     Purpose: Boots the HTTP server on the configured port.
 */
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`RentEase running on http://localhost:${PORT}`);
-    console.log(`DB: ${process.env.DB_NAME} @ ${process.env.DB_HOST}`);
-});
+runMigrations()
+    .catch(err => console.error('Migration error:', err))
+    .finally(() => {
+        app.listen(PORT, () => {
+            console.log(`RentEase running on http://localhost:${PORT}`);
+            console.log(`DB: ${process.env.DB_NAME} @ ${process.env.DB_HOST}`);
+        });
+    });
