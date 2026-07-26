@@ -57,8 +57,7 @@ async function seed() {
             employee_id INT AUTO_INCREMENT PRIMARY KEY,
             name        VARCHAR(100) NOT NULL,
             email       VARCHAR(100) DEFAULT '',
-            phone       VARCHAR(30)  DEFAULT '',
-            role        VARCHAR(30)  DEFAULT 'Staff'
+            phone       VARCHAR(30)  DEFAULT ''
         ) ENGINE=InnoDB
     `);
     console.log('✔ Table: employees');
@@ -150,6 +149,21 @@ async function seed() {
         ON DUPLICATE KEY UPDATE username = username
     `, ['admin', pin_hash]);
     console.log('✔ Admin user seeded  →  username: admin  |  PIN: 2121');
+
+    /*
+        SECTION: Seed - Manager User
+        Purpose: Ensures a default limited-access login (username: manager,
+        PIN: 6767) always exists. This account's dashboard is restricted on
+        the frontend to editing only Payments and Employees; every other
+        section is view-only (see dashboard.js applyRolePermissions()).
+    */
+    const manager_pin_hash = await bcrypt.hash('6767', 10);
+    await db.execute(`
+        INSERT INTO users (username, pin_hash, first_name, role)
+        VALUES (?, ?, 'Manager', 'Manager')
+        ON DUPLICATE KEY UPDATE username = username
+    `, ['manager', manager_pin_hash]);
+    console.log('✔ Manager user seeded  →  username: manager  |  PIN: 6767');
 
     /*
         SECTION: Seed - Sample Units
@@ -299,14 +313,14 @@ async function seed() {
     const empCount = (await db.execute('SELECT COUNT(*) AS n FROM employees'))[0][0].n;
     if (empCount === 0) {
         const sampleEmployees = [
-            ['Hatsune Miku', 'miku@rentease.com',  '0999 111 1111', 'Admin'  ],
-            ['Kasane Teto',  'teto@rentease.com',  '0999 222 2222', 'Manager'],
-            ['Dong Matteo',  'matteo@rentease.com','0999 333 3333', 'Staff'  ],
+            ['Hatsune Miku', 'miku@rentease.com',  '0999 111 1111'],
+            ['Kasane Teto',  'teto@rentease.com',  '0999 222 2222'],
+            ['Dong Matteo',  'matteo@rentease.com','0999 333 3333'],
         ];
-        for (const [name, email, phone, role] of sampleEmployees) {
+        for (const [name, email, phone] of sampleEmployees) {
             await db.execute(
-                'INSERT INTO employees (name, email, phone, role) VALUES (?, ?, ?, ?)',
-                [name, email, phone, role]
+                'INSERT INTO employees (name, email, phone) VALUES (?, ?, ?)',
+                [name, email, phone]
             );
         }
         console.log('✔ Sample employees seeded (3 employees)');

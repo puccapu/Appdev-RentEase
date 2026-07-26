@@ -70,9 +70,30 @@ async function ensureColumn(table, column, definition) {
 }
 
 /*
+    Name: ensureColumnDropped
+    Purpose: Drops a column from a table if it still exists, so databases
+    created before a field was removed from the app get migrated
+    automatically instead of requiring a manual ALTER TABLE.
+    Used by: server.js (runMigrations, at startup)
+*/
+async function ensureColumnDropped(table, column) {
+    const [rows] = await db.execute(
+        `SELECT COUNT(*) AS cnt FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+        [table, column]
+    );
+    if (rows[0].cnt > 0) {
+        await db.execute(`ALTER TABLE ${table} DROP COLUMN ${column}`);
+        console.log(`✔ Migrated: dropped ${table}.${column}`);
+    }
+}
+
+/*
     Name: runMigrations
     Purpose: Ensures the `archived` flag used by Archive Mode exists on
     tenants, leases, and payments before the server starts accepting requests.
+    Also drops fields that have since been removed from the app (e.g. the
+    employees.role column, deemed unnecessary).
     Used by: server.js (startup, before app.listen)
     Found in: Line 65-71 in server.js
 */
@@ -80,6 +101,7 @@ async function runMigrations() {
     await ensureColumn('tenants',  'archived', 'TINYINT(1) NOT NULL DEFAULT 0');
     await ensureColumn('leases',   'archived', 'TINYINT(1) NOT NULL DEFAULT 0');
     await ensureColumn('payments', 'archived', 'TINYINT(1) NOT NULL DEFAULT 0');
+    await ensureColumnDropped('employees', 'role');
 }
 
 /*
@@ -600,7 +622,7 @@ app.put('/api/payments/:id/restore', requireAuth, async (req, res) => {
     Purpose: CRUD routes for staff records. Every response is shaped by
     EMPLOYEE_SELECT so the API always returns the same employee fields.
 */
-const EMPLOYEE_SELECT = 'SELECT employee_id AS id, name, email, phone, role FROM employees';
+const EMPLOYEE_SELECT = 'SELECT employee_id AS id, name, email, phone FROM employees';
 
 app.get('/api/employees', requireAuth, async (req, res) => {
     const [rows] = await db.execute(`${EMPLOYEE_SELECT} ORDER BY name ASC`);
@@ -608,13 +630,13 @@ app.get('/api/employees', requireAuth, async (req, res) => {
 });
 
 app.post('/api/employees', requireAuth, async (req, res) => {
-    const { name, email, phone, role } = req.body;
+    const { name, email, phone } = req.body;
     if (!isValidPhone(phone)) {
         return res.status(400).json({ message: 'Phone number must be exactly 11 digits.' });
     }
     const [result] = await db.execute(
-        'INSERT INTO employees (name, email, phone, role) VALUES (?, ?, ?, ?)',
-        [name, email, phone, role || 'Staff']
+        'INSERT INTO employees (name, email, phone) VALUES (?, ?, ?)',
+        [name, email, phone]
     );
     const [rows] = await db.execute(`${EMPLOYEE_SELECT} WHERE employee_id = ?`, [result.insertId]);
     await logActivity(req, 'ADD', 'employee', result.insertId, `Added employee ${name}`);
@@ -622,13 +644,13 @@ app.post('/api/employees', requireAuth, async (req, res) => {
 });
 
 app.put('/api/employees/:id', requireAuth, async (req, res) => {
-    const { name, email, phone, role } = req.body;
+    const { name, email, phone } = req.body;
     if (!isValidPhone(phone)) {
         return res.status(400).json({ message: 'Phone number must be exactly 11 digits.' });
     }
     await db.execute(
-        'UPDATE employees SET name = ?, email = ?, phone = ?, role = ? WHERE employee_id = ?',
-        [name || null, email || null, phone || null, role || null, req.params.id]
+        'UPDATE employees SET name = ?, email = ?, phone = ? WHERE employee_id = ?',
+        [name || null, email || null, phone || null, req.params.id]
     );
     const [rows] = await db.execute(`${EMPLOYEE_SELECT} WHERE employee_id = ?`, [req.params.id]);
     await logActivity(req, 'EDIT', 'employee', req.params.id, `Updated employee ${name || rows[0]?.name}`);

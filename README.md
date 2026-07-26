@@ -108,9 +108,9 @@ npm run dev
 http://localhost:20229
 ```
 
-**Default login:**
-- Username: `admin`
-- PIN: `2121`
+**Default logins:**
+- Admin — Username: `admin` · PIN: `2121` (full access)
+- Manager — Username: `manager` · PIN: `6767` (view-only, except Payments and Employees)
 
 <br>
 

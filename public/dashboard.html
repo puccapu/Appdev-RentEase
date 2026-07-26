@@ -249,7 +249,7 @@
 
         <!--
             SUB-SECTION: Employees
-            Purpose: Table of staff records with contact info and role.
+            Purpose: Table of staff records with contact info.
         -->
         <div id="section-employees" class="page-section">
             <div class="section-header">
@@ -268,7 +268,6 @@
                                 <th>Name</th>
                                 <th>Email</th>
                                 <th>Phone</th>
-                                <th>Role</th>
                                 <th style="text-align:center;">Actions</th>
                             </tr>
                         </thead>
@@ -485,7 +484,7 @@
 
     <!--
         SUB-SECTION: Add / Edit Employee
-        Purpose: Form for adding or editing a staff member (contact info and role).
+        Purpose: Form for adding or editing a staff member's contact info.
     -->
     <div class="modal-overlay" id="employeeModal">
         <div class="modal">
@@ -506,14 +505,6 @@
                 <div class="form-group">
                     <label for="employeePhone">Phone Number</label>
                     <input type="text" id="employeePhone" placeholder="0917 123 4567" />
-                </div>
-                <div class="form-group">
-                    <label for="employeeRole">Role</label>
-                    <select id="employeeRole">
-                        <option value="Admin">Admin</option>
-                        <option value="Manager">Manager</option>
-                        <option value="Staff">Staff</option>
-                    </select>
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn-cancel" data-close="employeeModal">Cancel</button>

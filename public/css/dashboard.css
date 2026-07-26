@@ -390,6 +390,23 @@ body {
 }
 
 /*
+    SECTION: Disabled (View-Only) Controls
+    Purpose: Greys out and blocks interaction with buttons/links a
+    restricted role (e.g. the "manager" login) isn't allowed to use.
+    Used by: dashboard.js (disableButton, applyRolePermissions)
+*/
+.is-disabled,
+.btn-primary:disabled,
+button.is-disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+    filter: grayscale(60%);
+    box-shadow: none;
+    transform: none;
+}
+
+/*
     SECTION: Page Sections
     Purpose: Base layout for each main content view, only one of which is visible ("active") at a time.
 */

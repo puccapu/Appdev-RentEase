@@ -69,6 +69,53 @@
     let recentActivity = [];
 
     /*
+        SECTION: Role Permissions
+        Purpose: The "manager" login (see seeder.js) only has edit privileges
+        for Payments and Employees; Units, Tenants, and Leases (plus the
+        dashboard's default "New Lease" action) are view-only for that role.
+        currentUserRole is populated from GET /api/profile in init().
+    */
+    let currentUserRole = 'Admin';
+    const MANAGER_VIEW_ONLY_SECTIONS = ['units', 'tenants', 'leases'];
+
+    function isManagerRole() {
+        return currentUserRole === 'Manager';
+    }
+
+    /*
+        Name: disableButton
+        Purpose: Visually greys out and disables a button/link so a
+        restricted user can see the control but can't activate it.
+        Used by: dashboard.js (applyRolePermissions, switchSection)
+    */
+    function disableButton(el) {
+        if (!el) return;
+        el.disabled = true;
+        el.classList.add('is-disabled');
+        el.setAttribute('aria-disabled', 'true');
+    }
+
+    /*
+        Name: applyRolePermissions
+        Purpose: For the limited-access "manager" role, greys out and disables
+        every edit/delete/restore button on the Units, Tenants, and Leases
+        tables, plus the quick-action tiles that create a unit or tenant.
+        Payments and Employees stay fully editable. No-op for other roles.
+        Used by: dashboard.js (renderAll)
+    */
+    function applyRolePermissions() {
+        if (!isManagerRole()) return;
+
+        MANAGER_VIEW_ONLY_SECTIONS.forEach(sectionId => {
+            const section = document.getElementById(`section-${sectionId}`);
+            if (!section) return;
+            section.querySelectorAll('.btn-edit, .btn-danger, .btn-restore').forEach(disableButton);
+        });
+
+        document.querySelectorAll('[data-quick="unit"], [data-quick="tenant"]').forEach(disableButton);
+    }
+
+    /*
         SECTION: Archive Mode
         Purpose: Tracks whether Archive Mode is on for each of the Tenants,
         Leases, and Payments pages, plus a separate archive-inclusive cache
@@ -564,7 +611,7 @@
         if (!employees || employees.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="5">
+                    <td colspan="4">
                         <div class="empty-state">
                             <i class="fas fa-user-tie"></i>
                             <p>No employees yet. Click "Add Employee" to get started.</p>
@@ -583,7 +630,6 @@
                 <td><strong>${emp.name}</strong></td>
                 <td>${emp.email || '—'}</td>
                 <td>${emp.phone || '—'}</td>
-                <td>${getStatusBadge(emp.role || 'Staff')}</td>
                 <td style="text-align: center;">
                     <div class="action-group" style="justify-content: center;">
                         <button class="btn-edit" data-edit-employee="${emp.id}"><i class="fas fa-pen"></i></button>
@@ -1346,7 +1392,6 @@
         document.getElementById('employeeSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Save Employee';
         document.getElementById('employeeFormId').value = '';
         document.getElementById('employeeForm').reset();
-        document.getElementById('employeeRole').value = 'Staff';
         openModal('employeeModal');
     }
     /*
@@ -1364,7 +1409,6 @@
         document.getElementById('employeeName').value    = emp.name;
         document.getElementById('employeeEmail').value   = emp.email  || '';
         document.getElementById('employeePhone').value   = emp.phone  || '';
-        document.getElementById('employeeRole').value    = emp.role   || 'Staff';
         openModal('employeeModal');
     }
     /*
@@ -1379,11 +1423,10 @@
         const name  = document.getElementById('employeeName').value.trim();
         const email = document.getElementById('employeeEmail').value.trim();
         const phone = document.getElementById('employeePhone').value.trim();
-        const role  = document.getElementById('employeeRole').value;
         if (!name) { showToast('Please enter a name.', 'error'); return; }
         if (!isValidPhone(phone)) { showToast('Phone number must be exactly 11 digits.', 'error'); document.getElementById('employeePhone').focus(); return; }
         try {
-            const data = { name, email, phone, role }; if (id) data.id = id;
+            const data = { name, email, phone }; if (id) data.id = id;
             await DataManager.saveEmployee(data); await DataManager.loadAll(); renderAll();
             closeModal('employeeModal'); showToast(`Employee "${name}" ${id ? 'updated' : 'added'} successfully.`);
         } catch (err) { showToast('Error: ' + err.message, 'error'); }
@@ -1502,6 +1545,7 @@
         if      (section === 'tenants')  renderTenants();
         else if (section === 'leases')   renderLeases();
         else if (section === 'payments') renderPayments();
+        applyRolePermissions();
     }
 
     document.getElementById('tenantsArchiveToggle').addEventListener('change', function () { setArchiveMode('tenants', this.checked); });
@@ -1743,10 +1787,9 @@
             { value: `<strong>${e.name}</strong>` },
             { value: e.email || '—' },
             { value: e.phone || '—' },
-            { value: pdfBadge(e.role || 'Staff') },
         ], i));
         const columns = [
-            { label: 'Name' }, { label: 'Email' }, { label: 'Phone' }, { label: 'Role' },
+            { label: 'Name' }, { label: 'Email' }, { label: 'Phone' },
         ];
         return pdfWrap(pdfHeader('Employee Management') + pdfTable(columns, rows, 'No employees yet.') + pdfFooter());
     }
@@ -1909,7 +1952,7 @@
         tenants:   { title: 'Tenant Management',  sub: 'View and manage all registered tenants.',    action: 'Register Tenant' },
         leases:    { title: 'Lease Contracts',     sub: 'View and manage all lease agreements.',      action: 'New Lease'       },
         payments:  { title: 'Payment Records',     sub: 'View and manage all rental payments.',       action: 'Record Payment'  },
-        employees: { title: 'Employee Management', sub: 'Manage your team members and their roles.', action: 'Add Employee'    },
+        employees: { title: 'Employee Management', sub: 'Manage your team members.', action: 'Add Employee'    },
         reports:   { title: 'Reports & Analytics', sub: 'Overview of property performance.' },
     };
 
@@ -1942,6 +1985,15 @@
                 else if (sectionId === 'employees')                      openAddEmployeeModal();
                 else openAddLeaseModal();
             };
+
+            // Manager role: dashboard's default action creates a lease, so it's
+            // greyed out here too, alongside units/tenants/leases (view-only).
+            heroActionBtn.disabled = false;
+            heroActionBtn.classList.remove('is-disabled');
+            heroActionBtn.removeAttribute('aria-disabled');
+            if (isManagerRole() && (sectionId === 'dashboard' || MANAGER_VIEW_ONLY_SECTIONS.includes(sectionId))) {
+                disableButton(heroActionBtn);
+            }
         }
     }
 
@@ -2039,6 +2091,7 @@
     */
     function renderAll() {
         renderUnits(); renderLeases(); renderTenants(); renderPayments(); renderEmployees(); renderDashboard();
+        applyRolePermissions();
         const badge = document.getElementById('apiBadge');
         if (badge) {
             badge.innerHTML = '<i class="fas fa-cloud"></i> API';
@@ -2065,6 +2118,7 @@
             return;
         }
         const profileData = await authRes.json();
+        currentUserRole = profileData.role || 'Admin';
 
         const session = JSON.parse(sessionStorage.getItem('rentease_session') || '{}');
         const username = profileData.first_name || session.user || 'Admin';
