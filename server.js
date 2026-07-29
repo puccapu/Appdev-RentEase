@@ -105,6 +105,24 @@ async function runMigrations() {
 }
 
 /*
+    Name: getPagination
+    Purpose: Reads ?page=&limit= from the request and returns clamped,
+    validated integers, or null if the caller didn't ask for a paginated
+    response (so existing full-list callers are unaffected). Used to build
+    a `LIMIT x OFFSET y` clause; the values are validated integers so they
+    can be safely inlined into the SQL string (mysql2 does not reliably
+    support placeholders in LIMIT/OFFSET position).
+    Used by: server.js (GET /api/units, /api/tenants, /api/leases, /api/payments, /api/employees)
+*/
+function getPagination(req) {
+    if (!req.query.page) return null;
+    const page  = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 5));
+    const offset = (page - 1) * limit;
+    return { page, limit, offset };
+}
+
+/*
     Name: requireAuth
     Purpose: Express middleware that blocks a request with 401 Unauthorized
     unless the session has a logged-in user.
@@ -144,6 +162,45 @@ app.get('/api/recent-activity', requireAuth, async (req, res) => {
         res.json(rows);
     } catch (err) {
         console.error('Recent activity GET error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/*
+    Name: GET /api/stats
+    Purpose: Returns the handful of aggregate numbers the Dashboard and
+    Reports pages need (unit occupancy, active/pending tenant counts, rent
+    roll, revenue, overdue totals, leases ending soon), computed directly in
+    SQL. This lets those pages avoid loading the full units/tenants/leases/
+    payments/employees lists just to derive a few numbers from them.
+*/
+app.get('/api/stats', requireAuth, async (req, res) => {
+    try {
+        const [[row]] = await db.execute(`
+            SELECT
+                (SELECT COUNT(*) FROM units) AS totalUnits,
+                (SELECT COUNT(*) FROM units WHERE status = 'Available') AS availableUnits,
+                (SELECT COUNT(*) FROM units WHERE status = 'Occupied') AS occupiedUnits,
+                (SELECT COUNT(*) FROM tenants
+                    WHERE archived = 0 AND EXISTS (
+                        SELECT 1 FROM leases WHERE leases.tenant_id = tenants.tenant_id AND leases.archived = 0
+                            AND CURDATE() BETWEEN leases.start_date AND leases.end_date
+                    )) AS activeTenants,
+                (SELECT COUNT(*) FROM tenants
+                    WHERE archived = 0 AND NOT EXISTS (
+                        SELECT 1 FROM leases WHERE leases.tenant_id = tenants.tenant_id AND leases.archived = 0
+                    )) AS pendingTenants,
+                (SELECT COUNT(*) FROM employees) AS totalEmployees,
+                (SELECT COALESCE(SUM(rent), 0) FROM leases WHERE archived = 0) AS totalRent,
+                (SELECT COUNT(*) FROM payments WHERE archived = 0 AND status = 'Overdue') AS overdueCount,
+                (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE archived = 0) AS totalRevenue,
+                (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE archived = 0 AND status = 'Overdue') AS overdueTotal,
+                (SELECT COUNT(*) FROM leases
+                    WHERE archived = 0 AND DATEDIFF(end_date, CURDATE()) BETWEEN 1 AND 30) AS expiringLeases
+        `);
+        res.json(row);
+    } catch (err) {
+        console.error('Stats GET error:', err);
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -220,12 +277,32 @@ app.post('/api/logout', (req, res) => {
     SECTION: Units (/api/units)
     Purpose: CRUD routes for apartment units. Every response is shaped by
     UNIT_SELECT so the API always returns the same unit fields to the client.
+    tenantName is resolved server-side (the name of whoever currently has an
+    active, non-archived lease on the unit) so the client's Units table
+    doesn't need the full leases list just to show who's renting each unit.
 */
-const UNIT_SELECT = 'SELECT unit_id AS id, number, type, rent, status FROM units';
+const UNIT_SELECT = `
+    SELECT units.unit_id AS id, units.number, units.type, units.rent, units.status,
+        (SELECT tenants.name FROM leases
+         JOIN tenants ON leases.tenant_id = tenants.tenant_id
+         WHERE leases.unit_id = units.unit_id AND leases.archived = 0
+           AND CURDATE() BETWEEN leases.start_date AND leases.end_date
+         ORDER BY leases.start_date DESC LIMIT 1) AS tenantName
+    FROM units
+`;
 
 app.get('/api/units', requireAuth, async (req, res) => {
-    const [rows] = await db.execute(`${UNIT_SELECT} ORDER BY number ASC`);
-    res.json(rows);
+    const pg = getPagination(req);
+    if (!pg) {
+        const [rows] = await db.execute(`${UNIT_SELECT} ORDER BY number ASC`);
+        return res.json(rows);
+    }
+    // Fetch one extra row beyond the page size to know whether a next page exists.
+    const [rows] = await db.execute(
+        `${UNIT_SELECT} ORDER BY number ASC LIMIT ${pg.limit + 1} OFFSET ${pg.offset}`
+    );
+    const [[{ total }]] = await db.execute('SELECT COUNT(*) AS total FROM units');
+    res.json({ rows: rows.slice(0, pg.limit), hasMore: rows.length > pg.limit, page: pg.page, total });
 });
 
 app.post('/api/units', requireAuth, async (req, res) => {
@@ -260,9 +337,32 @@ app.delete('/api/units/:id', requireAuth, async (req, res) => {
 /*
     SECTION: Tenants (/api/tenants)
     Purpose: CRUD routes for tenants. Every response is shaped by
-    TENANT_SELECT so the API always returns the same tenant fields to the client.
+    TENANT_SELECT so the API always returns the same tenant fields to the
+    client. leaseStatus and unitNumbers are computed live from the leases
+    table (Active/Expired/Pending, and any currently-active unit numbers)
+    rather than trusting the stored lease_status/unit_id columns, which can
+    go stale as leases are created, renewed, or expire. This mirrors what
+    the dashboard used to compute client-side from the full leases list.
 */
-const TENANT_SELECT = 'SELECT tenant_id AS id, name, email, phone, unit_id AS unitId, lease_status AS leaseStatus, archived FROM tenants';
+const TENANT_SELECT = `
+    SELECT tenants.tenant_id AS id, tenants.name, tenants.email, tenants.phone,
+        tenants.unit_id AS unitId, tenants.archived,
+        (SELECT GROUP_CONCAT(units.number ORDER BY units.number SEPARATOR ', ')
+         FROM leases JOIN units ON leases.unit_id = units.unit_id
+         WHERE leases.tenant_id = tenants.tenant_id AND leases.archived = 0
+           AND CURDATE() BETWEEN leases.start_date AND leases.end_date) AS unitNumbers,
+        (CASE
+            WHEN EXISTS (
+                SELECT 1 FROM leases WHERE leases.tenant_id = tenants.tenant_id AND leases.archived = 0
+                    AND CURDATE() BETWEEN leases.start_date AND leases.end_date
+            ) THEN 'Active'
+            WHEN EXISTS (
+                SELECT 1 FROM leases WHERE leases.tenant_id = tenants.tenant_id AND leases.archived = 0
+            ) THEN 'Expired'
+            ELSE 'Pending'
+         END) AS leaseStatus
+    FROM tenants
+`;
 
 /*
     Name: GET /api/tenants
@@ -271,8 +371,38 @@ const TENANT_SELECT = 'SELECT tenant_id AS id, name, email, phone, unit_id AS un
     including ones that have been archived via the delete button.
 */
 app.get('/api/tenants', requireAuth, async (req, res) => {
-    const where = req.query.archived === 'true' ? '' : 'WHERE archived = 0';
-    const [rows] = await db.execute(`${TENANT_SELECT} ${where} ORDER BY name ASC`);
+    const includeArchived = req.query.archived === 'true';
+    const where = includeArchived ? '' : 'WHERE archived = 0';
+    const pg = getPagination(req);
+    if (!pg) {
+        const [rows] = await db.execute(`${TENANT_SELECT} ${where} ORDER BY name ASC`);
+        return res.json(rows);
+    }
+    const [rows] = await db.execute(
+        `${TENANT_SELECT} ${where} ORDER BY name ASC LIMIT ${pg.limit + 1} OFFSET ${pg.offset}`
+    );
+    const [[{ total }]] = await db.execute(`SELECT COUNT(*) AS total FROM tenants ${where}`);
+    let archivedCount = null;
+    if (includeArchived) {
+        const [[row]] = await db.execute('SELECT COUNT(*) AS n FROM tenants WHERE archived = 1');
+        archivedCount = row.n;
+    }
+    res.json({ rows: rows.slice(0, pg.limit), hasMore: rows.length > pg.limit, page: pg.page, total, archivedCount });
+});
+
+/*
+    Name: GET /api/tenants/search
+    Purpose: Lightweight name-prefix/substring search used to power the
+    tenant-name autocomplete in the Lease and Payment forms, so the client
+    doesn't need to keep the full tenant list in memory just for typeahead.
+    Non-archived tenants only; capped at 8 results.
+*/
+app.get('/api/tenants/search', requireAuth, async (req, res) => {
+    const q = `%${(req.query.q || '').trim()}%`;
+    const [rows] = await db.execute(
+        `${TENANT_SELECT} WHERE archived = 0 AND name LIKE ? ORDER BY name ASC LIMIT 8`,
+        [q]
+    );
     res.json(rows);
 });
 
@@ -328,14 +458,19 @@ app.put('/api/tenants/:id/restore', requireAuth, async (req, res) => {
     SECTION: Leases (/api/leases)
     Purpose: CRUD routes for lease contracts. LEASE_SELECT joins to tenants so
     the API returns the tenant's name under `tenant`, while the leases table
-    itself stores a real tenant_id foreign key rather than a name string.
+    itself stores a real tenant_id foreign key rather than a name string. It
+    also left-joins units so the unit's display number travels with each
+    lease row, instead of requiring the client to look it up in a separate
+    full units list.
 */
 const LEASE_SELECT = `
     SELECT leases.lease_id AS id, tenants.name AS tenant, leases.unit_id AS unitId,
+           units.number AS unitNumber,
            leases.start_date AS start, leases.end_date AS end, leases.rent AS rent,
            leases.archived AS archived
     FROM leases
     JOIN tenants ON leases.tenant_id = tenants.tenant_id
+    LEFT JOIN units ON leases.unit_id = units.unit_id
 `;
 
 /*
@@ -343,11 +478,32 @@ const LEASE_SELECT = `
     Purpose: Lists leases. By default only non-archived leases are
     returned; pass ?archived=true (Archive Mode) to list every lease,
     including ones that have been archived via the delete button.
+    Optional filters (used for lightweight on-demand checks rather than the
+    main Leases table): ?unitId= or ?tenantId= narrow to that unit/tenant,
+    and ?activeOnly=true additionally restricts to leases covering today —
+    e.g. GET /api/leases?unitId=5&activeOnly=true&limit=1 is how the client
+    checks "does this unit have an active lease?" before allowing a delete,
+    without needing the full leases list in memory.
 */
 app.get('/api/leases', requireAuth, async (req, res) => {
-    const where = req.query.archived === 'true' ? '' : 'WHERE leases.archived = 0';
-    const [rows] = await db.execute(`${LEASE_SELECT} ${where} ORDER BY leases.start_date DESC`);
-    res.json(rows);
+    const conditions = [req.query.archived === 'true' ? null : 'leases.archived = 0'];
+    if (req.query.unitId)   conditions.push(`leases.unit_id = ${parseInt(req.query.unitId, 10) || 0}`);
+    if (req.query.tenantId) conditions.push(`leases.tenant_id = ${parseInt(req.query.tenantId, 10) || 0}`);
+    if (req.query.activeOnly === 'true') conditions.push('CURDATE() BETWEEN leases.start_date AND leases.end_date');
+    const where = conditions.filter(Boolean).length ? `WHERE ${conditions.filter(Boolean).join(' AND ')}` : '';
+
+    const pg = getPagination(req);
+    if (!pg) {
+        const [rows] = await db.execute(`${LEASE_SELECT} ${where} ORDER BY leases.start_date DESC`);
+        return res.json(rows);
+    }
+    const [rows] = await db.execute(
+        `${LEASE_SELECT} ${where} ORDER BY leases.start_date DESC LIMIT ${pg.limit + 1} OFFSET ${pg.offset}`
+    );
+    const [[{ total }]] = await db.execute(`SELECT COUNT(*) AS total FROM leases ${where}`);
+    const activeWhere = where ? `${where} AND leases.end_date >= CURDATE()` : 'WHERE leases.end_date >= CURDATE()';
+    const [[{ activeCount }]] = await db.execute(`SELECT COUNT(*) AS activeCount FROM leases ${activeWhere}`);
+    res.json({ rows: rows.slice(0, pg.limit), hasMore: rows.length > pg.limit, page: pg.page, total, activeCount });
 });
 
 /*
@@ -531,7 +687,30 @@ app.get('/api/payments', requireAuth, async (req, res) => {
         "UPDATE payments SET status = 'Overdue' WHERE status = 'Pending' AND payment_date < CURDATE()"
     );
     const where = req.query.archived === 'true' ? '' : 'WHERE payments.archived = 0';
-    const [rows] = await db.execute(`${PAYMENT_SELECT} ${where} ORDER BY payments.payment_date DESC`);
+    const pg = getPagination(req);
+    if (!pg) {
+        const [rows] = await db.execute(`${PAYMENT_SELECT} ${where} ORDER BY payments.payment_date DESC`);
+        return res.json(rows);
+    }
+    const [rows] = await db.execute(
+        `${PAYMENT_SELECT} ${where} ORDER BY payments.payment_date DESC LIMIT ${pg.limit + 1} OFFSET ${pg.offset}`
+    );
+    const [[{ total }]] = await db.execute(`SELECT COUNT(*) AS total FROM payments ${where}`);
+    res.json({ rows: rows.slice(0, pg.limit), hasMore: rows.length > pg.limit, page: pg.page, total });
+});
+
+/*
+    Name: GET /api/payments/upcoming
+    Purpose: Returns just the Pending payments due within the next 3 days —
+    the small set the dashboard's Inbox bell needs — computed directly in
+    SQL instead of requiring the full payments list in memory.
+*/
+app.get('/api/payments/upcoming', requireAuth, async (req, res) => {
+    const [rows] = await db.execute(
+        `${PAYMENT_SELECT} WHERE payments.archived = 0 AND payments.status = 'Pending'
+           AND payments.payment_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 3 DAY)
+         ORDER BY payments.payment_date ASC`
+    );
     res.json(rows);
 });
 
@@ -625,8 +804,16 @@ app.put('/api/payments/:id/restore', requireAuth, async (req, res) => {
 const EMPLOYEE_SELECT = 'SELECT employee_id AS id, name, email, phone FROM employees';
 
 app.get('/api/employees', requireAuth, async (req, res) => {
-    const [rows] = await db.execute(`${EMPLOYEE_SELECT} ORDER BY name ASC`);
-    res.json(rows);
+    const pg = getPagination(req);
+    if (!pg) {
+        const [rows] = await db.execute(`${EMPLOYEE_SELECT} ORDER BY name ASC`);
+        return res.json(rows);
+    }
+    const [rows] = await db.execute(
+        `${EMPLOYEE_SELECT} ORDER BY name ASC LIMIT ${pg.limit + 1} OFFSET ${pg.offset}`
+    );
+    const [[{ total }]] = await db.execute('SELECT COUNT(*) AS total FROM employees');
+    res.json({ rows: rows.slice(0, pg.limit), hasMore: rows.length > pg.limit, page: pg.page, total });
 });
 
 app.post('/api/employees', requireAuth, async (req, res) => {

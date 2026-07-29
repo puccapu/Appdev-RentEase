@@ -180,6 +180,11 @@ async function seed() {
             ['103', '1-Bedroom', 10200, 'Available'],
             ['104', '1-Bedroom', 10200, 'Available'],
             ['105', '2-Bedroom', 14500, 'Available'],
+            ['106', 'Studio',    7800,  'Occupied' ],
+            ['107', '1-Bedroom', 10500, 'Occupied' ],
+            ['108', '1-Bedroom', 10800, 'Available'],
+            ['109', '2-Bedroom', 14800, 'Available'],
+            ['110', '2-Bedroom', 15200, 'Available'],
         ];
         for (const [number, type, rent, status] of sampleUnits) {
             const [result] = await db.execute(
@@ -188,7 +193,7 @@ async function seed() {
             );
             unitIdByNumber[number] = result.insertId;
         }
-        console.log('✔ Sample units seeded (5 units)');
+        console.log('✔ Sample units seeded (10 units)');
     } else {
         console.log('⏭  Units already exist — skipping sample data');
     }
@@ -208,6 +213,10 @@ async function seed() {
             ['Christian Salang', 'christian@email.com', '0917 123 4562', 'Active'  ],
             ['Iesha Katriel',    'iesha@email.com',      '0917 123 4563', 'Pending' ],
             ['Minh Martinez',     'minh@email.com',        '0917 123 4564', 'Pending' ],
+            ['Diego Fernandez',  'diego@email.com',      '0917 123 4565', 'Active'  ],
+            ['Sakura Tanaka',    'sakura@email.com',     '0917 123 4566', 'Active'  ],
+            ['Owen Bracket',     'owen@email.com',       '0917 123 4567', 'Pending' ],
+            ['Priya Nandakumar', 'priya@email.com',      '0917 123 4568', 'Pending' ],
         ];
         for (const [name, email, phone, leaseStatus] of sampleTenants) {
             const [result] = await db.execute(
@@ -216,7 +225,7 @@ async function seed() {
             );
             tenantIdByName[name] = result.insertId;
         }
-        console.log('✔ Sample tenants seeded (4 tenants)');
+        console.log('✔ Sample tenants seeded (8 tenants)');
     } else {
         console.log('⏭  Tenants already exist — skipping sample data');
     }
@@ -249,6 +258,8 @@ async function seed() {
         const sampleLeases = [
             ['Lance Vincent',      '101',  iso(thisYear - 1, 6, 1),  iso(thisYear + 1, 5, 31),  7500 ],
             ['Christian Salang',   '102',  iso(thisYear - 1, 8, 1),  iso(thisYear + 1, 7, 31),  7500 ],
+            ['Diego Fernandez',    '106',  iso(thisYear - 1, 3, 1),  iso(thisYear + 1, 2, 28),  7800 ],
+            ['Sakura Tanaka',      '107',  iso(thisYear - 1, 11, 1), iso(thisYear + 1, 10, 31), 10500],
         ];
         for (const [tenant, unitNumber, start, end, rent] of sampleLeases) {
             const tenantId = await tenantIdFor(tenant);
@@ -259,7 +270,7 @@ async function seed() {
             );
             leaseIdByTenantUnit[`${tenant}:${unitNumber}`] = result.insertId;
         }
-        console.log('✔ Sample leases seeded (2 leases)');
+        console.log('✔ Sample leases seeded (4 leases)');
     } else {
         console.log('⏭  Leases already exist — skipping sample data');
     }
@@ -291,6 +302,8 @@ async function seed() {
         const samplePayments = [
             ['Lance Vincent',      '101', iso(thisYear, thisMonth, 1), 7500, 'Paid'   ],
             ['Christian Salang',   '102', iso(thisYear, thisMonth, 3), 7500, 'Pending'],
+            ['Diego Fernandez',    '106', iso(thisYear, thisMonth, 5), 7800, 'Paid'   ],
+            ['Sakura Tanaka',      '107', iso(thisYear, thisMonth, 7), 10500, 'Pending'],
         ];
         for (const [tenant, unitNumber, date, amount, status] of samplePayments) {
             const tenantId = await tenantIdFor(tenant);
@@ -301,7 +314,7 @@ async function seed() {
                 [tenantId, unitId, leaseId, date, amount, status]
             );
         }
-        console.log('✔ Sample payments seeded (2 payments)');
+        console.log('✔ Sample payments seeded (4 payments)');
     } else {
         console.log('⏭  Payments already exist — skipping sample data');
     }
@@ -316,6 +329,9 @@ async function seed() {
             ['Hatsune Miku', 'miku@rentease.com',  '0999 111 1111'],
             ['Kasane Teto',  'teto@rentease.com',  '0999 222 2222'],
             ['Dong Matteo',  'matteo@rentease.com','0999 333 3333'],
+            ['Luna Ishikawa','luna@rentease.com',  '0999 444 4444'],
+            ['Kai Alvarez',  'kai@rentease.com',   '0999 555 5555'],
+            ['Zara Bautista','zara@rentease.com',  '0999 666 6666'],
         ];
         for (const [name, email, phone] of sampleEmployees) {
             await db.execute(
@@ -323,7 +339,7 @@ async function seed() {
                 [name, email, phone]
             );
         }
-        console.log('✔ Sample employees seeded (3 employees)');
+        console.log('✔ Sample employees seeded (6 employees)');
     } else {
         console.log('⏭  Employees already exist — skipping sample data');
     }

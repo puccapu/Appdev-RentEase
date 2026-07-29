@@ -743,6 +743,52 @@ table.sim-table .badge {
 }
 
 /*
+    SECTION: Pagination
+    Purpose: Styles the Prev / Page N / Next control shown beneath every
+    paginated table (Units, Tenants, Leases, Payments, Employees, and the
+    Reports page's Recent Transactions table). Hidden entirely via JS
+    (dashboard.js renderPaginationControls) when there's only one page.
+*/
+.pagination-bar {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.pagination-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.3px;
+    min-width: 60px;
+    text-align: center;
+}
+.btn-page {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 40px;
+    border: 1px solid var(--glass-border);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.btn-page:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
+}
+.btn-page:active { transform: translateY(0); }
+.btn-page i { font-size: 0.75rem; }
+
+/*
     SECTION: Badges
     Purpose: Styles the colored status badges (Available, Occupied, Paid, Overdue, etc.) shown in tables.
 */

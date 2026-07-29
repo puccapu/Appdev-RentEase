@@ -53,20 +53,231 @@
         updateEmployee: (id, data) => ApiService._fetch(`/employees/${id}`,   { method: 'PUT',    body: JSON.stringify(data) }),
         deleteEmployee: (id)       => ApiService._fetch(`/employees/${id}`,   { method: 'DELETE' }),
         getRecentActivity: ()      => ApiService._fetch('/recent-activity'),
+        getStats:            ()      => ApiService._fetch('/stats'),
+        getUpcomingPayments: ()      => ApiService._fetch('/payments/upcoming'),
+        searchTenants:       (q)     => ApiService._fetch(`/tenants/search?q=${encodeURIComponent(q || '')}`),
+        unitHasActiveLease:   (unitId)   => ApiService._fetch(`/leases?unitId=${unitId}&activeOnly=true&page=1&limit=1`),
+        tenantHasActiveLease: (tenantId) => ApiService._fetch(`/leases?tenantId=${tenantId}&activeOnly=true&page=1&limit=1`),
+
+        /*
+            Name: getUnitsPage / getTenantsPage / getLeasesPage / getPaymentsPage / getEmployeesPage
+            Purpose: Fetches a single page of rows (PAGE_SIZE per page) for a table
+            view, instead of the full list. The server responds with
+            { rows, hasMore, page } whenever a `page` query param is present.
+            Used by: dashboard.js (loadSectionPage)
+        */
+        getUnitsPage:     (page)           => ApiService._fetch(`/units?page=${page}&limit=${PAGE_SIZE}`),
+        getTenantsPage:   (page, archived) => ApiService._fetch(`/tenants?page=${page}&limit=${PAGE_SIZE}${archived ? '&archived=true' : ''}`),
+        getLeasesPage:    (page, archived) => ApiService._fetch(`/leases?page=${page}&limit=${PAGE_SIZE}${archived ? '&archived=true' : ''}`),
+        getPaymentsPage:  (page, archived) => ApiService._fetch(`/payments?page=${page}&limit=${PAGE_SIZE}${archived ? '&archived=true' : ''}`),
+        getEmployeesPage: (page)           => ApiService._fetch(`/employees?page=${page}&limit=${PAGE_SIZE}`),
     };
 
     /*
-        SECTION: Data Layer
-        Purpose: Holds the in-memory copies of every entity (units, leases,
-        tenants, payments, employees, recent activity) loaded from the API,
-        plus small formatting helpers used throughout the render functions.
+        SECTION: Pagination
+        Purpose: Units, Tenants, Leases, Payments, Employees, and the Reports
+        page's Recent Transactions table each fetch only PAGE_SIZE rows at a
+        time from the server, rather than loading everything up front. The
+        full in-memory arrays above (units/leases/tenants/payments/employees)
+        are still loaded in full by DataManager.loadAll() because stats,
+        comboboxes, cross-references (e.g. which unit a tenant leases), and
+        PDF export all need the complete dataset — only what's painted into
+        each table body is paginated.
     */
-    let units     = [];
-    let leases    = [];
-    let tenants   = [];
-    let payments  = [];
-    let employees = [];
+    const PAGE_SIZE = 5;
+
+    const pagination = {
+        units:     { page: 1, hasMore: false },
+        tenants:   { page: 1, hasMore: false },
+        leases:    { page: 1, hasMore: false },
+        payments:  { page: 1, hasMore: false },
+        employees: { page: 1, hasMore: false },
+        reports:   { page: 1, hasMore: false },
+    };
+
+    let unitsPageRows     = [];
+    let tenantsPageRows   = [];
+    let leasesPageRows    = [];
+    let paymentsPageRows  = [];
+    let employeesPageRows = [];
+    let reportsPageRows   = [];
+
+    function normalizeUnitList(list)     { return (list || []).map(u => ({ ...u, id: toStr(u.id) })); }
+    function normalizeEmployeeList(list) { return (list || []).map(e => ({ ...e, id: toStr(e.id) })); }
+
+    const PAGE_FETCHERS = {
+        units:     (page) => ApiService.getUnitsPage(page),
+        tenants:   (page) => ApiService.getTenantsPage(page, archiveMode.tenants),
+        leases:    (page) => ApiService.getLeasesPage(page, archiveMode.leases),
+        payments:  (page) => ApiService.getPaymentsPage(page, archiveMode.payments),
+        employees: (page) => ApiService.getEmployeesPage(page),
+        reports:   (page) => ApiService.getPaymentsPage(page, false),
+    };
+
+    const PAGE_NORMALIZERS = {
+        units:     normalizeUnitList,
+        tenants:   normalizeTenantList,
+        leases:    normalizeLeaseList,
+        payments:  normalizePaymentList,
+        employees: normalizeEmployeeList,
+        reports:   normalizePaymentList,
+    };
+
+    /*
+        Name: loadSectionPage
+        Purpose: Fetches a single page of rows for one paginated table section
+        and stores it for rendering. If the requested page comes back empty
+        (e.g. the last item on the last page was just deleted), steps back
+        one page and retries so the table never renders blank while hasMore
+        controls remain accurate.
+        Used by: dashboard.js (pagination Prev/Next buttons, archive toggle,
+        every CRUD success handler, and the initial page load)
+    */
+    async function loadSectionPage(section, page) {
+        let result;
+        try {
+            result = await PAGE_FETCHERS[section](page);
+        } catch (err) {
+            console.error(`Pagination fetch error (${section}):`, err);
+            return;
+        }
+        let rows = result && result.rows ? result.rows : [];
+        const hasMore = !!(result && result.hasMore);
+
+        if (rows.length === 0 && page > 1) {
+            return loadSectionPage(section, page - 1);
+        }
+
+        pagination[section].page = page;
+        pagination[section].hasMore = hasMore;
+        pagination[section].total = result && typeof result.total === 'number' ? result.total : (pagination[section].total || 0);
+        pagination[section].activeCount = result && typeof result.activeCount === 'number' ? result.activeCount : pagination[section].activeCount;
+        pagination[section].archivedCount = result && typeof result.archivedCount === 'number' ? result.archivedCount : pagination[section].archivedCount;
+        rows = PAGE_NORMALIZERS[section](rows);
+
+        if      (section === 'units')     unitsPageRows     = rows;
+        else if (section === 'tenants')   tenantsPageRows   = rows;
+        else if (section === 'leases')    leasesPageRows    = rows;
+        else if (section === 'payments')  paymentsPageRows  = rows;
+        else if (section === 'employees') employeesPageRows = rows;
+        else if (section === 'reports')   reportsPageRows   = rows;
+
+        renderPaginationControls(section);
+        RENDER_BY_SECTION[section]();
+        applyRolePermissions();
+    }
+
+    /*
+        Name: reloadCurrentPage
+        Purpose: Re-fetches whatever page a section is currently on, so
+        pagination stays accurate after a create/update/delete/restore.
+        Used by: dashboard.js (every CRUD success handler)
+    */
+    function reloadCurrentPage(section) {
+        return loadSectionPage(section, pagination[section].page);
+    }
+
+    /*
+        Name: renderPaginationControls
+        Purpose: Shows/hides and enables/disables a section's Prev/Next
+        buttons based on its current page and whether more rows exist.
+        Used by: dashboard.js (loadSectionPage)
+    */
+    function renderPaginationControls(section) {
+        const wrap = document.getElementById(`${section}Pagination`);
+        if (!wrap) return;
+        const state = pagination[section];
+        const prevBtn = wrap.querySelector('[data-page-prev]');
+        const nextBtn = wrap.querySelector('[data-page-next]');
+        const label   = wrap.querySelector('[data-page-label]');
+        if (prevBtn) prevBtn.style.visibility = state.page > 1 ? 'visible' : 'hidden';
+        if (nextBtn) nextBtn.style.visibility = state.hasMore ? 'visible' : 'hidden';
+        if (label)   label.textContent = `Page ${state.page}`;
+        wrap.style.display = (state.page > 1 || state.hasMore) ? 'flex' : 'none';
+    }
+
+    /*
+        Name: RENDER_BY_SECTION
+        Purpose: Maps a pagination section name to the render function that
+        should redraw its table once a new page of rows has loaded. Function
+        declarations are hoisted, so it's safe to reference renderUnits, etc.
+        here even though they're defined later in this file.
+        Used by: dashboard.js (loadSectionPage)
+    */
+    const RENDER_BY_SECTION = {
+        units:     () => renderUnits(),
+        tenants:   () => renderTenants(),
+        leases:    () => renderLeases(),
+        payments:  () => renderPayments(),
+        employees: () => renderEmployees(),
+        reports:   () => renderReportsTable(),
+    };
+
+    /*
+        Name: wirePaginationButtons
+        Purpose: Wires up every section's Prev/Next pagination buttons once,
+        at load time.
+        Used by: dashboard.js (init)
+    */
+    function wirePaginationButtons() {
+        Object.keys(pagination).forEach(section => {
+            const wrap = document.getElementById(`${section}Pagination`);
+            if (!wrap) return;
+            const prevBtn = wrap.querySelector('[data-page-prev]');
+            const nextBtn = wrap.querySelector('[data-page-next]');
+            if (prevBtn) prevBtn.addEventListener('click', () => {
+                if (pagination[section].page > 1) loadSectionPage(section, pagination[section].page - 1);
+            });
+            if (nextBtn) nextBtn.addEventListener('click', () => {
+                if (pagination[section].hasMore) loadSectionPage(section, pagination[section].page + 1);
+            });
+        });
+    }
+
+    /*
+        Name: loadAllSectionPages
+        Purpose: Loads page 1 of every paginated table section. Called once
+        at startup so every section (not just the one currently visible) is
+        ready to display as soon as the user switches to it.
+        Used by: dashboard.js (init)
+    */
+    function loadAllSectionPages() {
+        return Promise.all(Object.keys(pagination).map(section => loadSectionPage(section, 1)));
+    }
+
+    /*
+        SECTION: Data Layer
+        Purpose: `units` is kept as a small, fully-loaded reference list (an
+        apartment building's unit count is inherently bounded, and dropdowns
+        like "assign a unit to this lease" need every option regardless of
+        which page the Units table happens to be showing). Tenants, leases,
+        payments, and employees, by contrast, can grow without bound over the
+        life of the business, so none of them are kept as full in-memory
+        arrays anymore — every table is paginated server-side, cross-reference
+        fields (a unit's current tenant, a tenant's lease status/unit) are
+        computed in SQL and travel with each row, and the few things that
+        still need a fuller picture (autocomplete, dependency checks before a
+        delete, PDF export, dashboard aggregates) fetch on demand instead.
+    */
+    let units = [];
     let recentActivity = [];
+    let stats = {};
+    let upcomingPayments = [];
+
+    /*
+        Name: ensureUnitsLoaded
+        Purpose: Refreshes the `units` reference list right before something
+        that needs every unit (a lease/tenant unit dropdown, rent lookups,
+        occupancy validation) is about to use it, so it's never more than a
+        moment stale without having to be preloaded at startup.
+        Used by: dashboard.js (openAddLeaseModal, openEditLeaseModal,
+        openAddTenantModal, openEditTenantModal, handleLeaseFormSubmit,
+        handleTenantFormSubmit)
+    */
+    async function ensureUnitsLoaded() {
+        units = normalizeUnitList(await ApiService.getUnits());
+        return units;
+    }
 
     /*
         SECTION: Role Permissions
@@ -118,15 +329,12 @@
     /*
         SECTION: Archive Mode
         Purpose: Tracks whether Archive Mode is on for each of the Tenants,
-        Leases, and Payments pages, plus a separate archive-inclusive cache
-        for each (fetched with ?archived=true) so archived rows never leak
-        into the normal `tenants`/`leases`/`payments` arrays used elsewhere
-        (dashboard stats, reports, comboboxes, PDFs, etc).
+        Leases, and Payments pages. Toggling it just re-fetches that
+        section's current page with ?archived=true (see PAGE_FETCHERS and
+        setArchiveMode below) — there's no separate "include archived" cache
+        to maintain, since every table is paginated straight from the server.
     */
     const archiveMode = { tenants: false, leases: false, payments: false };
-    let tenantsAll  = [];
-    let leasesAll   = [];
-    let paymentsAll = [];
 
     /*
         Name: formatCurrency
@@ -205,14 +413,6 @@
     */
     const toStr = v => (v === null || v === undefined || v === '') ? null : String(v);
 
-    function normalizeIds() {
-        units     = (units     || []).map(u => ({ ...u, id: toStr(u.id) }));
-        leases    = normalizeLeaseList(leases);
-        tenants   = normalizeTenantList(tenants);
-        payments  = normalizePaymentList(payments);
-        employees = (employees || []).map(e => ({ ...e, id: toStr(e.id) }));
-    }
-
     /*
         Name: normalizeTenantList / normalizeLeaseList / normalizePaymentList
         Purpose: Same id-stringifying normalization as normalizeIds, but
@@ -225,6 +425,32 @@
     function normalizePaymentList(list) { return (list || []).map(p => ({ ...p, id: toStr(p.id) })); }
 
     /*
+        Name: parseUnitNumbers
+        Purpose: Splits a tenant's comma-separated `unitNumbers` string (as
+        returned by TENANT_SELECT's GROUP_CONCAT) into an array, e.g.
+        "101, 102" -> ["101", "102"]. Empty/null becomes an empty array.
+        Used by: dashboard.js (selectPaymentTenant, openEditPaymentModal)
+    */
+    function parseUnitNumbers(unitNumbers) {
+        return (unitNumbers || '').split(',').map(s => s.trim()).filter(Boolean);
+    }
+
+    /*
+        Name: debounce
+        Purpose: Delays calling `fn` until `wait` ms have passed since the
+        last call — used so the tenant-search comboboxes don't fire a network
+        request on every single keystroke.
+        Used by: dashboard.js (initLeaseTenantCombobox, initPaymentTenantCombobox)
+    */
+    function debounce(fn, wait) {
+        let timer = null;
+        return function (...args) {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn.apply(this, args), wait);
+        };
+    }
+
+    /*
         SECTION: Data Manager
         Purpose: Wraps ApiService calls with local cache updates, so the UI's
         in-memory arrays (units, leases, tenants, payments, employees) stay in
@@ -232,19 +458,14 @@
     */
     const DataManager = {
         async loadAll() {
-            const [u, l, t, p, e, ra] = await Promise.all([
-                ApiService.getUnits(), ApiService.getLeases(), ApiService.getTenants(),
-                ApiService.getPayments(), ApiService.getEmployees(), ApiService.getRecentActivity()
+            const [u, ra, st, up] = await Promise.all([
+                ApiService.getUnits(), ApiService.getRecentActivity(),
+                ApiService.getStats(), ApiService.getUpcomingPayments(),
             ]);
-            units = u || []; leases = l || []; tenants = t || [];
-            payments = p || []; employees = e || []; recentActivity = ra || [];
-            normalizeIds();
-
-            const archiveTasks = [];
-            if (archiveMode.tenants)  archiveTasks.push(ApiService.getTenants(true).then(r => { tenantsAll = normalizeTenantList(r); }));
-            if (archiveMode.leases)   archiveTasks.push(ApiService.getLeases(true).then(r => { leasesAll = normalizeLeaseList(r); }));
-            if (archiveMode.payments) archiveTasks.push(ApiService.getPayments(true).then(r => { paymentsAll = normalizePaymentList(r); }));
-            if (archiveTasks.length) await Promise.all(archiveTasks);
+            units = normalizeUnitList(u || []);
+            recentActivity = ra || [];
+            stats = st || {};
+            upcomingPayments = normalizePaymentList(up || []);
         },
 
         async saveUnit(data) {
@@ -259,78 +480,28 @@
         },
         async deleteUnit(id) {
             await ApiService.deleteUnit(id);
-            units   = units.filter(u => u.id !== id);
-            tenants = tenants.filter(t => t.unitId !== id);
+            units = units.filter(u => u.id !== id);
         },
 
-        async saveLease(data) {
-            if (data.id) {
-                const r = await ApiService.updateLease(data.id, data);
-                if (r) { const i = leases.findIndex(l => l.id === data.id); if (i !== -1) leases[i] = r; return r; }
-            } else {
-                const r = await ApiService.createLease(data);
-                if (r) { leases.push(r); return r; }
-            }
-            return data;
-        },
-        async deleteLease(id) {
-            await ApiService.deleteLease(id);
-            leases = leases.filter(l => l.id !== id);
-        },
-        async restoreLease(id) {
-            await ApiService.restoreLease(id);
-        },
+        // Leases, tenants, payments, and employees are no longer kept as full
+        // in-memory arrays (see the Data Layer comment above), so their
+        // create/update/delete/restore just relay to the API. Every call site
+        // already reloads the relevant paginated table afterward (see
+        // reloadCurrentPage), which is what actually refreshes what's on screen.
+        async saveLease(data)     { return data.id ? ApiService.updateLease(data.id, data) : ApiService.createLease(data); },
+        async deleteLease(id)     { return ApiService.deleteLease(id); },
+        async restoreLease(id)    { return ApiService.restoreLease(id); },
 
-        async saveTenant(data) {
-            if (data.id) {
-                const r = await ApiService.updateTenant(data.id, data);
-                if (r) { const i = tenants.findIndex(t => t.id === data.id); if (i !== -1) tenants[i] = r; return r; }
-            } else {
-                const r = await ApiService.createTenant(data);
-                if (r) { tenants.push(r); return r; }
-            }
-            return data;
-        },
-        async deleteTenant(id) {
-            await ApiService.deleteTenant(id);
-            tenants = tenants.filter(t => t.id !== id);
-        },
-        async restoreTenant(id) {
-            await ApiService.restoreTenant(id);
-        },
+        async saveTenant(data)    { return data.id ? ApiService.updateTenant(data.id, data) : ApiService.createTenant(data); },
+        async deleteTenant(id)    { return ApiService.deleteTenant(id); },
+        async restoreTenant(id)   { return ApiService.restoreTenant(id); },
 
-        async savePayment(data) {
-            if (data.id) {
-                const r = await ApiService.updatePayment(data.id, data);
-                if (r) { const normalized = { ...r, id: String(r.id) }; const i = payments.findIndex(p => p.id === data.id); if (i !== -1) payments[i] = normalized; return normalized; }
-            } else {
-                const r = await ApiService.createPayment(data);
-                if (r) { const normalized = { ...r, id: String(r.id) }; payments.push(normalized); return normalized; }
-            }
-            return data;
-        },
-        async deletePayment(id) {
-            await ApiService.deletePayment(id);
-            payments = payments.filter(p => p.id !== id);
-        },
-        async restorePayment(id) {
-            await ApiService.restorePayment(id);
-        },
+        async savePayment(data)   { return data.id ? ApiService.updatePayment(data.id, data) : ApiService.createPayment(data); },
+        async deletePayment(id)   { return ApiService.deletePayment(id); },
+        async restorePayment(id)  { return ApiService.restorePayment(id); },
 
-        async saveEmployee(data) {
-            if (data.id) {
-                const r = await ApiService.updateEmployee(data.id, data);
-                if (r) { const i = employees.findIndex(e => e.id === data.id); if (i !== -1) employees[i] = r; return r; }
-            } else {
-                const r = await ApiService.createEmployee(data);
-                if (r) { employees.push(r); return r; }
-            }
-            return data;
-        },
-        async deleteEmployee(id) {
-            await ApiService.deleteEmployee(id);
-            employees = employees.filter(e => e.id !== id);
-        },
+        async saveEmployee(data)  { return data.id ? ApiService.updateEmployee(data.id, data) : ApiService.createEmployee(data); },
+        async deleteEmployee(id)  { return ApiService.deleteEmployee(id); },
     };
 
     /*
@@ -390,45 +561,6 @@
         in-memory data arrays, and wires up the edit/delete buttons they render.
     */
     /*
-        Name: getTenantForUnit
-        Purpose: Looks up the tenant name currently leasing a given unit, if any.
-        Used by: dashboard.js (renderUnits, buildUnitsPDF)
-        Found in: Line 316-319 in dashboard.js
-    */
-    function getTenantForUnit(unitId) {
-        const lease = leases.find(l => l.unitId === unitId);
-        return lease ? lease.tenant : null;
-    }
-
-    /*
-        Name: getTenantLeaseInfo
-        Purpose: Derives a tenant's currently-leased unit(s) and lease status
-        directly from the leases table (matched by tenant name), instead of
-        relying on the tenant's stored unit_id / lease_status fields, which
-        can go stale as leases are created, renewed, or expire.
-        Used by: dashboard.js (renderTenants, renderDashboard, buildTenantsPDF, buildDashboardPDF, payment/lease tenant comboboxes)
-        Found in: Line 304-321 in dashboard.js
-    */
-    function getTenantLeaseInfo(tenantName) {
-        const today = new Date(); today.setHours(0, 0, 0, 0);
-        const tenantLeases = leases.filter(l => l.tenant === tenantName);
-        const activeLeases = tenantLeases.filter(l => {
-            const start = new Date(l.start + 'T00:00:00');
-            const end   = new Date(l.end + 'T00:00:00');
-            return start <= today && end >= today;
-        });
-        const unitNumbers = activeLeases
-            .map(l => units.find(u => u.id === l.unitId))
-            .filter(Boolean)
-            .map(u => u.number);
-        let status;
-        if (activeLeases.length > 0)      status = 'Active';
-        else if (tenantLeases.length > 0) status = 'Expired';
-        else                              status = 'Pending';
-        return { status, unitNumbers };
-    }
-
-    /*
         Name: renderUnits
         Purpose: Renders the Units table body from the units array and wires up its edit/delete buttons.
         Used by: dashboard.js (renderAll)
@@ -437,19 +569,19 @@
     function renderUnits() {
         const tbody = document.getElementById('unitsTableBody');
         const count = document.getElementById('unitCount');
-        if (!units || units.length === 0) {
+        const total = pagination.units.total || 0;
+        if (total === 0) {
             tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="fas fa-door-open"></i><p>No units yet.</p></div></td></tr>`;
             count.textContent = '· 0 total'; return;
         }
-        count.textContent = `· ${units.length} total`;
-        tbody.innerHTML = units.map(u => {
-            const tenantName = getTenantForUnit(u.id);
+        count.textContent = `· ${total} total`;
+        tbody.innerHTML = unitsPageRows.map(u => {
             return `<tr>
                 <td><strong>${u.number}</strong></td>
                 <td>${u.type}</td>
                 <td>${formatCurrency(u.rent)}</td>
                 <td>${getStatusBadge(u.status)}</td>
-                <td>${tenantName || '—'}</td>
+                <td>${u.tenantName || '—'}</td>
                 <td style="text-align:center;">
                     <div class="action-group" style="justify-content:center;">
                         <button class="btn-edit" data-edit-unit="${u.id}"><i class="fas fa-pen"></i></button>
@@ -464,32 +596,31 @@
 
     /*
         Name: renderLeases
-        Purpose: Renders the Leases table body from the leases array and wires up its edit/delete buttons.
-        Used by: dashboard.js (renderAll)
-        Found in: Line 372-397 in dashboard.js
+        Purpose: Renders the Leases table body from the current page of
+        leases (unit numbers arrive pre-joined from the server) and wires up
+        its edit/delete/restore buttons.
+        Used by: dashboard.js (RENDER_BY_SECTION.leases)
     */
     function renderLeases() {
         const tbody = document.getElementById('leasesTableBody');
         const count = document.getElementById('leaseCount');
-        const data  = archiveMode.leases ? leasesAll : leases;
-        if (!data || data.length === 0) {
+        const total = pagination.leases.total || 0;
+        if (total === 0) {
             const emptyMsg = archiveMode.leases ? 'No leases found.' : 'No leases yet.';
             tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fas fa-file-signature"></i><p>${emptyMsg}</p></div></td></tr>`;
             count.textContent = archiveMode.leases ? '· 0 total' : '· 0 active'; return;
         }
         if (archiveMode.leases) {
-            const archivedCount = data.filter(l => l.archived).length;
-            count.textContent = `· ${data.length} total (${archivedCount} archived)`;
+            const archivedCount = pagination.leases.archivedCount || 0;
+            count.textContent = `· ${total} total (${archivedCount} archived)`;
         } else {
-            const active = data.filter(l => new Date(l.end + 'T00:00:00') >= new Date()).length;
-            count.textContent = `· ${active} active`;
+            count.textContent = `· ${pagination.leases.activeCount || 0} active`;
         }
-        tbody.innerHTML = data.map(l => {
-            const unit = units.find(u => u.id === l.unitId);
+        tbody.innerHTML = leasesPageRows.map(l => {
             return `<tr${l.archived ? ' class="archived-row"' : ''}>
                 <td><strong>${l.id}</strong>${l.archived ? ' <span class="badge archived-badge">Archived</span>' : ''}</td>
                 <td>${l.tenant}</td>
-                <td>${unit ? unit.number : '—'}</td>
+                <td>${l.unitNumber || '—'}</td>
                 <td>${formatDate(l.start)}</td>
                 <td>${formatDate(l.end)}</td>
                 <td>${formatCurrency(l.rent)}</td>
@@ -510,35 +641,34 @@
 
     /*
         Name: renderTenants
-        Purpose: Renders the Tenants table body from the tenants array (with live lease status) and wires up its edit/delete buttons.
-        Used by: dashboard.js (renderAll)
-        Found in: Line 407-432 in dashboard.js
+        Purpose: Renders the Tenants table body from the current page of
+        tenants (lease status and current unit(s) arrive pre-computed from
+        the server) and wires up its edit/delete/restore buttons.
+        Used by: dashboard.js (RENDER_BY_SECTION.tenants)
     */
     function renderTenants() {
         const tbody = document.getElementById('tenantsTableBody');
         const count = document.getElementById('tenantCount');
-        const data  = archiveMode.tenants ? tenantsAll : tenants;
-        if (!data || data.length === 0) {
+        const total = pagination.tenants.total || 0;
+        if (total === 0) {
             const emptyMsg = archiveMode.tenants ? 'No tenants found.' : 'No tenants yet.';
             tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="fas fa-users"></i><p>${emptyMsg}</p></div></td></tr>`;
             count.textContent = archiveMode.tenants ? '· 0 total' : '· 0 active'; return;
         }
         if (archiveMode.tenants) {
-            const archivedCount = data.filter(t => t.archived).length;
-            count.textContent = `· ${data.length} total (${archivedCount} archived)`;
+            const archivedCount = pagination.tenants.archivedCount || 0;
+            count.textContent = `· ${total} total (${archivedCount} archived)`;
         } else {
-            const active = data.filter(t => getTenantLeaseInfo(t.name).status === 'Active').length;
-            count.textContent = `· ${active} active`;
+            count.textContent = `· ${stats.activeTenants || 0} active`;
         }
-        tbody.innerHTML = data.map(t => {
-            const { status, unitNumbers } = getTenantLeaseInfo(t.name);
-            const unitDisplay = unitNumbers.length ? unitNumbers.join(', ') : '—';
+        tbody.innerHTML = tenantsPageRows.map(t => {
+            const unitDisplay = t.unitNumbers || '—';
             return `<tr${t.archived ? ' class="archived-row"' : ''}>
                 <td><strong>${t.name}</strong>${t.archived ? ' <span class="badge archived-badge">Archived</span>' : ''}</td>
                 <td>${t.email || '—'}</td>
                 <td>${t.phone || '—'}</td>
                 <td>${unitDisplay}</td>
-                <td>${getStatusBadge(status)}</td>
+                <td>${getStatusBadge(t.leaseStatus)}</td>
                 <td style="text-align:center;">
                     <div class="action-group" style="justify-content:center;">
                         <button class="btn-edit" data-edit-tenant="${t.id}"><i class="fas fa-pen"></i></button>
@@ -556,26 +686,26 @@
 
     /*
         Name: renderPayments
-        Purpose: Renders the Payments table body from the payments array and wires up its edit/delete buttons.
-        Used by: dashboard.js (renderAll)
-        Found in: Line 443-465 in dashboard.js
+        Purpose: Renders the Payments table body from the current page of
+        payments and wires up its edit/delete/restore buttons.
+        Used by: dashboard.js (RENDER_BY_SECTION.payments)
     */
     function renderPayments() {
         const tbody = document.getElementById('paymentsTableBody');
         const count = document.getElementById('paymentCount');
-        const data  = archiveMode.payments ? paymentsAll : payments;
-        if (!data || data.length === 0) {
+        const total = pagination.payments.total || 0;
+        if (total === 0) {
             const emptyMsg = archiveMode.payments ? 'No payment records found.' : 'No payment records yet.';
             tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fas fa-coins"></i><p>${emptyMsg}</p></div></td></tr>`;
             count.textContent = archiveMode.payments ? '· 0 total' : '· 0 records'; return;
         }
         if (archiveMode.payments) {
-            const archivedCount = data.filter(p => p.archived).length;
-            count.textContent = `· ${data.length} total (${archivedCount} archived)`;
+            const archivedCount = pagination.payments.archivedCount || 0;
+            count.textContent = `· ${total} total (${archivedCount} archived)`;
         } else {
-            count.textContent = `· ${data.length} records`;
+            count.textContent = `· ${total} records`;
         }
-        tbody.innerHTML = data.map(p => `
+        tbody.innerHTML = paymentsPageRows.map(p => `
             <tr${p.archived ? ' class="archived-row"' : ''}>
                 <td><strong>${p.id}</strong>${p.archived ? ' <span class="badge archived-badge">Archived</span>' : ''}</td>
                 <td>${formatDate(p.date)}</td>
@@ -600,15 +730,16 @@
 
     /*
         Name: renderEmployees
-        Purpose: Renders the Employees table body from the employees array and wires up its edit/delete buttons.
-        Used by: dashboard.js (renderAll)
-        Found in: Line 468-511 in dashboard.js
+        Purpose: Renders the Employees table body from the current page of
+        employees and wires up its edit/delete buttons.
+        Used by: dashboard.js (RENDER_BY_SECTION.employees)
     */
     function renderEmployees() {
         const tbody = document.getElementById('employeesTableBody');
         const count = document.getElementById('employeeCount');
-    
-        if (!employees || employees.length === 0) {
+        const total = pagination.employees.total || 0;
+
+        if (total === 0) {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="4">
@@ -622,10 +753,10 @@
             count.textContent = '· 0 employees';
             return;
         }
-    
-        count.textContent = `· ${employees.length} employee${employees.length !== 1 ? 's' : ''}`;
-    
-        tbody.innerHTML = employees.map(emp => `
+
+        count.textContent = `· ${total} employee${total !== 1 ? 's' : ''}`;
+
+        tbody.innerHTML = employeesPageRows.map(emp => `
             <tr>
                 <td><strong>${emp.name}</strong></td>
                 <td>${emp.email || '—'}</td>
@@ -638,7 +769,7 @@
                 </td>
             </tr>
         `).join('');
-    
+
         tbody.querySelectorAll('[data-edit-employee]').forEach(btn => {
             btn.addEventListener('click', function () { openEditEmployeeModal(this.dataset.editEmployee); });
         });
@@ -654,30 +785,31 @@
         Found in: Line 518-607 in dashboard.js
     */
     function renderDashboard() {
-        const totalUnits    = units?.length || 0;
-        const occupied      = units?.filter(u => u.status === 'Occupied').length || 0;
-        const activeTenants = tenants?.filter(t => getTenantLeaseInfo(t.name).status === 'Active').length || 0;
-        const totalRent     = leases?.reduce((s, l) => s + Number(l.rent), 0) || 0;
-        const totalEmployees= employees?.length || 0;
+        const totalUnits     = stats.totalUnits || 0;
+        const occupied       = stats.occupiedUnits || 0;
+        const activeTenants  = stats.activeTenants || 0;
+        const totalRent      = stats.totalRent || 0;
+        const totalEmployees = stats.totalEmployees || 0;
+        const occupancyRate  = totalUnits ? Math.round(occupied / totalUnits * 100) : 0;
 
         document.getElementById('statsGrid').innerHTML = `
             <div class="stat-card">
                 <div class="stat-icon"><i class="fas fa-door-open"></i></div>
                 <div class="stat-value">${totalUnits}</div>
                 <div class="stat-label">Total Units</div>
-                <span class="stat-change"><i class="fas fa-arrow-up"></i> ${units?.filter(u => u.status === 'Available').length || 0} available</span>
+                <span class="stat-change"><i class="fas fa-arrow-up"></i> ${stats.availableUnits || 0} available</span>
             </div>
             <div class="stat-card">
                 <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
                 <div class="stat-value">${occupied}</div>
                 <div class="stat-label">Occupied</div>
-                <span class="stat-change warning"><i class="fas fa-arrow-right"></i> ${totalUnits ? Math.round(occupied / totalUnits * 100) : 0}%</span>
+                <span class="stat-change warning"><i class="fas fa-arrow-right"></i> ${occupancyRate}%</span>
             </div>
             <div class="stat-card">
                 <div class="stat-icon"><i class="fas fa-user-friends"></i></div>
                 <div class="stat-value">${activeTenants}</div>
                 <div class="stat-label">Active Tenants</div>
-                <span class="stat-change"><i class="fas fa-arrow-up"></i> ${tenants?.filter(t => getTenantLeaseInfo(t.name).status === 'Pending').length || 0} pending</span>
+                <span class="stat-change"><i class="fas fa-arrow-up"></i> ${stats.pendingTenants || 0} pending</span>
             </div>
             <div class="stat-card">
                 <div class="stat-icon"><i class="fas fa-user-tie"></i></div>
@@ -689,7 +821,7 @@
                 <div class="stat-icon"><i class="fas fa-credit-card"></i></div>
                 <div class="stat-value">${formatCurrency(totalRent)}</div>
                 <div class="stat-label">Monthly Rent Roll</div>
-                <span class="stat-change danger"><i class="fas fa-arrow-down"></i> ${payments?.filter(p => p.status === 'Overdue').length || 0} overdue</span>
+                <span class="stat-change danger"><i class="fas fa-arrow-down"></i> ${stats.overdueCount || 0} overdue</span>
             </div>
         `;
 
@@ -724,21 +856,28 @@
 
         renderInbox();
 
-        const totalRevenue  = payments?.reduce((s, p) => s + Number(p.amount), 0) || 0;
-        const overdueTotal  = payments?.filter(p => p.status === 'Overdue').reduce((s, p) => s + Number(p.amount), 0) || 0;
-        const expiringLeases= leases?.filter(l => { const diff = (new Date(l.end + 'T00:00:00') - new Date()) / 86400000; return diff > 0 && diff <= 30; }).length || 0;
-
         document.getElementById('reportGrid').innerHTML = `
-            <div class="report-card"><div class="num">${formatCurrency(totalRevenue)}</div><div class="label">Total Revenue</div></div>
-            <div class="report-card"><div class="num">${totalUnits ? Math.round(occupied / totalUnits * 100) : 0}%</div><div class="label">Occupancy Rate</div></div>
-            <div class="report-card"><div class="num">${formatCurrency(overdueTotal)}</div><div class="label">Total Overdue</div></div>
-            <div class="report-card"><div class="num">${expiringLeases}</div><div class="label">Leases Ending Soon</div></div>
+            <div class="report-card"><div class="num">${formatCurrency(stats.totalRevenue || 0)}</div><div class="label">Total Revenue</div></div>
+            <div class="report-card"><div class="num">${occupancyRate}%</div><div class="label">Occupancy Rate</div></div>
+            <div class="report-card"><div class="num">${formatCurrency(stats.overdueTotal || 0)}</div><div class="label">Total Overdue</div></div>
+            <div class="report-card"><div class="num">${stats.expiringLeases || 0}</div><div class="label">Leases Ending Soon</div></div>
         `;
 
+        renderReportsTable();
+    }
+
+    /*
+        Name: renderReportsTable
+        Purpose: Renders the Reports page's "Recent Transactions" table from
+        reportsPageRows (a paginated slice of payments, most-recent-first).
+        Used by: dashboard.js (renderDashboard, RENDER_BY_SECTION.reports)
+    */
+    function renderReportsTable() {
         const txBody = document.getElementById('recentTransactionsBody');
-        txBody.innerHTML = !payments || payments.length === 0
+        if (!txBody) return;
+        txBody.innerHTML = reportsPageRows.length === 0
             ? `<tr><td colspan="5"><div class="empty-state" style="padding:10px 0;"><p style="font-size:0.85rem;">No transactions yet.</p></div></td></tr>`
-            : payments.slice().reverse().slice(0, 6).map(p => `
+            : reportsPageRows.map(p => `
                 <tr>
                     <td>${formatDate(p.date)}</td><td>${p.tenant}</td><td>${p.unit}</td>
                     <td>${formatCurrency(p.amount)}</td><td>Rent</td>
@@ -782,16 +921,13 @@
         today.setHours(0, 0, 0, 0);
         const cleared = getClearedInboxIds();
 
-        return (payments || [])
-            .filter(p => p.status === 'Pending' && p.date && !cleared.has(String(p.id)))
+        return (upcomingPayments || [])
+            .filter(p => !cleared.has(String(p.id)))
             .map(p => {
                 const due = new Date(p.date + 'T00:00:00');
                 const diffDays = Math.round((due - today) / 86400000);
                 return { ...p, diffDays };
             })
-            // Anything from "due today" up to "due in 3 days" — the window
-            // before an unpaid Pending payment is auto-flipped to Overdue.
-            .filter(p => p.diffDays >= 0 && p.diffDays <= 3)
             .sort((a, b) => a.diffDays - b.diffDays);
     }
 
@@ -885,7 +1021,7 @@
         if (!rent || rent < 0){ showToast('Please enter a valid rent amount.', 'error'); return; }
         try {
             const data = { number, type, rent, status }; if (id) data.id = id;
-            await DataManager.saveUnit(data); await DataManager.loadAll(); renderAll();
+            await DataManager.saveUnit(data); await DataManager.loadAll(); renderAll(); await reloadCurrentPage('units');
             closeModal('unitModal'); showToast(`Unit "${number}" ${id ? 'updated' : 'added'} successfully.`);
         } catch (err) { showToast('Error: ' + err.message, 'error'); }
     }
@@ -912,30 +1048,44 @@
         }
     }
     /*
+        Name: leaseTenantSearchResults
+        Purpose: Caches the most recent tenant-search results shown in the
+        Lease form's tenant combobox, so selectLeaseTenant can resolve a
+        clicked suggestion's id without keeping a full tenants list around.
+        Used by: dashboard.js (renderLeaseTenantSuggestions, selectLeaseTenant)
+    */
+    let leaseTenantSearchResults = [];
+
+    /*
         Name: renderLeaseTenantSuggestions
         Purpose: Renders the tenant-name autocomplete dropdown for the New Lease
-        form. Unlike the Record Payment combobox, a name that doesn't match any
-        registered tenant is not rejected on submit — the server auto-registers
-        a new tenant for it (see syncTenantToUnit in server.js), so free text is
-        intentionally allowed.
+        form by searching the server for matching tenants. Unlike the Record
+        Payment combobox, a name that doesn't match any registered tenant is
+        not rejected on submit — the server auto-registers a new tenant for
+        it (see syncTenantToUnit in server.js), so free text is intentionally
+        allowed.
         Used by: dashboard.js (initLeaseTenantCombobox input/focus listeners)
-        Found in: Line 701-729 in dashboard.js
     */
-    function renderLeaseTenantSuggestions(query) {
+    async function renderLeaseTenantSuggestions(query) {
         const list = document.getElementById('leaseTenantList');
-        const q = (query || '').trim().toLowerCase();
-        const matches = (tenants || [])
-            .filter(t => !q || t.name.toLowerCase().includes(q))
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .slice(0, 8);
+        const q = (query || '').trim();
+        let matches;
+        try {
+            matches = normalizeTenantList(await ApiService.searchTenants(q));
+        } catch (err) {
+            list.innerHTML = `<div class="combobox-empty">Error searching tenants.</div>`;
+            list.classList.add('open');
+            return;
+        }
+        leaseTenantSearchResults = matches;
 
-        if (!tenants || tenants.length === 0) {
-            list.innerHTML = `<div class="combobox-empty">No registered tenants yet. Typing a name here will register them.</div>`;
-        } else if (matches.length === 0) {
-            list.innerHTML = `<div class="combobox-empty">No matching tenants — typing a new name will register them.</div>`;
+        if (matches.length === 0) {
+            list.innerHTML = q
+                ? `<div class="combobox-empty">No matching tenants — typing a new name will register them.</div>`
+                : `<div class="combobox-empty">Start typing to search tenants, or type a new name to register one.</div>`;
         } else {
             list.innerHTML = matches.map(t => {
-                const { unitNumbers } = getTenantLeaseInfo(t.name);
+                const unitNumbers = parseUnitNumbers(t.unitNumbers);
                 const unitHint = unitNumbers.length ? `Unit ${unitNumbers.join(', ')}` : 'No unit assigned';
                 return `<div class="combobox-item" data-tenant-id="${t.id}">${t.name}<small>${unitHint}</small></div>`;
             }).join('');
@@ -952,10 +1102,9 @@
         Name: selectLeaseTenant
         Purpose: Fills the lease tenant field with the chosen tenant's name and closes the suggestion list.
         Used by: dashboard.js (renderLeaseTenantSuggestions mousedown handler)
-        Found in: Line 750-755 in dashboard.js
     */
     function selectLeaseTenant(tenantId) {
-        const tenant = tenants.find(t => String(t.id) === String(tenantId));
+        const tenant = leaseTenantSearchResults.find(t => String(t.id) === String(tenantId));
         if (!tenant) return;
         const input = document.getElementById('leaseTenant');
         input.value = tenant.name;
@@ -965,14 +1114,14 @@
         Name: closeLeaseTenantList
         Purpose: Hides the lease tenant-name suggestion dropdown.
         Used by: dashboard.js (selectLeaseTenant, openAddLeaseModal, openEditLeaseModal, initLeaseTenantCombobox)
-        Found in: Line 757-759 in dashboard.js
     */
     function closeLeaseTenantList() {
         document.getElementById('leaseTenantList').classList.remove('open');
     }
     (function initLeaseTenantCombobox() {
         const input = document.getElementById('leaseTenant');
-        input.addEventListener('input', function () { renderLeaseTenantSuggestions(this.value); });
+        const debouncedSuggest = debounce(v => renderLeaseTenantSuggestions(v), 250);
+        input.addEventListener('input', function () { debouncedSuggest(this.value); });
         input.addEventListener('focus', function () { renderLeaseTenantSuggestions(this.value); });
         document.addEventListener('click', function (e) {
             if (!document.getElementById('leaseTenantCombobox').contains(e.target)) closeLeaseTenantList();
@@ -985,12 +1134,13 @@
         Used by: dashboard.js (heroActionBtn/quick-action handlers for leases and dashboard)
         Found in: Line 768-782 in dashboard.js
     */
-    function openAddLeaseModal() {
+    async function openAddLeaseModal() {
         document.getElementById('leaseModalTitle').textContent = 'New Lease';
         document.getElementById('leaseSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Save Lease';
         document.getElementById('leaseFormId').value = '';
         document.getElementById('leaseForm').reset();
         closeLeaseTenantList();
+        await ensureUnitsLoaded();
         populateLeaseUnitSelect(null);
         const today = new Date();
         document.getElementById('leaseStart').value = today.toISOString().slice(0, 10);
@@ -1007,8 +1157,8 @@
         Used by: dashboard.js (renderLeases edit button)
         Found in: Line 784-795 in dashboard.js
     */
-    function openEditLeaseModal(id) {
-        const lease = leases.find(l => l.id === id); if (!lease) return;
+    async function openEditLeaseModal(id) {
+        const lease = leasesPageRows.find(l => l.id === id); if (!lease) return;
         document.getElementById('leaseModalTitle').textContent = 'Edit Lease';
         document.getElementById('leaseSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Update Lease';
         document.getElementById('leaseFormId').value    = id;
@@ -1017,6 +1167,7 @@
         document.getElementById('leaseStart').value     = lease.start;
         document.getElementById('leaseEnd').value       = lease.end;
         document.getElementById('leaseRent').value      = lease.rent;
+        await ensureUnitsLoaded();
         populateLeaseUnitSelect(lease.unitId);
         openModal('leaseModal');
     }
@@ -1044,6 +1195,7 @@
             const data = { tenant, unitId, start, end, rent }; if (id) data.id = id;
             if (!id && unit.status === 'Occupied') { showToast('This unit is already occupied.', 'warning'); return; }
             await DataManager.saveLease(data); await DataManager.loadAll(); renderAll();
+            await Promise.all([reloadCurrentPage('leases'), reloadCurrentPage('units'), reloadCurrentPage('tenants')]);
             closeModal('leaseModal'); showToast(`Lease for "${tenant}" ${id ? 'updated' : 'created'} successfully.`);
         } catch (err) { showToast('Error: ' + err.message, 'error'); }
     }
@@ -1072,11 +1224,12 @@
         Used by: dashboard.js (heroActionBtn/quick-action handlers for tenants)
         Found in: Line 844-851 in dashboard.js
     */
-    function openAddTenantModal() {
+    async function openAddTenantModal() {
         document.getElementById('tenantModalTitle').textContent = 'Add Tenant';
         document.getElementById('tenantSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Save Tenant';
         document.getElementById('tenantFormId').value = '';
         document.getElementById('tenantForm').reset();
+        await ensureUnitsLoaded();
         populateTenantUnitSelect(null);
         setTenantUnitFieldLocked(false);
         openModal('tenantModal');
@@ -1100,21 +1253,22 @@
         Used by: dashboard.js (renderTenants edit button)
         Found in: Line 853-864 in dashboard.js
     */
-    function openEditTenantModal(id) {
-        const tenant = tenants.find(t => t.id === id); if (!tenant) { showToast('Tenant not found.', 'error'); return; }
+    async function openEditTenantModal(id) {
+        const tenant = tenantsPageRows.find(t => t.id === id); if (!tenant) { showToast('Tenant not found.', 'error'); return; }
         document.getElementById('tenantModalTitle').textContent = `Edit ${tenant.name}`;
         document.getElementById('tenantSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Update Tenant';
         document.getElementById('tenantFormId').value        = id;
         document.getElementById('tenantName').value          = tenant.name;
         document.getElementById('tenantEmail').value         = tenant.email || '';
         document.getElementById('tenantPhone').value         = tenant.phone || '';
+        await ensureUnitsLoaded();
         populateTenantUnitSelect(tenant.unitId);
         setTenantUnitFieldLocked(true);
         openModal('tenantModal');
     }
     /*
         Name: handleTenantFormSubmit
-        Purpose: Validates the tenant form and saves the tenant (create or update), keeping any leases' tenant name in sync on rename, then refreshes the dashboard.
+        Purpose: Validates the tenant form and saves the tenant (create or update), then refreshes the dashboard.
         Used by: dashboard.js (tenantForm submit listener)
         Found in: Line 866-881 in dashboard.js
     */
@@ -1124,21 +1278,16 @@
         const name        = document.getElementById('tenantName').value.trim();
         const email       = document.getElementById('tenantEmail').value.trim();
         const phone       = document.getElementById('tenantPhone').value.trim();
+        // Assigned Unit can only be set during registration; once a tenant
+        // exists it's disabled on the form (see setTenantUnitFieldLocked),
+        // but a disabled <select>'s value is still readable via JS — it was
+        // set from the tenant's current unit when the modal opened — so an
+        // edit always keeps that value regardless of the field being locked.
         let   unitId      = document.getElementById('tenantUnit').value || null;
         if (!name) { showToast('Please enter a name.', 'error'); return; }
         if (!isValidPhone(phone)) { showToast('Phone number must be exactly 11 digits.', 'error'); document.getElementById('tenantPhone').focus(); return; }
         try {
             const isNew = !id;
-
-            // Assigned Unit can only be set during registration; once a tenant exists,
-            // it's managed automatically through the Leases tab, so an edit always keeps
-            // the tenant's existing unit regardless of the (disabled) form field. Lease
-            // status is never sent from here at all — it's derived from lease dates
-            // (see getTenantLeaseInfo) and kept in sync server-side whenever a lease changes.
-            if (!isNew) {
-                const old = tenants.find(t => t.id === id);
-                if (old) { unitId = old.unitId || null; }
-            }
 
             let unit = null;
             if (unitId) {
@@ -1148,7 +1297,6 @@
             }
 
             const data = { name, email, phone, unitId }; if (id) data.id = id;
-            if (id) { const old = tenants.find(t => t.id === id); if (old && old.name !== name) leases.forEach(l => { if (l.tenant === old.name) l.tenant = name; }); }
             await DataManager.saveTenant(data);
 
             if (isNew && unitId && unit) {
@@ -1159,6 +1307,7 @@
             }
 
             await DataManager.loadAll(); renderAll();
+            await Promise.all([reloadCurrentPage('tenants'), reloadCurrentPage('leases'), reloadCurrentPage('units')]);
             closeModal('tenantModal'); showToast(`Tenant "${name}" ${id ? 'updated' : 'registered'} successfully.`);
         } catch (err) { showToast('Error: ' + err.message, 'error'); }
     }
@@ -1179,21 +1328,44 @@
         Used by: dashboard.js (initPaymentTenantCombobox input/focus listeners)
         Found in: Line 911-939 in dashboard.js
     */
-    function renderPaymentTenantSuggestions(query) {
-        const list = document.getElementById('paymentTenantList');
-        const q = (query || '').trim().toLowerCase();
-        const matches = (tenants || [])
-            .filter(t => !q || t.name.toLowerCase().includes(q))
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .slice(0, 8);
+    /*
+        Name: paymentTenantSearchResults
+        Purpose: Caches the most recent tenant-search results shown in the
+        Payment form's tenant combobox, so selectPaymentTenant can resolve a
+        clicked suggestion's id/unitNumbers without a full tenants list.
+        Used by: dashboard.js (renderPaymentTenantSuggestions, selectPaymentTenant)
+    */
+    let paymentTenantSearchResults = [];
 
-        if (!tenants || tenants.length === 0) {
-            list.innerHTML = `<div class="combobox-empty">No registered tenants yet. Register a tenant first.</div>`;
-        } else if (matches.length === 0) {
-            list.innerHTML = `<div class="combobox-empty">No matching tenants</div>`;
+    /*
+        Name: renderPaymentTenantSuggestions
+        Purpose: Restricts the "Tenant Name" field to registered tenants: typing
+        searches the server for matching tenants, and picking one auto-fills the
+        Unit field from that tenant's currently-leased unit. Free text that
+        doesn't match a registered tenant is rejected on submit (see
+        handlePaymentFormSubmit).
+        Used by: dashboard.js (initPaymentTenantCombobox input/focus listeners)
+    */
+    async function renderPaymentTenantSuggestions(query) {
+        const list = document.getElementById('paymentTenantList');
+        const q = (query || '').trim();
+        let matches;
+        try {
+            matches = normalizeTenantList(await ApiService.searchTenants(q));
+        } catch (err) {
+            list.innerHTML = `<div class="combobox-empty">Error searching tenants.</div>`;
+            list.classList.add('open');
+            return;
+        }
+        paymentTenantSearchResults = matches;
+
+        if (matches.length === 0) {
+            list.innerHTML = q
+                ? `<div class="combobox-empty">No matching tenants</div>`
+                : `<div class="combobox-empty">Start typing to search registered tenants.</div>`;
         } else {
             list.innerHTML = matches.map(t => {
-                const { unitNumbers } = getTenantLeaseInfo(t.name);
+                const unitNumbers = parseUnitNumbers(t.unitNumbers);
                 const unitHint = unitNumbers.length ? `Unit ${unitNumbers.join(', ')}` : 'No unit assigned';
                 return `<div class="combobox-item" data-tenant-id="${t.id}">${t.name}<small>${unitHint}</small></div>`;
             }).join('');
@@ -1271,13 +1443,13 @@
         Found in: Line 1042-1050 in dashboard.js
     */
     function selectPaymentTenant(tenantId) {
-        const tenant = tenants.find(t => String(t.id) === String(tenantId));
+        const tenant = paymentTenantSearchResults.find(t => String(t.id) === String(tenantId));
         if (!tenant) return;
         const input = document.getElementById('paymentTenant');
         input.value = tenant.name;
         input.dataset.confirmedTenant = tenant.name;
         document.getElementById('paymentTenantList').classList.remove('open');
-        const { unitNumbers } = getTenantLeaseInfo(tenant.name);
+        const unitNumbers = parseUnitNumbers(tenant.unitNumbers);
         setPaymentUnitField(unitNumbers, unitNumbers.length ? unitNumbers[0] : '');
     }
     /*
@@ -1291,9 +1463,10 @@
     }
     (function initPaymentTenantCombobox() {
         const input = document.getElementById('paymentTenant');
+        const debouncedSuggest = debounce(v => renderPaymentTenantSuggestions(v), 250);
         input.addEventListener('input', function () {
             this.dataset.confirmedTenant = '';
-            renderPaymentTenantSuggestions(this.value);
+            debouncedSuggest(this.value);
             setPaymentUnitField([], '');
         });
         input.addEventListener('focus', function () { renderPaymentTenantSuggestions(this.value); });
@@ -1328,19 +1501,27 @@
     }
     /*
         Name: openEditPaymentModal
-        Purpose: Populates and opens the payment modal in "Edit" mode for the given payment id.
+        Purpose: Populates and opens the payment modal in "Edit" mode for the
+        given payment id, looking it up from the current page (the edit
+        button only ever renders for a row that's on screen). Looks up the
+        tenant's currently-active unit(s) fresh via a name search, so the
+        Unit field can switch to a dropdown for tenants with multiple leases.
         Used by: dashboard.js (renderPayments edit button)
-        Found in: Line 1092-1106 in dashboard.js
     */
-    function openEditPaymentModal(id) {
-        const payment = payments.find(p => String(p.id) === String(id)); if (!payment) { showToast('Payment not found.', 'error'); return; }
+    async function openEditPaymentModal(id) {
+        const payment = paymentsPageRows.find(p => String(p.id) === String(id)); if (!payment) { showToast('Payment not found.', 'error'); return; }
         document.getElementById('paymentModalTitle').textContent = 'Edit Payment';
         document.getElementById('paymentSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Update Payment';
         document.getElementById('paymentFormId').value   = id;
         document.getElementById('paymentTenant').value   = payment.tenant;
         document.getElementById('paymentTenant').dataset.confirmedTenant = payment.tenant;
         closePaymentTenantList();
-        const { unitNumbers } = getTenantLeaseInfo(payment.tenant);
+        let unitNumbers = [payment.unit].filter(Boolean);
+        try {
+            const matches = normalizeTenantList(await ApiService.searchTenants(payment.tenant));
+            const exact = matches.find(t => t.name.toLowerCase() === payment.tenant.toLowerCase());
+            if (exact) unitNumbers = parseUnitNumbers(exact.unitNumbers);
+        } catch (err) { /* fall back to just the payment's recorded unit */ }
         setPaymentUnitField(unitNumbers, payment.unit, false);
         document.getElementById('paymentDate').value     = payment.date;
         document.getElementById('paymentAmount').value   = payment.amount;
@@ -1350,29 +1531,34 @@
     /*
         Name: handlePaymentFormSubmit
         Purpose: Validates the payment form (rejecting any tenant name that
-        isn't already registered) and saves the payment, then refreshes the dashboard.
+        isn't already registered — confirmed by having been picked from the
+        combobox, tracked via the field's confirmedTenant dataset) and saves
+        the payment, then refreshes the dashboard.
         Used by: dashboard.js (paymentForm submit listener)
         Found in: Line 1108-1124 in dashboard.js
     */
     async function handlePaymentFormSubmit(e) {
         e.preventDefault();
         const id         = document.getElementById('paymentFormId').value;
-        const tenantText   = document.getElementById('paymentTenant').value.trim();
+        const tenantInput = document.getElementById('paymentTenant');
+        const tenantText   = tenantInput.value.trim();
         const paymentUnitSelect = document.getElementById('paymentUnitSelect');
         const unit = (paymentUnitSelect.style.display !== 'none' ? paymentUnitSelect.value : document.getElementById('paymentUnit').value).trim();
         const date       = document.getElementById('paymentDate').value;
         const amount     = parseFloat(document.getElementById('paymentAmount').value);
         const status     = document.getElementById('paymentStatus').value;
         if (!tenantText) { showToast('Please enter tenant name.', 'error'); return; }
-        const matchedTenant = tenants.find(t => t.name.toLowerCase() === tenantText.toLowerCase());
-        if (!matchedTenant) { showToast('Please select an existing tenant from the list.', 'error'); return; }
-        const tenant = matchedTenant.name;
+        if (tenantInput.dataset.confirmedTenant !== tenantText) {
+            showToast('Please select an existing tenant from the list.', 'error'); return;
+        }
+        const tenant = tenantText;
         if (!unit)   { showToast('Please enter unit number.', 'error'); return; }
         if (!date)   { showToast('Please select a date.', 'error'); return; }
         if (!amount || amount < 0) { showToast('Please enter a valid amount.', 'error'); return; }
         try {
             const data = { tenant, unit, date, amount, status }; if (id) data.id = id;
             await DataManager.savePayment(data); await DataManager.loadAll(); renderAll();
+            await Promise.all([reloadCurrentPage('payments'), reloadCurrentPage('reports')]);
             closeModal('paymentModal'); showToast(`Payment for "${tenant}" ${id ? 'updated' : 'recorded'} successfully.`);
         } catch (err) { showToast('Error: ' + err.message, 'error'); }
     }
@@ -1401,7 +1587,7 @@
         Found in: Line 1128-1138 in dashboard.js
     */
     function openEditEmployeeModal(id) {
-        const emp = employees.find(e => e.id === id);
+        const emp = employeesPageRows.find(e => e.id === id);
         if (!emp) { showToast('Employee not found.', 'error'); return; }
         document.getElementById('employeeModalTitle').textContent = `Edit ${emp.name}`;
         document.getElementById('employeeSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Update Employee';
@@ -1427,7 +1613,7 @@
         if (!isValidPhone(phone)) { showToast('Phone number must be exactly 11 digits.', 'error'); document.getElementById('employeePhone').focus(); return; }
         try {
             const data = { name, email, phone }; if (id) data.id = id;
-            await DataManager.saveEmployee(data); await DataManager.loadAll(); renderAll();
+            await DataManager.saveEmployee(data); await DataManager.loadAll(); renderAll(); await reloadCurrentPage('employees');
             closeModal('employeeModal'); showToast(`Employee "${name}" ${id ? 'updated' : 'added'} successfully.`);
         } catch (err) { showToast('Error: ' + err.message, 'error'); }
     }
@@ -1457,25 +1643,37 @@
         Used by: dashboard.js (every render* table's delete button)
         Found in: Line 1195-1214 in dashboard.js
     */
-    function confirmDelete(type, id) {
+    async function confirmDelete(type, id) {
         deleteTarget = { type, id };
         let name = '';
-        if      (type === 'unit')     { const i = units.find(u => u.id === id);     name = i ? i.number  : 'this unit'; }
-        else if (type === 'lease')    { const i = leases.find(l => l.id === id);    name = i ? i.tenant  : 'this lease'; }
-        else if (type === 'tenant')   { const i = tenants.find(t => t.id === id);   name = i ? i.name    : 'this tenant'; }
-        else if (type === 'payment')  { const i = payments.find(p => String(p.id) === String(id));  name = i ? i.tenant  : 'this payment'; }
-        else if (type === 'employee') { const i = employees.find(e => e.id === id); name = i ? i.name    : 'this employee'; }
+        if      (type === 'unit')     { const i = units.find(u => u.id === id);              name = i ? i.number  : 'this unit'; }
+        else if (type === 'lease')    { const i = leasesPageRows.find(l => l.id === id);     name = i ? i.tenant  : 'this lease'; }
+        else if (type === 'tenant')   { const i = tenantsPageRows.find(t => t.id === id);    name = i ? i.name    : 'this tenant'; }
+        else if (type === 'payment')  { const i = paymentsPageRows.find(p => String(p.id) === String(id)); name = i ? i.tenant : 'this payment'; }
+        else if (type === 'employee') { const i = employeesPageRows.find(e => e.id === id);  name = i ? i.name    : 'this employee'; }
 
         const isArchivable = ARCHIVABLE_TYPES.includes(type);
         let msg = isArchivable
             ? `Are you sure you want to archive "${name}"? It will be hidden from view, but you can restore it later by turning on Archive Mode.`
             : `Are you sure you want to delete "${name}"? This action cannot be undone.`;
         let hasDependency = false;
-        if (type === 'unit' && leases.some(l => l.unitId === id)) {
-            msg = `"${name}" has active leases. Please end the lease first before deleting.`; hasDependency = true;
-        } else if (type === 'tenant' && leases.some(l => l.tenant === name)) {
-            msg = `"${name}" has an active lease. Please end the lease first before archiving.`; hasDependency = true;
+
+        try {
+            if (type === 'unit') {
+                const result = await ApiService.unitHasActiveLease(id);
+                if (result && result.rows && result.rows.length > 0) {
+                    msg = `"${name}" has active leases. Please end the lease first before deleting.`; hasDependency = true;
+                }
+            } else if (type === 'tenant') {
+                const result = await ApiService.tenantHasActiveLease(id);
+                if (result && result.rows && result.rows.length > 0) {
+                    msg = `"${name}" has an active lease. Please end the lease first before archiving.`; hasDependency = true;
+                }
+            }
+        } catch (err) {
+            console.error('Dependency check error:', err);
         }
+
         document.getElementById('confirmModalTitle').textContent = isArchivable ? 'Confirm Archive' : 'Confirm Delete';
         document.getElementById('confirmMessage').textContent = msg;
         const confirmBtn = document.getElementById('confirmDeleteBtn');
@@ -1485,6 +1683,22 @@
             : '<i class="fas fa-trash"></i> Delete';
         openModal('confirmModal');
     }
+
+    /*
+        Name: TYPE_SECTIONS
+        Purpose: Maps an entity type to the paginated section(s) whose
+        current page should be reloaded after that entity is deleted or
+        restored (e.g. deleting a lease frees up its unit and changes the
+        tenant's derived lease status, so units and tenants get refreshed too).
+        Used by: dashboard.js (confirmDeleteBtn click handler, restoreItem)
+    */
+    const TYPE_SECTIONS = {
+        unit:     ['units'],
+        lease:    ['leases', 'units', 'tenants'],
+        tenant:   ['tenants'],
+        payment:  ['payments', 'reports'],
+        employee: ['employees'],
+    };
 
     document.getElementById('confirmDeleteBtn').addEventListener('click', async function () {
         if (!deleteTarget) return;
@@ -1497,6 +1711,7 @@
             else if (type === 'payment')  await DataManager.deletePayment(id);
             else if (type === 'employee') await DataManager.deleteEmployee(id);
             await DataManager.loadAll(); renderAll();
+            await Promise.all((TYPE_SECTIONS[type] || []).map(reloadCurrentPage));
             closeModal('confirmModal');
             showToast(isArchivable ? 'Archived successfully.' : 'Deleted successfully.');
         } catch (err) { showToast('Error: ' + err.message, 'error'); }
@@ -1516,6 +1731,7 @@
             else if (type === 'payment') await DataManager.restorePayment(id);
             await DataManager.loadAll();
             renderAll();
+            await Promise.all((TYPE_SECTIONS[type] || []).map(reloadCurrentPage));
             showToast('Restored successfully.');
         } catch (err) { showToast('Error: ' + err.message, 'error'); }
     }
@@ -1523,28 +1739,22 @@
     /*
         Name: setArchiveMode
         Purpose: Toggles Archive Mode for the Tenants, Leases, or Payments
-        page. When turning it on, fetches the archive-inclusive list (active
-        + archived) for that section before re-rendering.
+        page and reloads that section's page 1 with ?archived=true, so
+        archived rows show up alongside active ones.
         Used by: dashboard.js (tenantsArchiveToggle/leasesArchiveToggle/paymentsArchiveToggle change listeners)
     */
     async function setArchiveMode(section, enabled) {
         archiveMode[section] = enabled;
-        if (enabled) {
-            try {
-                if      (section === 'tenants')  tenantsAll  = normalizeTenantList(await ApiService.getTenants(true));
-                else if (section === 'leases')   leasesAll   = normalizeLeaseList(await ApiService.getLeases(true));
-                else if (section === 'payments') paymentsAll = normalizePaymentList(await ApiService.getPayments(true));
-            } catch (err) {
-                showToast('Error loading archive: ' + err.message, 'error');
-                archiveMode[section] = false;
-                const toggleIds = { tenants: 'tenantsArchiveToggle', leases: 'leasesArchiveToggle', payments: 'paymentsArchiveToggle' };
-                const toggleEl = document.getElementById(toggleIds[section]);
-                if (toggleEl) toggleEl.checked = false;
-            }
+        try {
+            await loadSectionPage(section, 1);
+        } catch (err) {
+            showToast('Error loading archive: ' + err.message, 'error');
+            archiveMode[section] = false;
+            const toggleIds = { tenants: 'tenantsArchiveToggle', leases: 'leasesArchiveToggle', payments: 'paymentsArchiveToggle' };
+            const toggleEl = document.getElementById(toggleIds[section]);
+            if (toggleEl) toggleEl.checked = false;
+            await loadSectionPage(section, 1);
         }
-        if      (section === 'tenants')  renderTenants();
-        else if (section === 'leases')   renderLeases();
-        else if (section === 'payments') renderPayments();
         applyRolePermissions();
     }
 
@@ -1563,6 +1773,7 @@
         try {
             await DataManager.loadAll();
             renderAll();
+            await Promise.all(Object.keys(pagination).map(reloadCurrentPage));
             const label = meta[currentSection]?.title || 'Page';
             showToast(label + ' refreshed!');
         } catch (err) {
@@ -1696,7 +1907,7 @@
             { value: u.type },
             { value: formatCurrency(u.rent), align: 'right' },
             { value: pdfBadge(u.status) },
-            { value: getTenantForUnit(u.id) || '—' },
+            { value: u.tenantName || '—' },
         ], i));
         const columns = [
             { label: 'Unit #' }, { label: 'Type' }, { label: 'Rent', align: 'right' },
@@ -1708,20 +1919,20 @@
     /*
         Name: buildTenantsPDF
         Purpose: Builds the print-friendly HTML page for the Tenants report.
+        Fetches every (non-archived) tenant fresh at export time — since
+        the Tenants table itself is paginated, there's no full tenant list
+        already sitting in memory to reuse.
         Used by: dashboard.js (generatePDF)
-        Found in: Line 1375-1391 in dashboard.js
     */
-    function buildTenantsPDF() {
-        const rows = (tenants || []).map((t, i) => {
-            const { status, unitNumbers } = getTenantLeaseInfo(t.name);
-            return pdfRow([
-                { value: `<strong>${t.name}</strong>` },
-                { value: t.email || '—' },
-                { value: t.phone || '—' },
-                { value: unitNumbers.length ? unitNumbers.join(', ') : '—' },
-                { value: pdfBadge(status) },
-            ], i);
-        });
+    async function buildTenantsPDF() {
+        const allTenants = normalizeTenantList(await ApiService.getTenants());
+        const rows = allTenants.map((t, i) => pdfRow([
+            { value: `<strong>${t.name}</strong>` },
+            { value: t.email || '—' },
+            { value: t.phone || '—' },
+            { value: t.unitNumbers || '—' },
+            { value: pdfBadge(t.leaseStatus) },
+        ], i));
         const columns = [
             { label: 'Name' }, { label: 'Email' }, { label: 'Phone' },
             { label: 'Unit(s)' }, { label: 'Status' },
@@ -1735,18 +1946,16 @@
         Used by: dashboard.js (generatePDF)
         Found in: Line 1399-1417 in dashboard.js
     */
-    function buildLeasesPDF() {
-        const rows = (leases || []).map((l, i) => {
-            const unit = units.find(u => u.id === l.unitId);
-            return pdfRow([
-                { value: `<strong>${l.id}</strong>` },
-                { value: l.tenant },
-                { value: unit ? unit.number : '—' },
-                { value: formatDate(l.start) },
-                { value: formatDate(l.end) },
-                { value: formatCurrency(l.rent), align: 'right' },
-            ], i);
-        });
+    async function buildLeasesPDF() {
+        const allLeases = normalizeLeaseList(await ApiService.getLeases());
+        const rows = allLeases.map((l, i) => pdfRow([
+            { value: `<strong>${l.id}</strong>` },
+            { value: l.tenant },
+            { value: l.unitNumber || '—' },
+            { value: formatDate(l.start) },
+            { value: formatDate(l.end) },
+            { value: formatCurrency(l.rent), align: 'right' },
+        ], i));
         const columns = [
             { label: 'Lease ID' }, { label: 'Tenant' }, { label: 'Unit' },
             { label: 'Start' }, { label: 'End' }, { label: 'Rent', align: 'right' },
@@ -1756,12 +1965,13 @@
 
     /*
         Name: buildPaymentsPDF
-        Purpose: Builds the print-friendly HTML page for the Payments report.
+        Purpose: Builds the print-friendly HTML page for the Payments report,
+        fetching every (non-archived) payment fresh at export time.
         Used by: dashboard.js (generatePDF)
-        Found in: Line 1424-1439 in dashboard.js
     */
-    function buildPaymentsPDF() {
-        const rows = (payments || []).map((p, i) => pdfRow([
+    async function buildPaymentsPDF() {
+        const allPayments = normalizePaymentList(await ApiService.getPayments());
+        const rows = allPayments.map((p, i) => pdfRow([
             { value: `<strong>${p.id}</strong>` },
             { value: formatDate(p.date) },
             { value: p.tenant },
@@ -1778,12 +1988,13 @@
 
     /*
         Name: buildEmployeesPDF
-        Purpose: Builds the print-friendly HTML page for the Employees report.
+        Purpose: Builds the print-friendly HTML page for the Employees report,
+        fetching every employee fresh at export time.
         Used by: dashboard.js (generatePDF)
-        Found in: Line 1445-1457 in dashboard.js
     */
-    function buildEmployeesPDF() {
-        const rows = (employees || []).map((e, i) => pdfRow([
+    async function buildEmployeesPDF() {
+        const allEmployees = normalizeEmployeeList(await ApiService.getEmployees());
+        const rows = allEmployees.map((e, i) => pdfRow([
             { value: `<strong>${e.name}</strong>` },
             { value: e.email || '—' },
             { value: e.phone || '—' },
@@ -1801,11 +2012,11 @@
         Found in: Line 1463-1548 in dashboard.js
     */
     function buildDashboardPDF() {
-        const totalUnits     = units?.length || 0;
-        const occupied       = units?.filter(u => u.status === 'Occupied').length || 0;
-        const activeTenants  = tenants?.filter(t => getTenantLeaseInfo(t.name).status === 'Active').length || 0;
-        const totalRent      = leases?.reduce((s, l) => s + Number(l.rent), 0) || 0;
-        const totalEmployees = employees?.length || 0;
+        const totalUnits     = stats.totalUnits || 0;
+        const occupied       = stats.occupiedUnits || 0;
+        const activeTenants  = stats.activeTenants || 0;
+        const totalRent      = stats.totalRent || 0;
+        const totalEmployees = stats.totalEmployees || 0;
 
         const stats = `
             <div style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:28px;">
@@ -1842,16 +2053,13 @@
         Used by: dashboard.js (buildPrintableReportHTML)
         Found in: Line 1507-1544 in dashboard.js
     */
-    function buildReportsPDF() {
-        const totalUnits     = units?.length || 0;
-        const occupied       = units?.filter(u => u.status === 'Occupied').length || 0;
+    async function buildReportsPDF() {
+        const totalUnits     = stats.totalUnits || 0;
+        const occupied       = stats.occupiedUnits || 0;
         const occupancyRate  = totalUnits ? Math.round(occupied / totalUnits * 100) : 0;
-        const totalRevenue   = payments?.reduce((s, p) => s + Number(p.amount), 0) || 0;
-        const overdueTotal   = payments?.filter(p => p.status === 'Overdue').reduce((s, p) => s + Number(p.amount), 0) || 0;
-        const expiringLeases = leases?.filter(l => {
-            const diff = (new Date(l.end + 'T00:00:00') - new Date()) / 86400000;
-            return diff > 0 && diff <= 30;
-        }).length || 0;
+        const totalRevenue   = stats.totalRevenue || 0;
+        const overdueTotal   = stats.overdueTotal || 0;
+        const expiringLeases = stats.expiringLeases || 0;
 
         const stats = `
             <div style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:28px;">
@@ -1861,7 +2069,8 @@
                 ${pdfStatCard('Leases Ending Soon', expiringLeases)}
             </div>`;
 
-        const rows = (payments || []).slice().reverse().slice(0, 10).map((p, i) => pdfRow([
+        const allPayments = normalizePaymentList(await ApiService.getPayments());
+        const rows = allPayments.slice(0, 10).map((p, i) => pdfRow([
             { value: formatDate(p.date) },
             { value: p.tenant },
             { value: p.unit },
@@ -1887,7 +2096,7 @@
         Used by: dashboard.js (generatePDF)
         Found in: Line 1552-1563 in dashboard.js
     */
-    function buildPrintableReportHTML(section) {
+    async function buildPrintableReportHTML(section) {
         switch (section) {
             case 'units':     return buildUnitsPDF();
             case 'tenants':   return buildTenantsPDF();
@@ -1903,17 +2112,28 @@
     /*
         Name: generatePDF
         Purpose: Renders the printable report for the current section off-screen and exports it as a downloadable PDF via html2pdf.
+        Some sections (Tenants, Leases, Payments, Employees, Reports) fetch a
+        fresh, complete copy of their data at this point — since those tables
+        are paginated on screen, there's no full list already sitting in
+        memory for the report to reuse.
         Used by: dashboard.js (generatePdfBtn click listener)
-        Found in: Line 1565-1589 in dashboard.js
     */
-    function generatePDF() {
+    async function generatePDF() {
         showToast('Generating PDF...', 'warning');
+
+        let html;
+        try {
+            html = await buildPrintableReportHTML(currentSection);
+        } catch (err) {
+            showToast('PDF generation failed: ' + err.message, 'error');
+            return;
+        }
 
         const wrapper = document.createElement('div');
         wrapper.style.position = 'fixed';
         wrapper.style.top = '0';
         wrapper.style.left = '-10000px';
-        wrapper.innerHTML = buildPrintableReportHTML(currentSection);
+        wrapper.innerHTML = html;
         document.body.appendChild(wrapper);
 
         const sectionSlug = (currentSection || 'dashboard').charAt(0).toUpperCase() + (currentSection || 'dashboard').slice(1);
@@ -2134,6 +2354,8 @@
 
         await DataManager.loadAll();
         renderAll();
+        wirePaginationButtons();
+        await loadAllSectionPages();
         switchSection('dashboard');
     })();
 
