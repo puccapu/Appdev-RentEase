@@ -159,6 +159,13 @@
         <div id="section-units" class="page-section">
             <div class="section-header">
                 <h2><i class="fas fa-door-open"></i> Apartment Units <span class="sub" id="unitCount">· 0 total</span></h2>
+                <div class="section-header-actions">
+                    <div class="section-search">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="unitsSearchInput" placeholder="Search unit #, status, or tenant…" />
+                        <button type="button" class="section-search-clear" id="unitsSearchClear"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
             </div>
             <div class="glass-panel" style="padding:16px 18px;">
                 <div class="table-responsive">
@@ -184,11 +191,18 @@
         <div id="section-tenants" class="page-section">
             <div class="section-header">
                 <h2><i class="fas fa-users"></i> Tenants <span class="sub" id="tenantCount">· 0 active</span></h2>
-                <label class="archive-toggle" for="tenantsArchiveToggle">
-                    <input type="checkbox" id="tenantsArchiveToggle" />
-                    <span class="archive-toggle-track"><span class="archive-toggle-thumb"></span></span>
-                    <span class="archive-toggle-label"><i class="fas fa-box-archive"></i> Archive Mode</span>
-                </label>
+                <div class="section-header-actions">
+                    <div class="section-search">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="tenantsSearchInput" placeholder="Search name, status, or unit…" />
+                        <button type="button" class="section-search-clear" id="tenantsSearchClear"><i class="fas fa-times"></i></button>
+                    </div>
+                    <label class="archive-toggle" for="tenantsArchiveToggle">
+                        <input type="checkbox" id="tenantsArchiveToggle" />
+                        <span class="archive-toggle-track"><span class="archive-toggle-thumb"></span></span>
+                        <span class="archive-toggle-label"><i class="fas fa-box-archive"></i> Archive Mode</span>
+                    </label>
+                </div>
             </div>
             <div class="glass-panel" style="padding:16px 18px;">
                 <div class="table-responsive">
@@ -214,11 +228,18 @@
         <div id="section-leases" class="page-section">
             <div class="section-header">
                 <h2><i class="fas fa-file-signature"></i> Lease Contracts <span class="sub" id="leaseCount">· 0 active</span></h2>
-                <label class="archive-toggle" for="leasesArchiveToggle">
-                    <input type="checkbox" id="leasesArchiveToggle" />
-                    <span class="archive-toggle-track"><span class="archive-toggle-thumb"></span></span>
-                    <span class="archive-toggle-label"><i class="fas fa-box-archive"></i> Archive Mode</span>
-                </label>
+                <div class="section-header-actions">
+                    <div class="section-search">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="leasesSearchInput" placeholder="Search tenant or unit…" />
+                        <button type="button" class="section-search-clear" id="leasesSearchClear"><i class="fas fa-times"></i></button>
+                    </div>
+                    <label class="archive-toggle" for="leasesArchiveToggle">
+                        <input type="checkbox" id="leasesArchiveToggle" />
+                        <span class="archive-toggle-track"><span class="archive-toggle-thumb"></span></span>
+                        <span class="archive-toggle-label"><i class="fas fa-box-archive"></i> Archive Mode</span>
+                    </label>
+                </div>
             </div>
             <div class="glass-panel" style="padding:16px 18px;">
                 <div class="table-responsive">
@@ -244,11 +265,18 @@
         <div id="section-payments" class="page-section">
             <div class="section-header">
                 <h2><i class="fas fa-coins"></i> Payment Records <span class="sub" id="paymentCount">· 0 records</span></h2>
-                <label class="archive-toggle" for="paymentsArchiveToggle">
-                    <input type="checkbox" id="paymentsArchiveToggle" />
-                    <span class="archive-toggle-track"><span class="archive-toggle-thumb"></span></span>
-                    <span class="archive-toggle-label"><i class="fas fa-box-archive"></i> Archive Mode</span>
-                </label>
+                <div class="section-header-actions">
+                    <div class="section-search">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="paymentsSearchInput" placeholder="Search tenant, unit, or status…" />
+                        <button type="button" class="section-search-clear" id="paymentsSearchClear"><i class="fas fa-times"></i></button>
+                    </div>
+                    <label class="archive-toggle" for="paymentsArchiveToggle">
+                        <input type="checkbox" id="paymentsArchiveToggle" />
+                        <span class="archive-toggle-track"><span class="archive-toggle-thumb"></span></span>
+                        <span class="archive-toggle-label"><i class="fas fa-box-archive"></i> Archive Mode</span>
+                    </label>
+                </div>
             </div>
             <div class="glass-panel" style="padding:16px 18px;">
                 <div class="table-responsive">
@@ -278,6 +306,13 @@
                     Employee Management
                     <span class="sub" id="employeeCount">· 0 employees</span>
                 </h2>
+                <div class="section-header-actions">
+                    <div class="section-search">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="employeesSearchInput" placeholder="Search name, email, or phone…" />
+                        <button type="button" class="section-search-clear" id="employeesSearchClear"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
             </div>
 
             <div class="glass-panel" style="padding:16px 18px;">

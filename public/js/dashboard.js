@@ -66,11 +66,11 @@
             { rows, hasMore, page } whenever a `page` query param is present.
             Used by: dashboard.js (loadSectionPage)
         */
-        getUnitsPage:     (page)           => ApiService._fetch(`/units?page=${page}&limit=${PAGE_SIZE}`),
-        getTenantsPage:   (page, archived) => ApiService._fetch(`/tenants?page=${page}&limit=${PAGE_SIZE}${archived ? '&archived=true' : ''}`),
-        getLeasesPage:    (page, archived) => ApiService._fetch(`/leases?page=${page}&limit=${PAGE_SIZE}${archived ? '&archived=true' : ''}`),
-        getPaymentsPage:  (page, archived) => ApiService._fetch(`/payments?page=${page}&limit=${PAGE_SIZE}${archived ? '&archived=true' : ''}`),
-        getEmployeesPage: (page)           => ApiService._fetch(`/employees?page=${page}&limit=${PAGE_SIZE}`),
+        getUnitsPage:     (page, search)           => ApiService._fetch(`/units?page=${page}&limit=${PAGE_SIZE}${search ? `&search=${encodeURIComponent(search)}` : ''}`),
+        getTenantsPage:   (page, archived, search) => ApiService._fetch(`/tenants?page=${page}&limit=${PAGE_SIZE}${archived ? '&archived=true' : ''}${search ? `&search=${encodeURIComponent(search)}` : ''}`),
+        getLeasesPage:    (page, archived, search) => ApiService._fetch(`/leases?page=${page}&limit=${PAGE_SIZE}${archived ? '&archived=true' : ''}${search ? `&search=${encodeURIComponent(search)}` : ''}`),
+        getPaymentsPage:  (page, archived, search) => ApiService._fetch(`/payments?page=${page}&limit=${PAGE_SIZE}${archived ? '&archived=true' : ''}${search ? `&search=${encodeURIComponent(search)}` : ''}`),
+        getEmployeesPage: (page, search)           => ApiService._fetch(`/employees?page=${page}&limit=${PAGE_SIZE}${search ? `&search=${encodeURIComponent(search)}` : ''}`),
     };
 
     /*
@@ -105,12 +105,21 @@
     function normalizeUnitList(list)     { return (list || []).map(u => ({ ...u, id: toStr(u.id) })); }
     function normalizeEmployeeList(list) { return (list || []).map(e => ({ ...e, id: toStr(e.id) })); }
 
+    /*
+        SECTION: Search
+        Purpose: Tracks the current search term for each searchable table
+        section (Units, Tenants, Leases, Payments, Employees). Filtering
+        happens server-side (see PAGE_FETCHERS below) so it applies across
+        the full dataset, not just whatever page happens to be in view.
+    */
+    const sectionSearch = { units: '', tenants: '', leases: '', payments: '', employees: '' };
+
     const PAGE_FETCHERS = {
-        units:     (page) => ApiService.getUnitsPage(page),
-        tenants:   (page) => ApiService.getTenantsPage(page, archiveMode.tenants),
-        leases:    (page) => ApiService.getLeasesPage(page, archiveMode.leases),
-        payments:  (page) => ApiService.getPaymentsPage(page, archiveMode.payments),
-        employees: (page) => ApiService.getEmployeesPage(page),
+        units:     (page) => ApiService.getUnitsPage(page, sectionSearch.units),
+        tenants:   (page) => ApiService.getTenantsPage(page, archiveMode.tenants, sectionSearch.tenants),
+        leases:    (page) => ApiService.getLeasesPage(page, archiveMode.leases, sectionSearch.leases),
+        payments:  (page) => ApiService.getPaymentsPage(page, archiveMode.payments, sectionSearch.payments),
+        employees: (page) => ApiService.getEmployeesPage(page, sectionSearch.employees),
         reports:   (page) => ApiService.getPaymentsPage(page, false),
     };
 
@@ -231,6 +240,42 @@
             if (nextBtn) nextBtn.addEventListener('click', () => {
                 if (pagination[section].hasMore) loadSectionPage(section, pagination[section].page + 1);
             });
+        });
+    }
+
+    /*
+        Name: wireSearchInputs
+        Purpose: Wires up the search box for each searchable table section
+        (Units, Tenants, Leases, Payments, Employees). Typing debounces
+        briefly, then stores the term in sectionSearch and reloads that
+        section from page 1 so results reflect the filter across the whole
+        dataset. The clear ("×") button appears once there's a term and
+        resets the search when clicked.
+        Used by: dashboard.js (init)
+    */
+    function wireSearchInputs() {
+        Object.keys(sectionSearch).forEach(section => {
+            const input = document.getElementById(`${section}SearchInput`);
+            const clearBtn = document.getElementById(`${section}SearchClear`);
+            if (!input) return;
+
+            const runSearch = debounce(() => {
+                sectionSearch[section] = input.value.trim();
+                if (clearBtn) clearBtn.style.display = sectionSearch[section] ? 'flex' : 'none';
+                loadSectionPage(section, 1);
+            }, 300);
+
+            input.addEventListener('input', runSearch);
+
+            if (clearBtn) {
+                clearBtn.addEventListener('click', () => {
+                    input.value = '';
+                    sectionSearch[section] = '';
+                    clearBtn.style.display = 'none';
+                    loadSectionPage(section, 1);
+                    input.focus();
+                });
+            }
         });
     }
 
@@ -571,7 +616,8 @@
         const count = document.getElementById('unitCount');
         const total = pagination.units.total || 0;
         if (total === 0) {
-            tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="fas fa-door-open"></i><p>No units yet.</p></div></td></tr>`;
+            const emptyMsg = sectionSearch.units ? 'No units match your search.' : 'No units yet.';
+            tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="fas fa-door-open"></i><p>${emptyMsg}</p></div></td></tr>`;
             count.textContent = '· 0 total'; return;
         }
         count.textContent = `· ${total} total`;
@@ -606,7 +652,7 @@
         const count = document.getElementById('leaseCount');
         const total = pagination.leases.total || 0;
         if (total === 0) {
-            const emptyMsg = archiveMode.leases ? 'No leases found.' : 'No leases yet.';
+            const emptyMsg = sectionSearch.leases ? 'No leases match your search.' : (archiveMode.leases ? 'No leases found.' : 'No leases yet.');
             tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fas fa-file-signature"></i><p>${emptyMsg}</p></div></td></tr>`;
             count.textContent = archiveMode.leases ? '· 0 total' : '· 0 active'; return;
         }
@@ -651,7 +697,7 @@
         const count = document.getElementById('tenantCount');
         const total = pagination.tenants.total || 0;
         if (total === 0) {
-            const emptyMsg = archiveMode.tenants ? 'No tenants found.' : 'No tenants yet.';
+            const emptyMsg = sectionSearch.tenants ? 'No tenants match your search.' : (archiveMode.tenants ? 'No tenants found.' : 'No tenants yet.');
             tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="fas fa-users"></i><p>${emptyMsg}</p></div></td></tr>`;
             count.textContent = archiveMode.tenants ? '· 0 total' : '· 0 active'; return;
         }
@@ -695,7 +741,7 @@
         const count = document.getElementById('paymentCount');
         const total = pagination.payments.total || 0;
         if (total === 0) {
-            const emptyMsg = archiveMode.payments ? 'No payment records found.' : 'No payment records yet.';
+            const emptyMsg = sectionSearch.payments ? 'No payments match your search.' : (archiveMode.payments ? 'No payment records found.' : 'No payment records yet.');
             tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fas fa-coins"></i><p>${emptyMsg}</p></div></td></tr>`;
             count.textContent = archiveMode.payments ? '· 0 total' : '· 0 records'; return;
         }
@@ -740,12 +786,15 @@
         const total = pagination.employees.total || 0;
 
         if (total === 0) {
+            const emptyMsg = sectionSearch.employees
+                ? 'No employees match your search.'
+                : 'No employees yet. Click "Add Employee" to get started.';
             tbody.innerHTML = `
                 <tr>
                     <td colspan="4">
                         <div class="empty-state">
                             <i class="fas fa-user-tie"></i>
-                            <p>No employees yet. Click "Add Employee" to get started.</p>
+                            <p>${emptyMsg}</p>
                         </div>
                     </td>
                 </tr>
@@ -2355,6 +2404,7 @@
         await DataManager.loadAll();
         renderAll();
         wirePaginationButtons();
+        wireSearchInputs();
         await loadAllSectionPages();
         switchSection('dashboard');
     })();

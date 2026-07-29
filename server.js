@@ -291,17 +291,29 @@ const UNIT_SELECT = `
     FROM units
 `;
 
+/*
+    Name: GET /api/units — search
+    Purpose: Optional ?search= filters the Units table by unit number,
+    status, or current tenant name (all three, matched with OR). Since
+    tenantName is a correlated subquery in UNIT_SELECT, the filter is
+    applied with HAVING against the SELECT aliases rather than WHERE.
+*/
 app.get('/api/units', requireAuth, async (req, res) => {
+    const search = (req.query.search || '').trim();
+    const having = search ? 'HAVING (number LIKE ? OR status LIKE ? OR tenantName LIKE ?)' : '';
+    const searchParams = search ? [`%${search}%`, `%${search}%`, `%${search}%`] : [];
+
     const pg = getPagination(req);
     if (!pg) {
-        const [rows] = await db.execute(`${UNIT_SELECT} ORDER BY number ASC`);
+        const [rows] = await db.execute(`${UNIT_SELECT} ${having} ORDER BY number ASC`, searchParams);
         return res.json(rows);
     }
     // Fetch one extra row beyond the page size to know whether a next page exists.
     const [rows] = await db.execute(
-        `${UNIT_SELECT} ORDER BY number ASC LIMIT ${pg.limit + 1} OFFSET ${pg.offset}`
+        `${UNIT_SELECT} ${having} ORDER BY number ASC LIMIT ${pg.limit + 1} OFFSET ${pg.offset}`,
+        searchParams
     );
-    const [[{ total }]] = await db.execute('SELECT COUNT(*) AS total FROM units');
+    const [[{ total }]] = await db.execute(`SELECT COUNT(*) AS total FROM (${UNIT_SELECT} ${having}) t`, searchParams);
     res.json({ rows: rows.slice(0, pg.limit), hasMore: rows.length > pg.limit, page: pg.page, total });
 });
 
@@ -370,18 +382,30 @@ const TENANT_SELECT = `
     returned; pass ?archived=true (Archive Mode) to list every tenant,
     including ones that have been archived via the delete button.
 */
+/*
+    Name: GET /api/tenants — search
+    Purpose: Optional ?search= filters the Tenants table by name, lease
+    status, or assigned unit number(s) (all three, matched with OR).
+    leaseStatus and unitNumbers are computed aliases in TENANT_SELECT, so
+    the filter is applied with HAVING rather than WHERE.
+*/
 app.get('/api/tenants', requireAuth, async (req, res) => {
     const includeArchived = req.query.archived === 'true';
     const where = includeArchived ? '' : 'WHERE archived = 0';
+    const search = (req.query.search || '').trim();
+    const having = search ? 'HAVING (name LIKE ? OR leaseStatus LIKE ? OR unitNumbers LIKE ?)' : '';
+    const searchParams = search ? [`%${search}%`, `%${search}%`, `%${search}%`] : [];
+
     const pg = getPagination(req);
     if (!pg) {
-        const [rows] = await db.execute(`${TENANT_SELECT} ${where} ORDER BY name ASC`);
+        const [rows] = await db.execute(`${TENANT_SELECT} ${where} ${having} ORDER BY name ASC`, searchParams);
         return res.json(rows);
     }
     const [rows] = await db.execute(
-        `${TENANT_SELECT} ${where} ORDER BY name ASC LIMIT ${pg.limit + 1} OFFSET ${pg.offset}`
+        `${TENANT_SELECT} ${where} ${having} ORDER BY name ASC LIMIT ${pg.limit + 1} OFFSET ${pg.offset}`,
+        searchParams
     );
-    const [[{ total }]] = await db.execute(`SELECT COUNT(*) AS total FROM tenants ${where}`);
+    const [[{ total }]] = await db.execute(`SELECT COUNT(*) AS total FROM (${TENANT_SELECT} ${where} ${having}) t`, searchParams);
     let archivedCount = null;
     if (includeArchived) {
         const [[row]] = await db.execute('SELECT COUNT(*) AS n FROM tenants WHERE archived = 1');
@@ -485,6 +509,13 @@ const LEASE_SELECT = `
     checks "does this unit have an active lease?" before allowing a delete,
     without needing the full leases list in memory.
 */
+/*
+    Name: GET /api/leases — search
+    Purpose: Optional ?search= filters the Leases table by tenant name or
+    unit number (matched with OR). tenant and unitNumber are joined
+    columns aliased in LEASE_SELECT, so the filter is applied with HAVING
+    rather than WHERE.
+*/
 app.get('/api/leases', requireAuth, async (req, res) => {
     const conditions = [req.query.archived === 'true' ? null : 'leases.archived = 0'];
     if (req.query.unitId)   conditions.push(`leases.unit_id = ${parseInt(req.query.unitId, 10) || 0}`);
@@ -492,17 +523,22 @@ app.get('/api/leases', requireAuth, async (req, res) => {
     if (req.query.activeOnly === 'true') conditions.push('CURDATE() BETWEEN leases.start_date AND leases.end_date');
     const where = conditions.filter(Boolean).length ? `WHERE ${conditions.filter(Boolean).join(' AND ')}` : '';
 
+    const search = (req.query.search || '').trim();
+    const having = search ? 'HAVING (tenant LIKE ? OR unitNumber LIKE ?)' : '';
+    const searchParams = search ? [`%${search}%`, `%${search}%`] : [];
+
     const pg = getPagination(req);
     if (!pg) {
-        const [rows] = await db.execute(`${LEASE_SELECT} ${where} ORDER BY leases.start_date DESC`);
+        const [rows] = await db.execute(`${LEASE_SELECT} ${where} ${having} ORDER BY leases.start_date DESC`, searchParams);
         return res.json(rows);
     }
     const [rows] = await db.execute(
-        `${LEASE_SELECT} ${where} ORDER BY leases.start_date DESC LIMIT ${pg.limit + 1} OFFSET ${pg.offset}`
+        `${LEASE_SELECT} ${where} ${having} ORDER BY leases.start_date DESC LIMIT ${pg.limit + 1} OFFSET ${pg.offset}`,
+        searchParams
     );
-    const [[{ total }]] = await db.execute(`SELECT COUNT(*) AS total FROM leases ${where}`);
+    const [[{ total }]] = await db.execute(`SELECT COUNT(*) AS total FROM (${LEASE_SELECT} ${where} ${having}) t`, searchParams);
     const activeWhere = where ? `${where} AND leases.end_date >= CURDATE()` : 'WHERE leases.end_date >= CURDATE()';
-    const [[{ activeCount }]] = await db.execute(`SELECT COUNT(*) AS activeCount FROM leases ${activeWhere}`);
+    const [[{ activeCount }]] = await db.execute(`SELECT COUNT(*) AS activeCount FROM (${LEASE_SELECT} ${activeWhere} ${having}) t`, searchParams);
     res.json({ rows: rows.slice(0, pg.limit), hasMore: rows.length > pg.limit, page: pg.page, total, activeCount });
 });
 
@@ -682,20 +718,37 @@ async function findLeaseId(conn, tenantId, unitId) {
     return rows[0] ? rows[0].lease_id : null;
 }
 
+/*
+    Name: GET /api/payments — search
+    Purpose: Optional ?search= filters the Payments table by tenant name,
+    unit number, or status (matched with OR). Unlike Units/Tenants/Leases,
+    PAYMENT_SELECT's tenant/unit columns come from real JOINs rather than
+    correlated subqueries, so the filter can be a plain WHERE condition.
+*/
 app.get('/api/payments', requireAuth, async (req, res) => {
     await db.execute(
         "UPDATE payments SET status = 'Overdue' WHERE status = 'Pending' AND payment_date < CURDATE()"
     );
-    const where = req.query.archived === 'true' ? '' : 'WHERE payments.archived = 0';
+    const conditions = [req.query.archived === 'true' ? null : 'payments.archived = 0'];
+    const search = (req.query.search || '').trim();
+    const searchParams = [];
+    if (search) {
+        conditions.push('(tenants.name LIKE ? OR units.number LIKE ? OR payments.status LIKE ?)');
+        searchParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
+    const where = conditions.filter(Boolean).length ? `WHERE ${conditions.filter(Boolean).join(' AND ')}` : '';
+    const FROM_CLAUSE = 'FROM payments JOIN tenants ON payments.tenant_id = tenants.tenant_id JOIN units ON payments.unit_id = units.unit_id';
+
     const pg = getPagination(req);
     if (!pg) {
-        const [rows] = await db.execute(`${PAYMENT_SELECT} ${where} ORDER BY payments.payment_date DESC`);
+        const [rows] = await db.execute(`${PAYMENT_SELECT} ${where} ORDER BY payments.payment_date DESC`, searchParams);
         return res.json(rows);
     }
     const [rows] = await db.execute(
-        `${PAYMENT_SELECT} ${where} ORDER BY payments.payment_date DESC LIMIT ${pg.limit + 1} OFFSET ${pg.offset}`
+        `${PAYMENT_SELECT} ${where} ORDER BY payments.payment_date DESC LIMIT ${pg.limit + 1} OFFSET ${pg.offset}`,
+        searchParams
     );
-    const [[{ total }]] = await db.execute(`SELECT COUNT(*) AS total FROM payments ${where}`);
+    const [[{ total }]] = await db.execute(`SELECT COUNT(*) AS total ${FROM_CLAUSE} ${where}`, searchParams);
     res.json({ rows: rows.slice(0, pg.limit), hasMore: rows.length > pg.limit, page: pg.page, total });
 });
 
@@ -803,16 +856,28 @@ app.put('/api/payments/:id/restore', requireAuth, async (req, res) => {
 */
 const EMPLOYEE_SELECT = 'SELECT employee_id AS id, name, email, phone FROM employees';
 
+/*
+    Name: GET /api/employees — search
+    Purpose: Optional ?search= filters the Employees table by name, email,
+    or phone (matched with OR). Employees have no tenant/status/unit
+    fields, so name/email/phone are the closest equivalent identifying
+    columns for this table.
+*/
 app.get('/api/employees', requireAuth, async (req, res) => {
+    const search = (req.query.search || '').trim();
+    const where = search ? 'WHERE (name LIKE ? OR email LIKE ? OR phone LIKE ?)' : '';
+    const searchParams = search ? [`%${search}%`, `%${search}%`, `%${search}%`] : [];
+
     const pg = getPagination(req);
     if (!pg) {
-        const [rows] = await db.execute(`${EMPLOYEE_SELECT} ORDER BY name ASC`);
+        const [rows] = await db.execute(`${EMPLOYEE_SELECT} ${where} ORDER BY name ASC`, searchParams);
         return res.json(rows);
     }
     const [rows] = await db.execute(
-        `${EMPLOYEE_SELECT} ORDER BY name ASC LIMIT ${pg.limit + 1} OFFSET ${pg.offset}`
+        `${EMPLOYEE_SELECT} ${where} ORDER BY name ASC LIMIT ${pg.limit + 1} OFFSET ${pg.offset}`,
+        searchParams
     );
-    const [[{ total }]] = await db.execute('SELECT COUNT(*) AS total FROM employees');
+    const [[{ total }]] = await db.execute(`SELECT COUNT(*) AS total FROM employees ${where}`, searchParams);
     res.json({ rows: rows.slice(0, pg.limit), hasMore: rows.length > pg.limit, page: pg.page, total });
 });
 
