@@ -1,0 +1,428 @@
+/* Material Dashboard Dark palette: navy base #1a2035, mantle #151b2e, crust #12172a, surface #202940 / #2b3553, white text #ffffff, muted lavender-gray #9fa8da / #7986cb, secondary/brand yellow #fff768, accent orange (brand gradient) #fb8c00 -> #e65100, material red #f44336 / #d32f2f, material orange #fb8c00, material green #4caf50, material cyan #00bcd4, material blue #2196f3, light orange #ffb74d. Flat elevated cards, minimal blur, solid surfaces. */
+:root {
+    --primary-light: #2b3553;
+    --secondary:     #fff768;
+    --bg:            #1a2035;
+    --glass-bg:      rgba(32, 41, 64, 0.94);
+    --glass-border:  rgba(255, 255, 255, 0.07);
+    --glass-hi:      rgba(255, 255, 255, 0.13);
+    --panel-bg:      rgba(255, 255, 255, 0.03);
+    --text-primary:  #ffffff;
+    --text-secondary:#9fa8da;
+    --text-muted:    #7986cb;
+    --radius:        15px;
+    --radius-sm:     8px;
+    --teal:          #00bcd4;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+    background:
+        radial-gradient(ellipse at 10% 10%, rgba(230, 81, 0, 0.18) 0%, transparent 50%),
+        radial-gradient(ellipse at 90% 90%, rgba(251, 140, 0, 0.22) 0%, transparent 45%),
+        var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 28px 16px;
+}
+
+/*
+    SECTION: Outer Card
+    Purpose: The frosted glass card container that holds the sidebar and main panel.
+*/
+.card {
+    width: 100%;
+    max-width: 860px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid var(--glass-border);
+    border-top-color: var(--glass-hi);
+    border-radius: var(--radius);
+    box-shadow: 0 32px 90px rgba(0,0,0,0.65), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+    overflow: hidden;
+}
+
+/*
+    SECTION: Two-Column Layout
+    Purpose: Splits the card into a fixed-width sidebar and a flexible main panel.
+*/
+.card-inner {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    min-height: 520px;
+}
+
+/*
+    SECTION: Left Sidebar
+    Purpose: Styles the sidebar background, its decorative glow, and layout for the avatar/name/actions.
+*/
+.sidebar {
+    background: linear-gradient(160deg, var(--primary-light) 0%, #12172a 100%);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 0 28px 36px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    position: relative;
+    overflow: hidden;
+}
+.sidebar-spacer { flex: 1; min-height: 60px; }
+.sidebar::before {
+    content: '';
+    position: absolute;
+    bottom: -60px;
+    left: -60px;
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(251, 140, 0, 0.12), transparent 70%);
+    pointer-events: none;
+}
+
+/*
+    SECTION: Avatar
+    Purpose: Styles the circular profile avatar and its gradient ring.
+*/
+.avatar-ring {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    padding: 3px;
+    background: linear-gradient(135deg, var(--secondary), #e65100);
+    box-shadow: 0 0 0 4px rgba(0,0,0,0.35), 0 0 36px rgba(251, 140, 0, 0.3);
+    flex-shrink: 0;
+    margin-bottom: 16px;
+}
+.avatar-ring img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    display: block;
+    object-fit: cover;
+}
+
+.sidebar-name {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-align: center;
+    letter-spacing: -0.2px;
+    margin-bottom: 6px;
+}
+
+.role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(251, 140, 0, 0.14);
+    border: 1px solid rgba(251, 140, 0, 0.22);
+    color: #e65100;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 40px;
+    margin-bottom: 32px;
+}
+
+
+
+/*
+    SECTION: Sidebar Bottom Actions
+    Purpose: Styles the Dashboard and Log Out buttons at the bottom of the sidebar.
+*/
+.sidebar-actions {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 28px;
+}
+.btn-sidebar {
+    width: 100%;
+    padding: 10px 16px;
+    border-radius: 40px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.22s ease;
+    border: none;
+    letter-spacing: 0.1px;
+}
+.btn-dashboard {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: var(--text-primary);
+}
+.btn-dashboard:hover { background: rgba(255, 255, 255, 0.14); transform: translateY(-1px); }
+.btn-logout {
+    background: rgba(251, 140, 0, 0.1);
+    border: 1px solid rgba(251, 140, 0, 0.18) !important;
+    color: #e65100;
+}
+.btn-logout:hover { background: rgba(251, 140, 0, 0.22); transform: translateY(-1px); }
+
+/*
+    SECTION: Right Panel
+    Purpose: Styles the main content area holding the profile title, view, and edit form.
+*/
+.main-panel {
+    padding: 36px 36px 36px 32px;
+    display: flex;
+    flex-direction: column;
+}
+
+.panel-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+    letter-spacing: -0.2px;
+}
+.panel-subtitle {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-bottom: 28px;
+}
+
+/*
+    SECTION: Section Label
+    Purpose: Styles the small uppercase heading (e.g. "Personal Info") with its trailing rule line.
+*/
+.section-label {
+    font-size: 0.67rem;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/*
+    SECTION: Field Grid
+    Purpose: Lays out the read-only profile fields in a two-column grid, each with an icon, label, and value.
+*/
+.field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 24px;
+}
+.field-grid .field-full { grid-column: 1 / -1; }
+
+.field-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--panel-bg);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+}
+.field-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: rgba(43, 53, 83, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--teal);
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+.field-info { flex: 1; min-width: 0; }
+.field-label {
+    font-size: 0.63rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+}
+.field-value {
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.field-value.muted { color: var(--text-muted); font-style: italic; font-weight: 400; }
+
+/*
+    SECTION: View / Edit Toggle
+    Purpose: Shows/hides the read-only view and the editable form based on their active state.
+*/
+.view-mode.hidden { display: none; }
+.edit-form { display: none; }
+.edit-form.active { display: block; }
+
+/*
+    SECTION: Edit Form Fields
+    Purpose: Styles the editable profile form's labels and inputs.
+*/
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+.form-grid .form-full { grid-column: 1 / -1; }
+
+.form-group label {
+    display: block;
+    font-size: 0.73rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+    letter-spacing: 0.2px;
+}
+.form-group input {
+    width: 100%;
+    padding: 10px 13px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 0.88rem;
+    font-weight: 500;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.form-group input:focus {
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 3px rgba(43, 53, 83, 0.3);
+}
+.form-group input::placeholder { color: var(--text-muted); font-weight: 400; }
+
+/*
+    SECTION: Edit Action Buttons
+    Purpose: Styles the Edit Profile, Save, and Cancel buttons and their hover states.
+*/
+.edit-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
+}
+.btn-main {
+    flex: 1;
+    padding: 11px 20px;
+    border-radius: 40px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.22s ease;
+}
+.btn-edit-toggle {
+    background: var(--primary-light);
+    color: #ffffff;
+    box-shadow: 0 4px 16px rgba(43, 53, 83, 0.4);
+    align-self: flex-start;
+    padding: 9px 22px;
+}
+.btn-edit-toggle:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(43, 53, 83, 0.6); }
+
+.btn-save {
+    background: linear-gradient(135deg, #4caf50, #00bcd4);
+    color: #12172a;
+    box-shadow: 0 4px 16px rgba(168, 213, 162, 0.25);
+}
+.btn-save:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(168, 213, 162, 0.4); }
+
+.btn-cancel-edit {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    color: var(--text-secondary);
+}
+.btn-cancel-edit:hover { background: rgba(255, 255, 255, 0.1); color: #ffffff; }
+
+/*
+    SECTION: Toast
+    Purpose: Styles the temporary notification shown after saving profile changes.
+*/
+.toast {
+    position: fixed;
+    bottom: 26px;
+    right: 26px;
+    background: rgba(18, 23, 42, 0.97);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 13px 20px;
+    color: var(--text-primary);
+    font-size: 0.86rem;
+    font-weight: 500;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 3000;
+    transform: translateY(70px);
+    opacity: 0;
+    transition: all 0.35s ease;
+    pointer-events: none;
+    max-width: 300px;
+}
+.toast.show { transform: translateY(0); opacity: 1; pointer-events: auto; }
+.toast i { font-size: 1.05rem; color: #4caf50; }
+.toast.error i { color: #f44336; }
+
+/*
+    SECTION: Footer
+    Purpose: Styles the version/name note at the bottom of the card.
+*/
+.card-footer {
+    text-align: center;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    padding: 14px 36px 18px;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    letter-spacing: 0.3px;
+}
+
+/*
+    SECTION: Responsive
+    Purpose: Switches the two-column layout to a single column and adjusts spacing for narrow (mobile) viewports.
+*/
+@media (max-width: 680px) {
+    .card-inner { grid-template-columns: 1fr; }
+    .sidebar {
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        padding: 32px 24px 28px;
+        flex-direction: column;
+    }
+    .sidebar-spacer { min-height: 32px; }
+    .sidebar-actions { flex-direction: row; margin-top: 20px; }
+    .main-panel { padding: 24px 22px 28px; }
+    .field-grid { grid-template-columns: 1fr; }
+    .field-grid .field-full { grid-column: 1; }
+    .form-grid { grid-template-columns: 1fr; }
+    .form-grid .form-full { grid-column: 1; }
+}
